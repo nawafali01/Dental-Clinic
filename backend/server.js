@@ -46,9 +46,14 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "healthy", timestamp: new Date() });
 });
 
-// Port configuration
+// Port configuration - only listen locally (Vercel handles this as serverless)
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`[Aurea Server]: Server is running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => {
+    console.log(`[Aurea Server]: Server is running on port ${PORT}`);
+  });
+}
+
+export default app;
+
