@@ -41,6 +41,11 @@ app.use("/api/appointments", appointmentsRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/users", userRoutes);
 
+// Root route
+app.get("/", (req, res) => {
+  res.json({ message: "Aurea Dental API is running ✅", version: "1.0.0" });
+});
+
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({ status: "healthy", timestamp: new Date() });
