@@ -4,6 +4,7 @@ import { Reveal } from "@/shared/ui/Reveal";
 import { MapPin, Phone, Mail, Clock, Send } from "lucide-react";
 import { submitAppointment } from "@/services/api/appointment.api";
 import { sendTestEmail } from "@/services/api/emailApi";
+import { toast } from "sonner";
 
 const contactInfo = [
   { Icon: MapPin, t: "Studio", b: "108 Nordic Ave, Copenhagen" },
@@ -63,8 +64,8 @@ export function Contact() {
       await submitAppointment(formData);
       // Confirmation email send karo
       await sendTestEmail(formData.email, formData.fullName);
-      alert(
-        "Appointment submitted successfully! We've sent a confirmation email.",
+      toast.success(
+        "Appointment submitted successfully! We've sent a confirmation email."
       );
       setFormData({
         fullName: "",
@@ -75,7 +76,7 @@ export function Contact() {
       });
     } catch (error) {
       console.error("Submission error:", error);
-      alert("Submitted successfully! (Connection offline/mock activated)");
+      toast.error("Submitted successfully! (Connection offline/mock activated)");
       setFormData({
         fullName: "",
         email: "",
