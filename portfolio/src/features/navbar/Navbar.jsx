@@ -6,15 +6,12 @@ import { navLinks } from "./data";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
-  const [hidden, setHidden] = useState(false);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState("");
   const { scrollY } = useScroll();
 
   useMotionValueEvent(scrollY, "change", (y) => {
-    const prev = scrollY.getPrevious() ?? 0;
     setScrolled(y > 24);
-    setHidden(y > prev && y > 220);
   });
 
   useEffect(() => {
@@ -36,7 +33,7 @@ export function Navbar() {
   return (
     <motion.header
       initial={{ y: -80, opacity: 0 }}
-      animate={{ y: hidden ? -100 : 0, opacity: 1 }}
+      animate={{ y: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 180, damping: 22 }}
       className="fixed top-0 inset-x-0 z-50"
     >
