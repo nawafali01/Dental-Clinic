@@ -27,3 +27,5 @@ node_modules
 .env
 dist
 build
+.env
+node_modules/

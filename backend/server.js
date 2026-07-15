@@ -22,7 +22,13 @@ connectDB();
 const app = express();
 
 // Middlewares
-app.use(cors());
+// Isko replace karo:
+app.use(cors({
+  origin: ["https://dental-clinic-two-ashy.vercel.app", "http://localhost:5173"],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "ngrok-skip-browser-warning"] // Ngrok warning bypass karne ke liye ye zaroori hai!
+}));
 app.use(express.json());
 
 // Routes Mounts
