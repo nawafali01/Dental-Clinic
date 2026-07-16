@@ -14,7 +14,7 @@ const contactInfo = [
 ];
 
 function Field({ label, value, onChange, type = "text", textarea = false }) {
-  const filled = value.length > 0;
+  const filled = value.length > 0 || type === "date";
   const Tag = textarea ? "textarea" : "input";
   return (
     <label className="relative block group">

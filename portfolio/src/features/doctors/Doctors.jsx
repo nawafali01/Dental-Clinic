@@ -55,60 +55,62 @@ export function Doctors() {
           </div>
         </div>
 
-        <motion.div
-          variants={stagger}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.1 }}
-          className="grid md:grid-cols-3 gap-6"
-        >
-          {doctors.map((d) => (
-            <motion.article
-              variants={staggerItem}
-              key={d.name}
-              className="group relative rounded-[28px] overflow-hidden bg-white border border-border soft-shadow"
-            >
-              <div className="relative aspect-[4/5] overflow-hidden">
-                <img
-                  src={d.img}
-                  alt={d.name}
-                  loading="lazy"
-                  className="w-full h-full object-cover group-hover:scale-[1.06] transition-transform duration-[900ms] ease-out"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-secondary/70 via-secondary/10 to-transparent" />
-                <div className="absolute top-4 left-4 glass rounded-full px-3 py-1 text-xs font-medium text-secondary">
-                  {d.exp} experience
-                </div>
-                <div className="absolute bottom-4 left-4 right-4">
-                  <p className="text-xs text-white/80">{d.role}</p>
-                  <h3 className="font-display text-xl font-semibold text-white mt-0.5">
-                    {d.name}
-                  </h3>
-                </div>
-              </div>
-              <div className="p-5 flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">{d.edu}</p>
-                <div className="flex items-center gap-1.5">
-                  {[Globe, ExternalLink, Share2].map((I, i) => (
-                    <button
-                      key={i}
-                      aria-label="Social profile"
-                      className="grid place-items-center size-8 rounded-full text-muted-foreground hover:bg-accent hover:text-primary transition-colors cursor-pointer"
-                    >
-                      <I className="size-4" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <a
-                href="#contact"
-                className="mx-5 mb-5 flex items-center justify-center gap-2 rounded-2xl bg-secondary text-secondary-foreground py-3 text-sm font-medium hover:bg-primary transition-colors duration-200"
+        {doctors.length > 0 && (
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.1 }}
+            className="grid md:grid-cols-3 gap-6"
+          >
+            {doctors.map((d) => (
+              <motion.article
+                variants={staggerItem}
+                key={d.name}
+                className="group relative rounded-[28px] overflow-hidden bg-white border border-border soft-shadow"
               >
-                <CalendarPlus className="size-4" /> Book with {d.name.split(" ")[1]}
-              </a>
-            </motion.article>
-          ))}
-        </motion.div>
+                <div className="relative aspect-[4/5] overflow-hidden">
+                  <img
+                    src={d.img}
+                    alt={d.name}
+                    loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-[1.06] transition-transform duration-[900ms] ease-out"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-secondary/70 via-secondary/10 to-transparent" />
+                  <div className="absolute top-4 left-4 glass rounded-full px-3 py-1 text-xs font-medium text-secondary">
+                    {d.exp} experience
+                  </div>
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <p className="text-xs text-white/80">{d.role}</p>
+                    <h3 className="font-display text-xl font-semibold text-white mt-0.5">
+                      {d.name}
+                    </h3>
+                  </div>
+                </div>
+                <div className="p-5 flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">{d.edu}</p>
+                  <div className="flex items-center gap-1.5">
+                    {[Globe, ExternalLink, Share2].map((I, i) => (
+                      <button
+                        key={i}
+                        aria-label="Social profile"
+                        className="grid place-items-center size-8 rounded-full text-muted-foreground hover:bg-accent hover:text-primary transition-colors cursor-pointer"
+                      >
+                        <I className="size-4" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <a
+                  href="#contact"
+                  className="mx-5 mb-5 flex items-center justify-center gap-2 rounded-2xl bg-secondary text-secondary-foreground py-3 text-sm font-medium hover:bg-primary transition-colors duration-200"
+                >
+                  <CalendarPlus className="size-4" /> Book with {d.name.split(" ")[1]}
+                </a>
+              </motion.article>
+            ))}
+          </motion.div>
+        )}
       </div>
     </section>
   );
