@@ -1,4 +1,15 @@
 export const ROUTES = {
   HOME: "/",
+  ABOUT: "/about",
+  SERVICES: "/services",
+  DOCTORS: "/doctors",
+  DOCTOR_DETAILS: "/doctors/:id",
+  GALLERY: "/gallery",
+  TESTIMONIALS: "/testimonials",
+  BLOG: "/blog",
+  BLOG_DETAILS: "/blog/:slug",
+  FAQ: "/faq",
+  CONTACT: "/contact",
+  BOOKING: "/book-appointment",
   NOT_FOUND: "*",
 };

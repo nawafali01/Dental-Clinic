@@ -1,8 +1,8 @@
 export const navLinks = [
-  { href: "#services", label: "Services" },
-  { href: "#about", label: "About" },
-  { href: "#doctors", label: "Doctors" },
-  { href: "#gallery", label: "Gallery" },
-  { href: "#ai", label: "AI Care" },
-  { href: "#contact", label: "Contact" },
+  { href: "/about", label: "About", type: "route" },
+  { href: "/services", label: "Services", type: "route" },
+  { href: "/#doctors", label: "Doctors", type: "anchor" },
+  { href: "/#gallery", label: "Gallery", type: "anchor" },
+  { href: "/#ai", label: "AI Care", type: "anchor" },
+  { href: "/#contact", label: "Contact", type: "anchor" },
 ];

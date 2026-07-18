@@ -4,27 +4,31 @@ import { MessageCircle, X, Send, Mic, Bot, Sparkles } from "lucide-react";
 import { axiosInstance } from "@/services/api/axiosInstance";
 
 const suggestions = [
-  "Book Changing",
-  "Whitening cost",
-  "Emergency care",
-  "Dental tip",
+  "Book Appointment",
+  "Dental Services",
+  "Clinic Information",
+  "Dental Care Tips",
+  "Contact Clinic",
 ];
 
 function reply(t) {
   const s = t.toLowerCase();
   if (s.includes("book") || s.includes("appointment")) {
-    return "Sure — I can offer Today 3:40 PM with Dr. Marsh or Thu 10 AM with Dr. Reyes. Which works?";
+    return "Sure! You can book an appointment instantly via our booking wizard here: /book-appointment. Choose your service, doctor, and slot in under 2 minutes.";
   }
-  if (s.includes("cost") || s.includes("price") || s.includes("whit")) {
-    return "In-office whitening starts at $320. Financing available. Want a personalized quote?";
+  if (s.includes("service") || s.includes("whitening") || s.includes("implant")) {
+    return "We offer premium Cosmetic fillings, Invisalign aligners, Dental Implant surgery, and Teeth Whitening treatments. Check out our /services catalog.";
   }
-  if (s.includes("emergency") || s.includes("pain")) {
-    return "I'm sorry you're in pain. Call +1 (555) 123-4567 — a dentist is on call 24/7.";
+  if (s.includes("info") || s.includes("about") || s.includes("hours") || s.includes("time")) {
+    return "Aurea Dental is open Mon–Thu 08:00 AM - 07:00 PM, Fri 08:00 AM - 05:00 PM, and Sat 09:00 AM - 04:00 PM. Learn about our physicians on our /about page.";
   }
-  if (s.includes("tip")) {
-    return "Floss BEFORE brushing so fluoride reaches between teeth. Small change, big impact.";
+  if (s.includes("tip") || s.includes("care") || s.includes("floss")) {
+    return "Dental tip: Floss BEFORE you brush. This dislodges plaque so toothpaste fluoride reaches right between your teeth! Learn more on our /blog.";
   }
-  return "Happy to help — could you tell me a bit more about what you're looking for?";
+  if (s.includes("contact") || s.includes("phone") || s.includes("email") || s.includes("map")) {
+    return "Reach our front desk at +1 (555) 123-4567, email care@aureadental.com, or leave a message at our /contact page.";
+  }
+  return "Happy to help — could you tell me a bit more about what you're looking for, or select one of the quick actions below?";
 }
 
 export function ChatWidget() {

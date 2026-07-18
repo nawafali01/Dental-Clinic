@@ -1,34 +1,46 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
 import { Menu, X, Sparkles } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/shared/ui/Button";
 import { navLinks } from "./data";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState("");
   const { scrollY } = useScroll();
+  const location = useLocation();
 
   useMotionValueEvent(scrollY, "change", (y) => {
     setScrolled(y > 24);
   });
 
-  useEffect(() => {
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) setActive("#" + e.target.id);
-        });
-      },
-      { rootMargin: "-40% 0px -55% 0px" }
+  const isActive = (href) => {
+    if (href.startsWith("/") && !href.includes("#")) {
+      return location.pathname === href;
+    }
+    return false;
+  };
+
+  const NavLink = ({ l, onClick }) => {
+    const active = isActive(l.href);
+    const cls = `relative px-4 py-2 text-sm font-medium transition-colors ${active ? "text-primary" : "text-foreground/80 hover:text-primary"}`;
+    const underline = (
+      <span className={`absolute left-4 right-4 -bottom-0.5 h-0.5 rounded-full bg-primary origin-left transition-transform duration-300 ${active ? "scale-x-100" : "scale-x-0"}`} />
     );
-    navLinks.forEach((l) => {
-      const el = document.querySelector(l.href);
-      if (el) obs.observe(el);
-    });
-    return () => obs.disconnect();
-  }, []);
+    if (l.type === "route") {
+      return (
+        <Link to={l.href} onClick={onClick} className={cls}>
+          {l.label}{underline}
+        </Link>
+      );
+    }
+    return (
+      <a href={l.href} onClick={onClick} className={cls}>
+        {l.label}{underline}
+      </a>
+    );
+  };
 
   return (
     <motion.header
@@ -45,28 +57,18 @@ export function Navbar() {
         }`}
       >
         <nav className="max-w-7xl mx-auto flex items-center justify-between px-5 md:px-8 h-16 md:h-18">
-          <a href="#top" className="flex items-center gap-2 group">
+          <Link to="/" className="flex items-center gap-2 group">
             <span className="grid place-items-center size-9 rounded-xl bg-primary text-primary-foreground soft-shadow group-hover:scale-105 transition-transform">
               <Sparkles className="size-5" />
             </span>
             <span className="font-display font-semibold text-lg tracking-tight text-secondary">
               Aurea<span className="text-primary">.</span>
             </span>
-          </a>
+          </Link>
           <ul className="hidden lg:flex items-center gap-1">
             {navLinks.map((l) => (
               <li key={l.href}>
-                <a
-                  href={l.href}
-                  className="relative px-4 py-2 text-sm font-medium text-foreground/80 hover:text-primary transition-colors"
-                >
-                  {l.label}
-                  <span
-                    className={`absolute left-4 right-4 -bottom-0.5 h-0.5 rounded-full bg-primary origin-left transition-transform duration-300 ${
-                      active === l.href ? "scale-x-100" : "scale-x-0"
-                    }`}
-                  />
-                </a>
+                <NavLink l={l} />
               </li>
             ))}
           </ul>
@@ -81,7 +83,7 @@ export function Navbar() {
               asChild
               className="rounded-full bg-primary hover:bg-primary/95 text-primary-foreground px-5 h-10 shadow-[0_10px_30px_-10px_rgba(31,138,112,0.6)] hover:shadow-[0_16px_40px_-10px_rgba(31,138,112,0.7)] transition-all"
             >
-              <a href="#contact">Book Appointment</a>
+              <a href="/#contact">Book Appointment</a>
             </Button>
           </div>
           <button
@@ -102,20 +104,13 @@ export function Navbar() {
             >
               <div className="px-6 py-4 flex flex-col gap-1 bg-white/95 backdrop-blur-md">
                 {navLinks.map((l) => (
-                  <a
-                    key={l.href}
-                    href={l.href}
-                    onClick={() => setOpen(false)}
-                    className="py-3 text-base font-medium text-foreground/80 hover:text-primary border-b border-border/60 last:border-0 transition-colors"
-                  >
-                    {l.label}
-                  </a>
+                  <NavLink key={l.href} l={l} onClick={() => setOpen(false)} />
                 ))}
                 <Button
                   asChild
                   className="mt-3 rounded-full bg-primary hover:bg-primary/95"
                 >
-                  <a href="#contact" onClick={() => setOpen(false)}>
+                  <a href="/#contact" onClick={() => setOpen(false)}>
                     Book Appointment
                   </a>
                 </Button>
