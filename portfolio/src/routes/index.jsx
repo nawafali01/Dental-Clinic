@@ -1,6 +1,5 @@
 import { lazy, Suspense } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { ROUTES } from "@/constants/routes";
 import { PublicLayout } from "@/layouts/PublicLayout";
 
 const Home = lazy(() => import("@/pages/Home"));
@@ -29,7 +28,7 @@ const router = createBrowserRouter([
     element: <PublicLayout />,
     children: [
       {
-        path: ROUTES.HOME,
+        index: true,
         element: (
           <Suspense fallback={fallback("Loading Aurea...")}>
             <Home />
@@ -37,7 +36,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: ROUTES.ABOUT,
+        path: "about",
         element: (
           <Suspense fallback={fallback("Loading...")}>
             <About />
@@ -45,7 +44,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: ROUTES.SERVICES,
+        path: "services",
         element: (
           <Suspense fallback={fallback("Loading...")}>
             <ServicesPage />
@@ -53,7 +52,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: ROUTES.DOCTORS,
+        path: "doctors",
         element: (
           <Suspense fallback={fallback("Loading Doctors...")}>
             <Doctors />
@@ -61,7 +60,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: ROUTES.DOCTOR_DETAILS,
+        path: "doctors/:id",
         element: (
           <Suspense fallback={fallback("Loading Profile...")}>
             <DoctorDetails />
@@ -69,7 +68,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: ROUTES.GALLERY,
+        path: "gallery",
         element: (
           <Suspense fallback={fallback("Loading Gallery...")}>
             <Gallery />
@@ -77,7 +76,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: ROUTES.TESTIMONIALS,
+        path: "testimonials",
         element: (
           <Suspense fallback={fallback("Loading Testimonials...")}>
             <Testimonials />
@@ -85,7 +84,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: ROUTES.BLOG,
+        path: "blog",
         element: (
           <Suspense fallback={fallback("Loading Blog...")}>
             <Blog />
@@ -93,7 +92,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: ROUTES.BLOG_DETAILS,
+        path: "blog/:slug",
         element: (
           <Suspense fallback={fallback("Loading Article...")}>
             <BlogDetails />
@@ -101,7 +100,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: ROUTES.FAQ,
+        path: "faq",
         element: (
           <Suspense fallback={fallback("Loading FAQ...")}>
             <FAQ />
@@ -109,7 +108,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: ROUTES.CONTACT,
+        path: "contact",
         element: (
           <Suspense fallback={fallback("Loading Contact...")}>
             <Contact />
@@ -117,7 +116,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: ROUTES.BOOKING,
+        path: "book-appointment",
         element: (
           <Suspense fallback={fallback("Loading Booking...")}>
             <BookAppointment />
@@ -125,7 +124,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: ROUTES.NOT_FOUND,
+        path: "*",
         element: (
           <Suspense fallback={fallback("Loading...")}>
             <NotFound />

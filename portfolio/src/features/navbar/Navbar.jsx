@@ -1,44 +1,62 @@
 import { useState } from "react";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
 import { Menu, X, Sparkles } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/shared/ui/Button";
 import { navLinks } from "./data";
+
+function scrollToHash(hash) {
+  const el = document.getElementById(hash);
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const { scrollY } = useScroll();
   const location = useLocation();
+  const navigate = useNavigate();
 
   useMotionValueEvent(scrollY, "change", (y) => {
     setScrolled(y > 24);
   });
 
-  const isActive = (href) => {
-    if (href.startsWith("/") && !href.includes("#")) {
-      return location.pathname === href;
+  const isActive = (l) => {
+    if (l.hash) {
+      return location.pathname === "/" && location.hash === `#${l.hash}`;
     }
-    return false;
+    return location.pathname === l.href;
+  };
+
+  const handleNavClick = (l, onClick) => (e) => {
+    onClick?.();
+
+    if (!l.hash) return;
+
+    e.preventDefault();
+
+    if (location.pathname === "/") {
+      scrollToHash(l.hash);
+      window.history.replaceState(null, "", `/#${l.hash}`);
+      return;
+    }
+
+    navigate(`/#${l.hash}`);
   };
 
   const NavLink = ({ l, onClick }) => {
-    const active = isActive(l.href);
+    const active = isActive(l);
     const cls = `relative px-4 py-2 text-sm font-medium transition-colors ${active ? "text-primary" : "text-foreground/80 hover:text-primary"}`;
     const underline = (
       <span className={`absolute left-4 right-4 -bottom-0.5 h-0.5 rounded-full bg-primary origin-left transition-transform duration-300 ${active ? "scale-x-100" : "scale-x-0"}`} />
     );
-    if (l.type === "route") {
-      return (
-        <Link to={l.href} onClick={onClick} className={cls}>
-          {l.label}{underline}
-        </Link>
-      );
-    }
+
     return (
-      <a href={l.href} onClick={onClick} className={cls}>
+      <Link to={l.href} onClick={handleNavClick(l, onClick)} className={cls}>
         {l.label}{underline}
-      </a>
+      </Link>
     );
   };
 
@@ -83,7 +101,7 @@ export function Navbar() {
               asChild
               className="rounded-full bg-primary hover:bg-primary/95 text-primary-foreground px-5 h-10 shadow-[0_10px_30px_-10px_rgba(31,138,112,0.6)] hover:shadow-[0_16px_40px_-10px_rgba(31,138,112,0.7)] transition-all"
             >
-              <a href="/#contact">Book Appointment</a>
+              <Link to="/book-appointment">Book Appointment</Link>
             </Button>
           </div>
           <button
@@ -110,9 +128,9 @@ export function Navbar() {
                   asChild
                   className="mt-3 rounded-full bg-primary hover:bg-primary/95"
                 >
-                  <a href="/#contact" onClick={() => setOpen(false)}>
+                  <Link to="/book-appointment" onClick={() => setOpen(false)}>
                     Book Appointment
-                  </a>
+                  </Link>
                 </Button>
               </div>
             </motion.div>
