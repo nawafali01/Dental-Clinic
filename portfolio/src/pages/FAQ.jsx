@@ -159,7 +159,7 @@ export default function FAQ() {
                   <a href="tel:+15551234567"><PhoneCall className="size-4" /> +1 (555) 123-4567</a>
                 </Button>
                 <Button asChild variant="outline" className="rounded-full h-12 px-6 border-white/30 text-white hover:bg-white/10 flex items-center gap-2 cursor-pointer">
-                  <a href="/contact"><Mail className="size-4" /> Send Message</a>
+                  <a href="/home/contact"><Mail className="size-4" /> Send Message</a>
                 </Button>
               </div>
             </div>

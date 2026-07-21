@@ -136,7 +136,7 @@ export default function BlogDetails() {
         
         {/* Back Link */}
         <Reveal>
-          <Link to="/blog" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-8 cursor-pointer">
+          <Link to="/home/blog" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-8 cursor-pointer">
             <ArrowLeft className="size-4" /> Back to journal
           </Link>
         </Reveal>

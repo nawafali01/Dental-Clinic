@@ -341,7 +341,7 @@ export default function ServicesPage() {
                     <a href="#contact">Book Free Consultation <ArrowRight className="ml-1.5 size-4" /></a>
                   </Button>
                   <Button asChild variant="outline" className="rounded-full h-12 px-6 border-white/40 text-white hover:bg-white/10 transition-colors">
-                    <a href="/about">About Our Clinic</a>
+                    <a href="/home/about">About Our Clinic</a>
                   </Button>
                 </div>
               </div>

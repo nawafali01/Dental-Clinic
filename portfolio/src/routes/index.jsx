@@ -1,7 +1,11 @@
 import { lazy, Suspense } from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { PublicLayout } from "@/layouts/PublicLayout";
+import { ProtectedRoute } from "@/features/auth/components/ProtectedRoute";
+import { PublicRoute } from "@/features/auth/components/PublicRoute";
+import { ROLES } from "@/features/auth/constants/authConstants";
 
+// Lazy general pages
 const Home = lazy(() => import("@/pages/Home"));
 const About = lazy(() => import("@/pages/About"));
 const ServicesPage = lazy(() => import("@/pages/ServicesPage"));
@@ -16,6 +20,17 @@ const Contact = lazy(() => import("@/pages/Contact"));
 const BookAppointment = lazy(() => import("@/pages/BookAppointment"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
+// Lazy authentication pages
+const StaffLogin = lazy(() => import("@/features/auth/pages/StaffLogin"));
+const AdminLogin = lazy(() => import("@/features/auth/pages/AdminLogin"));
+const SuperAdminLogin = lazy(() => import("@/features/auth/pages/SuperAdminLogin"));
+const Register = lazy(() => import("@/features/auth/pages/Register"));
+
+// Lazy dashboard views
+const StaffDashboard = lazy(() => import("@/pages/StaffDashboard"));
+const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
+const SuperAdminDashboard = lazy(() => import("@/pages/SuperAdminDashboard"));
+
 const fallback = (label = "Loading...") => (
   <div className="h-screen w-screen flex items-center justify-center text-primary font-display font-semibold">
     {label}
@@ -23,8 +38,15 @@ const fallback = (label = "Loading...") => (
 );
 
 const router = createBrowserRouter([
+  // Root redirect → Staff Login (first screen on site open)
   {
     path: "/",
+    element: <Navigate to="/login" replace />,
+  },
+
+  // Public website pages (inside PublicLayout navbar wrapper)
+  {
+    path: "/home",
     element: <PublicLayout />,
     children: [
       {
@@ -123,18 +145,115 @@ const router = createBrowserRouter([
           </Suspense>
         ),
       },
-      {
-        path: "*",
-        element: (
-          <Suspense fallback={fallback("Loading...")}>
-            <NotFound />
-          </Suspense>
-        ),
-      },
     ],
+  },
+
+  // Auth pages (wrapped in PublicRoute so logged-in users cannot access them)
+  {
+    path: "/login",
+    element: (
+      <PublicRoute>
+        <Suspense fallback={fallback("Loading Staff Login...")}>
+          <StaffLogin />
+        </Suspense>
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/register",
+    element: (
+      <PublicRoute>
+        <Suspense fallback={fallback("Registering Account...")}>
+          <Register />
+        </Suspense>
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/register-admin",
+    element: (
+      <PublicRoute>
+        <Suspense fallback={fallback("Registering Administrator Account...")}>
+          <Register />
+        </Suspense>
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/register-super-admin",
+    element: (
+      <PublicRoute>
+        <Suspense fallback={fallback("Registering Operations Account...")}>
+          <Register />
+        </Suspense>
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/admin-login",
+    element: (
+      <PublicRoute>
+        <Suspense fallback={fallback("Loading Admin Login...")}>
+          <AdminLogin />
+        </Suspense>
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/super-admin-login",
+    element: (
+      <PublicRoute>
+        <Suspense fallback={fallback("Loading System Login...")}>
+          <SuperAdminLogin />
+        </Suspense>
+      </PublicRoute>
+    ),
+  },
+
+  // Protected Dashboard layouts (Only authenticated roles can access)
+  {
+    path: "/dashboard",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.CLINIC_MANAGER, ROLES.RECEPTION, ROLES.FINANCE, ROLES.AGENT]}>
+        <Suspense fallback={fallback("Loading Workstation...")}>
+          <StaffDashboard />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/admin/dashboard",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+        <Suspense fallback={fallback("Loading Clinic Workspace...")}>
+          <AdminDashboard />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/super-admin/dashboard",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
+        <Suspense fallback={fallback("Loading Core Registry...")}>
+          <SuperAdminDashboard />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  // Catch-all NotFound Route
+  {
+    path: "*",
+    element: (
+      <Suspense fallback={fallback("Redirecting...")}>
+        <NotFound />
+      </Suspense>
+    ),
   },
 ]);
 
 export function AppRouter() {
   return <RouterProvider router={router} />;
 }
+

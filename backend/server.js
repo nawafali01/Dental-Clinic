@@ -12,6 +12,7 @@ import symptomsRoutes from "./routes/symptoms.js";
 import appointmentsRoutes from "./routes/appointments.js";
 import aiRoutes from "./routes/ai.js";
 import userRoutes from "./routes/userRoutes.js";
+import authRoutes from "./routes/auth.js";
 
 // Initialize config
 dotenv.config();
@@ -40,6 +41,7 @@ app.use("/api/symptoms", symptomsRoutes);
 app.use("/api/appointments", appointmentsRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/auth", authRoutes);
 
 // Root route
 app.get("/", (req, res) => {
