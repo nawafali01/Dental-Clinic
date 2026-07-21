@@ -126,7 +126,7 @@ export default function DoctorDetails() {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center gap-4 bg-background">
         <p className="text-secondary font-display font-semibold text-lg">Doctor not found</p>
-        <Link to="/doctors" className="text-primary hover:underline text-sm">Return to all doctors</Link>
+        <Link to="/home/doctors" className="text-primary hover:underline text-sm">Return to all doctors</Link>
       </div>
     );
   }
@@ -139,7 +139,7 @@ export default function DoctorDetails() {
         
         {/* Back Link */}
         <Reveal>
-          <Link to="/doctors" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-8 cursor-pointer">
+          <Link to="/home/doctors" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-8 cursor-pointer">
             <ArrowLeft className="size-4" /> Back to clinicians
           </Link>
         </Reveal>

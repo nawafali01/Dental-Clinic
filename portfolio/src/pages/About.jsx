@@ -108,7 +108,7 @@ export default function About() {
             className="mt-8 flex flex-wrap items-center justify-center gap-4"
           >
             <Button asChild className="group rounded-full h-12 px-6 bg-primary hover:bg-primary/95 text-primary-foreground shadow-[0_14px_40px_-12px_rgba(31,138,112,0.65)] transition-all">
-              <a href="/services">Explore Services <ArrowRight className="ml-1.5 size-4 transition-transform group-hover:translate-x-1" /></a>
+              <a href="/home/services">Explore Services <ArrowRight className="ml-1.5 size-4 transition-transform group-hover:translate-x-1" /></a>
             </Button>
             <Button asChild variant="outline" className="rounded-full h-12 px-6 border-border bg-white/70 backdrop-blur hover:bg-white transition-colors">
               <a href="#contact">Book a Visit</a>

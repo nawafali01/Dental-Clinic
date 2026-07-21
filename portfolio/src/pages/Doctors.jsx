@@ -227,7 +227,7 @@ export default function Doctors() {
                 </p>
                 <div className="mt-8 flex justify-center">
                   <Button asChild className="rounded-full h-12 px-8 bg-primary hover:bg-primary/95 text-primary-foreground font-semibold shadow-lg shadow-primary/30 transition-all cursor-pointer">
-                    <a href="/book-appointment">Book Instant Consultation</a>
+                    <a href="/home/book-appointment">Book Instant Consultation</a>
                   </Button>
                 </div>
               </div>

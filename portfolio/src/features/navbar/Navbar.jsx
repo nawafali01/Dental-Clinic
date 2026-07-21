@@ -25,7 +25,7 @@ export function Navbar() {
 
   const isActive = (l) => {
     if (l.hash) {
-      return location.pathname === "/" && location.hash === `#${l.hash}`;
+      return location.pathname === "/home" && location.hash === `#${l.hash}`;
     }
     return location.pathname === l.href;
   };
@@ -37,13 +37,13 @@ export function Navbar() {
 
     e.preventDefault();
 
-    if (location.pathname === "/") {
+    if (location.pathname === "/home") {
       scrollToHash(l.hash);
-      window.history.replaceState(null, "", `/#${l.hash}`);
+      window.history.replaceState(null, "", `/home#${l.hash}`);
       return;
     }
 
-    navigate(`/#${l.hash}`);
+    navigate(`/home#${l.hash}`);
   };
 
   const NavLink = ({ l, onClick }) => {
@@ -75,7 +75,7 @@ export function Navbar() {
         }`}
       >
         <nav className="max-w-7xl mx-auto flex items-center justify-between px-5 md:px-8 h-16 md:h-18">
-          <Link to="/" className="flex items-center gap-2 group">
+          <Link to="/home" className="flex items-center gap-2 group">
             <span className="grid place-items-center size-9 rounded-xl bg-primary text-primary-foreground soft-shadow group-hover:scale-105 transition-transform">
               <Sparkles className="size-5" />
             </span>
@@ -101,7 +101,7 @@ export function Navbar() {
               asChild
               className="rounded-full bg-primary hover:bg-primary/95 text-primary-foreground px-5 h-10 shadow-[0_10px_30px_-10px_rgba(31,138,112,0.6)] hover:shadow-[0_16px_40px_-10px_rgba(31,138,112,0.7)] transition-all"
             >
-              <Link to="/book-appointment">Book Appointment</Link>
+              <Link to="/home/book-appointment">Book Appointment</Link>
             </Button>
           </div>
           <button
@@ -128,7 +128,7 @@ export function Navbar() {
                   asChild
                   className="mt-3 rounded-full bg-primary hover:bg-primary/95"
                 >
-                  <Link to="/book-appointment" onClick={() => setOpen(false)}>
+                  <Link to="/home/book-appointment" onClick={() => setOpen(false)}>
                     Book Appointment
                   </Link>
                 </Button>
