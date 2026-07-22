@@ -42,7 +42,6 @@ export function Gallery() {
     fetchGallery();
   }, []);
 
-
   const filtered = cat === "All" ? galleryItems : galleryItems.filter((i) => i.tag === cat);
 
   return (
