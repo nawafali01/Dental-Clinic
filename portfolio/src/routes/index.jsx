@@ -1,6 +1,9 @@
 import { lazy, Suspense } from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { PublicLayout } from "@/layouts/PublicLayout";
+import { AdminLayout } from "../admin/components/layout/AdminLayout";
+import { ProtectedRoute } from "../admin/components/auth/ProtectedRoute";
+import { PERMISSIONS } from "../admin/config/permissions";
 
 const Home = lazy(() => import("@/pages/Home"));
 const About = lazy(() => import("@/pages/About"));
@@ -15,6 +18,17 @@ const FAQ = lazy(() => import("@/pages/FAQ"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const BookAppointment = lazy(() => import("@/pages/BookAppointment"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+
+// Admin views
+const DashboardOverviewView = lazy(() => import("../admin/views/DashboardOverviewView"));
+const AnalyticsView = lazy(() => import("../admin/views/AnalyticsView"));
+const LeadPipelineView = lazy(() => import("../admin/views/LeadPipelineView"));
+const ClinicManagementView = lazy(() => import("../admin/views/ClinicManagementView"));
+const UserManagementView = lazy(() => import("../admin/views/UserManagementView"));
+const AiOpsView = lazy(() => import("../admin/views/AiOpsView"));
+const RevenueView = lazy(() => import("../admin/views/RevenueView"));
+const AuditLogsView = lazy(() => import("../admin/views/AuditLogsView"));
+const SettingsView = lazy(() => import("../admin/views/SettingsView"));
 
 const fallback = (label = "Loading...") => (
   <div className="h-screen w-screen flex items-center justify-center text-primary font-display font-semibold">
@@ -133,8 +147,98 @@ const router = createBrowserRouter([
       },
     ],
   },
+  {
+    path: "/admin",
+    element: <AdminLayout />,
+    children: [
+      {
+        index: true,
+        element: <Navigate to="/admin/dashboard" replace />,
+      },
+      {
+        path: "dashboard",
+        element: (
+          <Suspense fallback={fallback("Loading Dashboard...")}>
+            <DashboardOverviewView />
+          </Suspense>
+        ),
+      },
+      {
+        path: "analytics",
+        element: (
+          <Suspense fallback={fallback("Loading Analytics...")}>
+            <AnalyticsView />
+          </Suspense>
+        ),
+      },
+      {
+        path: "pipeline",
+        element: (
+          <Suspense fallback={fallback("Loading Pipeline...")}>
+            <LeadPipelineView />
+          </Suspense>
+        ),
+      },
+      {
+        path: "clinics",
+        element: (
+          <ProtectedRoute requiredPermission={PERMISSIONS.MANAGE_MULTI_TENANT}>
+            <Suspense fallback={fallback("Loading Clinics...")}>
+              <ClinicManagementView />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "users",
+        element: (
+          <Suspense fallback={fallback("Loading Users...")}>
+            <UserManagementView />
+          </Suspense>
+        ),
+      },
+      {
+        path: "ai-ops",
+        element: (
+          <ProtectedRoute requiredPermission={PERMISSIONS.VIEW_AI_GOVERNANCE}>
+            <Suspense fallback={fallback("Loading AI Ops...")}>
+              <AiOpsView />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "revenue",
+        element: (
+          <Suspense fallback={fallback("Loading Revenue...")}>
+            <RevenueView />
+          </Suspense>
+        ),
+      },
+      {
+        path: "audit-logs",
+        element: (
+          <ProtectedRoute requiredPermission={PERMISSIONS.VIEW_GLOBAL_AUDIT}>
+            <Suspense fallback={fallback("Loading Audit Logs...")}>
+              <AuditLogsView />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "settings",
+        element: (
+          <Suspense fallback={fallback("Loading Settings...")}>
+            <SettingsView />
+          </Suspense>
+        ),
+      },
+    ],
+  },
 ]);
 
 export function AppRouter() {
   return <RouterProvider router={router} />;
 }
+
+
