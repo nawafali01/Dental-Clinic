@@ -1,0 +1,33 @@
+export const ORGANIZATIONS = [
+  {
+    id: 'all',
+    name: 'All Organizations (Global Scope)',
+    shortName: 'Global Scope',
+    badgeText: 'Global Scope',
+    isGlobal: true,
+    logoText: 'GA',
+    clinicsCount: 4,
+  },
+  {
+    id: 'apex',
+    name: 'Apex Dental Group',
+    shortName: 'Apex Dental',
+    badgeText: 'Apex Dental Group',
+    isGlobal: false,
+    logoText: 'AD',
+    logoColor: 'from-blue-600 to-indigo-600',
+    clinicsCount: 2,
+    assignedClinicIds: ['c1', 'c2'],
+  },
+  {
+    id: 'smilecare',
+    name: 'SmileCare Clinics',
+    shortName: 'SmileCare',
+    badgeText: 'SmileCare Clinics',
+    isGlobal: false,
+    logoText: 'SC',
+    logoColor: 'from-emerald-600 to-teal-600',
+    clinicsCount: 2,
+    assignedClinicIds: ['c3', 'c4'],
+  },
+];
