@@ -2,9 +2,9 @@ import { Sparkles, Globe, ExternalLink, Share2, BookMarked, ArrowRight } from "l
 import { Reveal } from "@/shared/ui/Reveal";
 
 const footerCols = [
-  { title: "Clinic", links: ["Services", "Doctors", "Gallery", "About"] },
-  { title: "Care", links: ["AI Assistant", "Emergency", "Insurance", "Financing"] },
-  { title: "Company", links: ["Careers", "Press", "Privacy", "Terms"] },
+  { title: "Clinic", links: [{ label: "Services", href: "#services" }, { label: "Doctors", href: "/home/doctors" }, { label: "Gallery", href: "#gallery" }, { label: "About", href: "/home/about" }] },
+  { title: "Care", links: [{ label: "AI Assistant", href: "#ai" }, { label: "Emergency", href: "#live-slots" }, { label: "Insurance", href: "#faq" }, { label: "Financing", href: "#treatment-finder" }] },
+  { title: "Legal & Governance", links: [{ label: "Privacy Policy", href: "#" }, { label: "Terms of Service", href: "#" }, { label: "Cookie Policy", href: "#" }, { label: "Accessibility Statement", href: "#" }, { label: "Non-emergency Disclaimer", href: "#" }, { label: "Non-clinical Advice Disclaimer", href: "#" }] },
 ];
 
 function FooterCol({ title, links }) {
@@ -13,9 +13,9 @@ function FooterCol({ title, links }) {
       <p className="font-display font-medium text-sm">{title}</p>
       <ul className="mt-4 space-y-2 text-sm text-white/60">
         {links.map((l) => (
-          <li key={l}>
-            <a href="#" className="hover:text-white transition-colors">
-              {l}
+          <li key={l.label}>
+            <a href={l.href} className="hover:text-white transition-colors">
+              {l.label}
             </a>
           </li>
         ))}
@@ -89,9 +89,27 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="mt-16 pt-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-white/50">
+        {/* Legal Disclaimers Bar */}
+        <div className="mt-12 pt-6 border-t border-white/10 space-y-3 text-xs text-white/40 leading-relaxed">
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-white/60">
+            <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+            <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+            <a href="#" className="hover:text-white transition-colors">Cookie Policy</a>
+            <a href="#" className="hover:text-white transition-colors">Accessibility Statement</a>
+            <a href="#" className="hover:text-white transition-colors">Non-emergency Medical Disclaimer</a>
+            <a href="#" className="hover:text-white transition-colors">Non-clinical Advice Disclaimer</a>
+          </div>
+          <p>
+            <b>Non-emergency Medical Disclaimer:</b> If you are experiencing a life-threatening medical emergency or severe acute dental trauma, please call your local emergency services (112 / 911) immediately.
+          </p>
+          <p>
+            <b>Non-clinical Advice Disclaimer:</b> Information provided by Aurea AI and interactive questionnaires is for informational guidance only and does not constitute formal medical or dental diagnosis.
+          </p>
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-white/50">
           <p>© {new Date().getFullYear()} Aurea Dental. Crafted with care in Copenhagen.</p>
-          <p>Aurea AI is a UI demonstration and does not provide medical advice.</p>
+          <p>Aurea AI is a UI demonstration and enterprise healthcare concept.</p>
         </div>
       </div>
     </footer>
