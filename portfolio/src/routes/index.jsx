@@ -1,6 +1,10 @@
 import { lazy, Suspense } from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { PublicLayout } from "@/layouts/PublicLayout";
+import { AdminLayout } from "@/dashboard/super-admin/components/layout/AdminLayout";
+import { ManagerLayout } from "@/dashboard/clinic-manager/components/layout/ManagerLayout";
+import { superAdminRoutes } from "@/dashboard/super-admin/routes";
+import { clinicManagerRoutes } from "@/dashboard/clinic-manager/routes";
 
 const Home = lazy(() => import("@/pages/Home"));
 const About = lazy(() => import("@/pages/About"));
@@ -133,8 +137,32 @@ const router = createBrowserRouter([
       },
     ],
   },
+  {
+    path: "/admin",
+    element: <AdminLayout />,
+    children: [
+      {
+        index: true,
+        element: <Navigate to="/admin/dashboard" replace />,
+      },
+      ...superAdminRoutes,
+    ],
+  },
+  {
+    path: "/manager",
+    element: <ManagerLayout />,
+    children: [
+      {
+        index: true,
+        element: <Navigate to="/manager/dashboard" replace />,
+      },
+      ...clinicManagerRoutes,
+    ],
+  },
 ]);
 
 export function AppRouter() {
   return <RouterProvider router={router} />;
 }
+
+
