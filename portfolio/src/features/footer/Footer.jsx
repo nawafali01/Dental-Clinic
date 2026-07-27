@@ -99,12 +99,12 @@ export function Footer() {
             <a href="#" className="hover:text-white transition-colors">Non-emergency Medical Disclaimer</a>
             <a href="#" className="hover:text-white transition-colors">Non-clinical Advice Disclaimer</a>
           </div>
-          <p>
+          {/* <p>
             <b>Non-emergency Medical Disclaimer:</b> If you are experiencing a life-threatening medical emergency or severe acute dental trauma, please call your local emergency services (112 / 911) immediately.
           </p>
           <p>
             <b>Non-clinical Advice Disclaimer:</b> Information provided by Aurea AI and interactive questionnaires is for informational guidance only and does not constitute formal medical or dental diagnosis.
-          </p>
+          </p> */}
         </div>
 
         <div className="mt-6 pt-4 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-white/50">

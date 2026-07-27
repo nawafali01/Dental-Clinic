@@ -34,8 +34,8 @@ function Stat({ to, suffix = "", label }) {
 
 export function WhyUs() {
   return (
-    <section id="whyus" className="relative py-24 md:py-32 bg-muted/50">
-      <div className="max-w-7xl mx-auto px-5 md:px-8">
+    <section id="whyus" className="relative py-8 md:py-16 bg-muted/50">
+      <div className="max-w-7xl mx-auto px-5 md:px-6">
         <div className="max-w-2xl mb-14">
           <Reveal>
             <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">

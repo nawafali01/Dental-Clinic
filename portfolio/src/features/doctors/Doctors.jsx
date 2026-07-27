@@ -38,7 +38,7 @@ export function Doctors() {
 
 
   return (
-    <section id="doctors" className="relative py-24 md:py-32">
+    <section id="doctors" className="relative py-10 md:py-18">
       <div className="max-w-7xl mx-auto px-5 md:px-8">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-14">
           <div>

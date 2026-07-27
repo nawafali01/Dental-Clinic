@@ -28,7 +28,7 @@ function Counter({ to, suffix = "" }) {
 
 export function About() {
   return (
-    <section id="about" className="relative py-24 md:py-32 bg-muted/50">
+    <section id="about" className="relative pt-24 pb-16 md:pt-32 md:pb-24 bg-muted/50">
       <div className="max-w-7xl mx-auto px-5 md:px-8 grid lg:grid-cols-12 gap-12 items-start">
         {/* Left column */}
         <div className="lg:col-span-5 lg:sticky lg:top-28">

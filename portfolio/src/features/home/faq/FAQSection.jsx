@@ -156,8 +156,7 @@ export function FAQSection() {
             </Button>
             <Button
               asChild
-              variant="outline"
-              className="rounded-full h-10 px-5 border-white/30 text-white hover:bg-white/10 cursor-pointer text-xs"
+              className="rounded-full h-10 px-5 bg-primary hover:bg-primary/90 text-white border border-primary cursor-pointer text-xs shadow-md transition-colors"
             >
               <a href="#contact">
                 <Mail className="mr-1.5 size-3.5" /> Send Message

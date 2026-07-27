@@ -144,7 +144,7 @@ export function FAQView() {
                 <Button asChild className="rounded-full h-12 px-6 bg-white text-secondary hover:bg-neutral-50 shadow-md flex items-center gap-2 cursor-pointer font-bold">
                   <a href="tel:+15551234567"><PhoneCall className="size-4" /> +1 (555) 123-4567</a>
                 </Button>
-                <Button asChild variant="outline" className="rounded-full h-12 px-6 border-white/30 text-white hover:bg-white/10 flex items-center gap-2 cursor-pointer">
+                <Button asChild className="rounded-full h-12 px-6 bg-primary hover:bg-primary/90 text-white border border-primary flex items-center gap-2 cursor-pointer shadow-md transition-colors">
                   <a href="/contact"><Mail className="size-4" /> Send Message</a>
                 </Button>
               </div>
