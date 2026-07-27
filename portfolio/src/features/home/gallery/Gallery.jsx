@@ -66,11 +66,10 @@ export function Gallery() {
                 <button
                   key={c}
                   onClick={() => setCat(c)}
-                  className={`px-4 py-2 text-sm rounded-full border cursor-pointer transition-all ${
-                    cat === c
-                      ? "bg-secondary text-secondary-foreground border-secondary"
-                      : "bg-white text-muted-foreground border-border hover:border-primary hover:text-primary"
-                  }`}
+                  className={`px-4 py-2 text-sm rounded-full border cursor-pointer transition-all ${cat === c
+                    ? "bg-secondary text-secondary-foreground border-secondary"
+                    : "bg-white text-muted-foreground border-border hover:border-primary hover:text-primary"
+                    }`}
                 >
                   {c}
                 </button>
@@ -102,7 +101,7 @@ export function Gallery() {
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[900ms] ease-out"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-secondary/70 via-secondary/10 to-transparent opacity-70 group-hover:opacity-90 transition-opacity" />
-                <span className="absolute top-3 left-3 glass rounded-full px-3 py-1 text-xs font-medium text-secondary">
+                <span className="absolute top-3 left-3 glass rounded-full px-3 py-1 text-xs font-medium text-secondary group-hover:!bg-primary group-hover:!text-white transition-colors duration-300">
                   {it.tag}
                 </span>
                 <span className="absolute bottom-3 left-3 right-3 text-white text-sm font-medium opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all">

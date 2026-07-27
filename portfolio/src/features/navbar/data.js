@@ -3,6 +3,7 @@ export const navLinks = [
   { href: "/services", label: "Services" },
   { href: "/doctors", label: "Doctors" },
   { href: "/gallery", label: "Gallery" },
-  { href: "/#ai", label: "AI Care", hash: "ai" },
+  { href: "/blog", label: "Blog" },
+  { href: "/faq", label: "FAQ" },
   { href: "/contact", label: "Contact" },
 ];
