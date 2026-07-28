@@ -18,6 +18,8 @@ const BlogDetails = lazy(() => import("@/pages/BlogDetails"));
 const FAQ = lazy(() => import("@/pages/FAQ"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const BookAppointment = lazy(() => import("@/pages/BookAppointment"));
+const StaffLogin = lazy(() => import("@/pages/StaffLogin"));
+const StaffSignup = lazy(() => import("@/pages/StaffSignup"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const fallback = (label = "Loading...") => (
@@ -124,6 +126,39 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={fallback("Loading Booking...")}>
             <BookAppointment />
+          </Suspense>
+        ),
+      },
+      {
+        path: "login",
+        element: (
+          <Suspense fallback={fallback("Loading Login...")}>
+            <StaffLogin />
+          </Suspense>
+        ),
+      },
+      {
+        path: "signup",
+        element: (
+          <Suspense fallback={fallback("Loading Signup...")}>
+            <StaffSignup />
+          </Suspense>
+        ),
+      },
+      {
+        path: "forgot-password",
+        element: (
+          <Suspense fallback={fallback("Loading... ")}>
+            <div className="min-h-screen bg-muted/40 px-4 py-10 sm:px-6 lg:px-8">
+              <div className="mx-auto flex max-w-xl items-center justify-center">
+                <div className="w-full rounded-[32px] border border-border bg-background/95 p-8 text-center shadow-[0_25px_80px_-35px_rgba(15,23,42,0.35)] backdrop-blur">
+                  <h1 className="font-display text-3xl font-semibold text-secondary">Password reset</h1>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    Password reset for internal staff accounts will be connected here in a future update.
+                  </p>
+                </div>
+              </div>
+            </div>
           </Suspense>
         ),
       },
