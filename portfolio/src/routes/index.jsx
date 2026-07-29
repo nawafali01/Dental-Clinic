@@ -1,10 +1,14 @@
 import { lazy, Suspense } from "react";
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { PublicLayout } from "@/layouts/PublicLayout";
+import { AuthLayout } from "@/layouts/AuthLayout";
 import { AdminLayout } from "@/dashboard/super-admin/components/layout/AdminLayout";
 import { ManagerLayout } from "@/dashboard/clinic-manager/components/layout/ManagerLayout";
 import { superAdminRoutes } from "@/dashboard/super-admin/routes";
 import { clinicManagerRoutes } from "@/dashboard/clinic-manager/routes";
+import { AuthGuard } from "@/components/guards/AuthGuard";
+import { RoleGuard } from "@/components/guards/RoleGuard";
+import { ROLES } from "@/constants/roles";
 
 const Home = lazy(() => import("@/pages/Home"));
 const About = lazy(() => import("@/pages/About"));
@@ -19,7 +23,11 @@ const FAQ = lazy(() => import("@/pages/FAQ"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const BookAppointment = lazy(() => import("@/pages/BookAppointment"));
 const StaffLogin = lazy(() => import("@/pages/StaffLogin"));
-const StaffSignup = lazy(() => import("@/pages/StaffSignup"));
+const ForgotPassword = lazy(() => import("@/features/auth/components/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/features/auth/components/ResetPassword"));
+const AcceptInviteForm = lazy(() => import("@/features/invite/components/AcceptInviteForm"));
+const OnboardingForm = lazy(() => import("@/features/invite/components/OnboardingForm"));
+const UsersTable = lazy(() => import("@/features/users/components/UsersTable"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const fallback = (label = "Loading...") => (
@@ -130,39 +138,6 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "login",
-        element: (
-          <Suspense fallback={fallback("Loading Login...")}>
-            <StaffLogin />
-          </Suspense>
-        ),
-      },
-      {
-        path: "signup",
-        element: (
-          <Suspense fallback={fallback("Loading Signup...")}>
-            <StaffSignup />
-          </Suspense>
-        ),
-      },
-      {
-        path: "forgot-password",
-        element: (
-          <Suspense fallback={fallback("Loading... ")}>
-            <div className="min-h-screen bg-muted/40 px-4 py-10 sm:px-6 lg:px-8">
-              <div className="mx-auto flex max-w-xl items-center justify-center">
-                <div className="w-full rounded-[32px] border border-border bg-background/95 p-8 text-center shadow-[0_25px_80px_-35px_rgba(15,23,42,0.35)] backdrop-blur">
-                  <h1 className="font-display text-3xl font-semibold text-secondary">Password reset</h1>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    Password reset for internal staff accounts will be connected here in a future update.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </Suspense>
-        ),
-      },
-      {
         path: "*",
         element: (
           <Suspense fallback={fallback("Loading...")}>
@@ -173,19 +148,85 @@ const router = createBrowserRouter([
     ],
   },
   {
+    path: "/",
+    element: <AuthLayout />,
+    children: [
+      {
+        path: "login",
+        element: (
+          <Suspense fallback={fallback("Loading Login...")}>
+            <StaffLogin />
+          </Suspense>
+        ),
+      },
+      {
+        path: "forgot-password",
+        element: (
+          <Suspense fallback={fallback("Loading...")}>
+            <ForgotPassword />
+          </Suspense>
+        ),
+      },
+      {
+        path: "reset-password",
+        element: (
+          <Suspense fallback={fallback("Loading...")}>
+            <ResetPassword />
+          </Suspense>
+        ),
+      },
+      {
+        path: "accept-invite",
+        element: (
+          <Suspense fallback={fallback("Loading...")}>
+            <AcceptInviteForm />
+          </Suspense>
+        ),
+      },
+      {
+        path: "onboarding",
+        element: (
+          <AuthGuard>
+            <Suspense fallback={fallback("Loading...")}>
+              <OnboardingForm />
+            </Suspense>
+          </AuthGuard>
+        ),
+      },
+    ],
+  },
+  {
     path: "/admin",
-    element: <AdminLayout />,
+    element: (
+      <AuthGuard>
+        <AdminLayout />
+      </AuthGuard>
+    ),
     children: [
       {
         index: true,
         element: <Navigate to="/admin/dashboard" replace />,
+      },
+      {
+        path: "users",
+        element: (
+          <RoleGuard allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN]}>
+            <Suspense fallback={fallback("Loading Users...")}>
+              <UsersTable />
+            </Suspense>
+          </RoleGuard>
+        ),
       },
       ...superAdminRoutes,
     ],
   },
   {
     path: "/manager",
-    element: <ManagerLayout />,
+    element: (
+      <AuthGuard>
+        <ManagerLayout />
+      </AuthGuard>
+    ),
     children: [
       {
         index: true,

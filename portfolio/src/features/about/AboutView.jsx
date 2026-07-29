@@ -113,19 +113,19 @@ export function AboutView() {
         <div className="absolute -top-24 -left-24 size-[520px] bg-primary/15 blur-3xl animate-blob" />
         <div className="max-w-7xl mx-auto px-5 md:px-8 text-center">
           <Reveal>
-            <span className="inline-flex items-center gap-2 rounded-full glass px-4 py-1.5 text-xs font-semibold text-secondary border border-primary/15">
+            <span className="inline-flex items-center gap-2 rounded-full glass mt-6 px-4 py-2 text-xs font-semibold text-secondary border border-primary/15">
               <Sparkles className="size-3.5 text-primary" /> Our Philosophy &
               Practice
             </span>
           </Reveal>
           <Reveal delay={0.05}>
-            <h1 className="mt-6 font-display font-semibold text-4xl sm:text-6xl lg:text-7xl tracking-tight text-secondary max-w-4xl mx-auto leading-[1.05]">
+            <h1 className="mt-3 font-display font-semibold text-4xl sm:text-6xl lg:text-7xl tracking-tight text-secondary max-w-4xl mx-auto leading-[1.05]">
               Dentistry reimagined as an{" "}
               <span className="text-gradient-primary">art of care</span>.
             </h1>
           </Reveal>
           <Reveal delay={0.1}>
-            <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
               Founded in Copenhagen, Aurea combines Nordic design principles,
               gentle clinical hands, and state-of-the-art AI diagnostics to
               transform oral healthcare into a peaceful experience.
