@@ -15,7 +15,7 @@ export const AppointmentsList = () => {
         {managerAppointments.map((apt) => (
           <div 
             key={apt.id} 
-            className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+            className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100:bg-slate-800 transition-all"
           >
             <div className="flex items-center gap-3 min-w-0">
               <div className={`p-2 rounded-lg shrink-0 ${
@@ -26,10 +26,10 @@ export const AppointmentsList = () => {
                 <User className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                <p className="text-xs font-bold text-slate-900 truncate">
                   {apt.patient}
                 </p>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                <p className="text-[10px] text-slate-500 truncate">
                   {apt.type} • <span className="font-medium">{apt.provider}</span>
                 </p>
               </div>
@@ -37,7 +37,7 @@ export const AppointmentsList = () => {
             
             <div className="flex items-center gap-2.5 shrink-0">
               <div className="text-right">
-                <div className="flex items-center gap-1 text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                <div className="flex items-center gap-1 text-[10px] font-bold text-slate-700">
                   <Clock className="w-3 h-3 text-slate-400" />
                   {apt.time}
                 </div>

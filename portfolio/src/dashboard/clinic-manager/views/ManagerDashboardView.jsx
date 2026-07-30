@@ -17,13 +17,13 @@ export default function ManagerDashboardView() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Dashboard View Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-2xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-slate-200 p-5 rounded-2xl shadow-2xs">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
             Clinic Manager Dashboard
           </h1>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Real-time insights for <span className="font-semibold text-slate-700 dark:text-slate-300">{activeClinic.name}</span>
+          <p className="mt-1 text-xs text-slate-500">
+            Real-time insights for <span className="font-semibold text-slate-700">{activeClinic.name}</span>
           </p>
         </div>
       </div>

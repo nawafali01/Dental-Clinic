@@ -40,34 +40,30 @@ export const Sidebar = () => {
       )}
 
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 ease-in-out flex flex-col ${
+        className={`fixed top-0 bottom-0 left-0 z-40 bg-white border-r border-slate-200 transition-all duration-300 ease-in-out flex flex-col ${
           isSidebarCollapsed ? 'w-20' : 'w-64'
         } ${
           isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
+        style={{ backgroundColor: '#ffffff', color: '#111827' }}
       >
         {/* Header Branding */}
-        <div className="h-16 px-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary via-cyan-500 to-emerald-400 text-white flex items-center justify-center font-bold text-lg shadow-lg shadow-primary/20 shrink-0">
+        <div className="h-16 px-4 flex items-center justify-between border-b border-slate-200">
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <span className="grid place-items-center w-9 h-9 rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0 group-hover:scale-105 transition-transform">
               <Sparkles className="w-5 h-5" />
-            </div>
+            </span>
             {!isSidebarCollapsed && (
-              <div className="flex flex-col min-w-0">
-                <span className="font-bold text-sm text-slate-900 dark:text-slate-100 tracking-tight truncate">
-                  DentalAI SuperAdmin
-                </span>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 truncate font-mono">
-                  v4.8 Enterprise
-                </span>
-              </div>
+              <span className="font-display font-semibold text-lg tracking-tight text-secondary truncate">
+                Aurea<span className="text-primary">.</span>
+              </span>
             )}
           </div>
 
           {/* Desktop Collapse Toggle */}
           <button
             onClick={toggleSidebar}
-            className="hidden lg:flex p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            className="hidden lg:flex p-1.5 rounded-xl border border-slate-200 hover:bg-slate-100:bg-slate-800 text-slate-400 hover:text-slate-600:text-slate-200 transition-colors"
           >
             {isSidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
@@ -75,7 +71,7 @@ export const Sidebar = () => {
           {/* Mobile Close Toggle */}
           <button
             onClick={() => setIsMobileSidebarOpen(false)}
-            className="lg:hidden p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            className="lg:hidden p-1.5 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-600:text-slate-200"
           >
             <X className="w-4 h-4" />
           </button>
@@ -90,7 +86,7 @@ export const Sidebar = () => {
             return (
               <div key={gIdx} className="space-y-1">
                 {!isSidebarCollapsed && (
-                  <div className="px-3 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                  <div className="px-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
                     {group.title}
                   </div>
                 )}
@@ -105,7 +101,7 @@ export const Sidebar = () => {
                         `flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all group ${
                           isActive
                             ? 'bg-primary text-white shadow-md shadow-primary/25 font-semibold'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                            : 'text-slate-600 hover:text-slate-900:text-slate-100 hover:bg-slate-100:bg-slate-800/60'
                         } ${isSidebarCollapsed ? 'justify-center' : ''}`
                       }
                       title={isSidebarCollapsed ? item.name : undefined}
@@ -115,7 +111,7 @@ export const Sidebar = () => {
                           <div className="flex items-center gap-3 min-w-0">
                             <IconComponent
                               className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${
-                                isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300'
+                                isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700:text-slate-300'
                               }`}
                             />
                             {!isSidebarCollapsed && (
@@ -126,7 +122,7 @@ export const Sidebar = () => {
                           {!isSidebarCollapsed && item.badge && (
                             <span
                               className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                                item.badgeColor || (isActive ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400')
+                                item.badgeColor || (isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600')
                               }`}
                             >
                               {item.badge}

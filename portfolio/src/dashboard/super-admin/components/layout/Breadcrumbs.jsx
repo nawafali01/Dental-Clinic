@@ -8,10 +8,10 @@ export const Breadcrumbs = () => {
   const pathnames = location.pathname.split('/').filter((x) => x);
 
   return (
-    <nav className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+    <nav className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
       <Link
         to="/admin/dashboard"
-        className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+        className="flex items-center gap-1 hover:text-slate-900:text-slate-100 transition-colors"
       >
         <Home className="w-3.5 h-3.5" />
         <span>Admin</span>
@@ -25,13 +25,13 @@ export const Breadcrumbs = () => {
 
         return (
           <React.Fragment key={to}>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600" />
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
             {isLast ? (
-              <span className="font-semibold text-slate-900 dark:text-slate-100">{displayName}</span>
+              <span className="font-semibold text-slate-900">{displayName}</span>
             ) : (
               <Link
                 to={to}
-                className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                className="hover:text-slate-900:text-slate-100 transition-colors"
               >
                 {displayName}
               </Link>

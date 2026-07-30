@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Clock, Calendar, UserCheck, ShieldCheck, Zap, ArrowRight } from "lucide-react";
+import { Clock, Calendar, UserCheck, ShieldCheck, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Reveal } from "@/shared/ui/Reveal";
 import { Button } from "@/shared/ui/Button";
 import { mockSlots } from "@/data/slots";
+import { ROUTES } from "@/constants/routes";
 
 export function LiveSlotFinder() {
   const [activeDay, setActiveDay] = useState("Today");
@@ -15,11 +17,6 @@ export function LiveSlotFinder() {
       <div className="max-w-7xl mx-auto px-5 md:px-8">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
           <div>
-            <Reveal>
-              <span className="inline-flex items-center gap-2 rounded-full glass px-4 py-1.5 text-xs font-semibold text-primary border border-primary/15">
-                <Zap className="size-3.5" /> Real-time Schedule
-              </span>
-            </Reveal>
             <Reveal delay={0.05}>
               <h2 className="mt-3 font-display text-3xl md:text-5xl font-semibold text-secondary leading-[1.08]">
                 Live appointment availability.
@@ -105,9 +102,9 @@ export function LiveSlotFinder() {
                   asChild
                   className="w-full rounded-full h-10 bg-primary hover:bg-primary/95 text-primary-foreground text-xs font-semibold shadow-sm transition-all cursor-pointer group-hover:shadow-[0_10px_25px_-8px_rgba(31,138,112,0.6)]"
                 >
-                  <a href="#contact">
+                  <Link to={ROUTES.BOOKING}>
                     Book Now <ArrowRight className="ml-1 size-3.5 transition-transform group-hover:translate-x-1" />
-                  </a>
+                  </Link>
                 </Button>
               </div>
             </motion.div>
