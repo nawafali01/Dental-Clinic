@@ -18,12 +18,12 @@ export const FinancialSummary = () => {
         {/* Progress Tracker */}
         <div>
           <div className="flex items-center justify-between text-xs font-semibold mb-1">
-            <span className="text-slate-500 dark:text-slate-400">Daily Collection Target</span>
-            <span className="text-slate-800 dark:text-slate-200">
+            <span className="text-slate-500">Daily Collection Target</span>
+            <span className="text-slate-800">
               ${managerFinancials.currentCollected.toLocaleString()} / ${managerFinancials.dailyTarget.toLocaleString()}
             </span>
           </div>
-          <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
             <div 
               className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full transition-all duration-500" 
               style={{ width: `${percentCollected}%` }}
@@ -36,11 +36,11 @@ export const FinancialSummary = () => {
 
         {/* Financial Breakdown */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               Projected Total
             </span>
-            <div className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+            <div className="text-sm font-bold text-slate-900 mt-0.5">
               ${managerFinancials.projected.toLocaleString()}
             </div>
             <span className="text-[9px] text-emerald-500 flex items-center gap-0.5 mt-0.5 font-medium">
@@ -48,11 +48,11 @@ export const FinancialSummary = () => {
             </span>
           </div>
 
-          <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               Insurance Pending
             </span>
-            <div className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+            <div className="text-sm font-bold text-slate-900 mt-0.5">
               ${managerFinancials.insurancePending.toLocaleString()}
             </div>
             <span className="text-[9px] text-slate-400 block mt-0.5">
@@ -62,12 +62,12 @@ export const FinancialSummary = () => {
         </div>
 
         {/* Patient Billing Note */}
-        <div className="flex items-center justify-between p-2.5 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-[10px] text-slate-500">
+        <div className="flex items-center justify-between p-2.5 rounded-xl border border-dashed border-slate-200 text-[10px] text-slate-500">
           <span className="flex items-center gap-1">
             <CreditCard className="w-3.5 h-3.5 text-slate-400" />
             Uncollected Patient Balances
           </span>
-          <span className="font-bold text-slate-700 dark:text-slate-300">
+          <span className="font-bold text-slate-700">
             ${managerFinancials.patientPending}
           </span>
         </div>

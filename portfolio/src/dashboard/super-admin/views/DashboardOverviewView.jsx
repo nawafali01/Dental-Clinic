@@ -84,32 +84,32 @@ export default function DashboardOverviewView() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* View Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-2xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-slate-200 p-5 rounded-2xl shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
               Dashboard Overview
             </h1>
             <Badge variant="purple" dot>
               {currentRole.label} View
             </Badge>
           </div>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Real-time cross-clinic telemetry for <span className="font-semibold text-slate-700 dark:text-slate-300">{currentOrg.name}</span>
+          <p className="mt-1 text-xs text-slate-500">
+            Real-time cross-clinic telemetry for <span className="font-semibold text-slate-700">{currentOrg.name}</span>
           </p>
         </div>
 
         {/* Time Range Filter & Quick Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60">
+          <div className="flex items-center p-1 rounded-xl bg-slate-100 border border-slate-200">
             {timeRanges.map((range) => (
               <button
                 key={range}
                 onClick={() => setSelectedTimeRange(range)}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                   selectedTimeRange === range
-                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xs'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    ? 'bg-white text-slate-900 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-800:text-slate-200'
                 }`}
               >
                 {range}
@@ -169,7 +169,7 @@ export default function DashboardOverviewView() {
       {/* 9 KPI Deck Grid */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
             System Key Performance Indicators
           </h3>
           <span className="text-xs text-slate-500">Updated 2 minutes ago</span>
@@ -249,7 +249,7 @@ export default function DashboardOverviewView() {
             </Badge>
           }
         >
-          <div className="space-y-3 divide-y divide-slate-100 dark:divide-slate-800">
+          <div className="space-y-3 divide-y divide-slate-100">
             {recentActivities.map((act) => (
               <div key={act.id} className="pt-3 first:pt-0 flex items-start gap-3">
                 <div
@@ -264,11 +264,11 @@ export default function DashboardOverviewView() {
                   <Activity className="w-3.5 h-3.5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between text-xs font-semibold text-slate-900 dark:text-slate-100">
+                  <div className="flex items-center justify-between text-xs font-semibold text-slate-900">
                     <span className="truncate">{act.actor}</span>
                     <span className="text-[10px] text-slate-400 font-mono">{act.timestamp}</span>
                   </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 line-clamp-2">
+                  <p className="text-xs text-slate-600 mt-0.5 line-clamp-2">
                     {act.action}
                   </p>
                   <div className="mt-1 flex items-center gap-2 text-[10px] text-slate-400">

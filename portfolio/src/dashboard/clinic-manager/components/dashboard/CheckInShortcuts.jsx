@@ -17,12 +17,12 @@ export const CheckInShortcuts = () => {
         {shortcuts.map((action, idx) => (
           <button
             key={idx}
-            className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900/50 dark:hover:bg-slate-800 transition-colors"
+            className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100:bg-slate-800 transition-colors"
           >
             <div className={`p-2.5 rounded-xl ${action.bg} ${action.color}`}>
               <action.icon className="w-5 h-5" />
             </div>
-            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <span className="text-xs font-semibold text-slate-700">
               {action.title}
             </span>
           </button>

@@ -1,19 +1,19 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import { ManagerProvider, useManager } from '@/dashboard/clinic-manager/context/ManagerContext';
-import { ManagerSidebar } from './ManagerSidebar';
-import { ManagerHeader } from './ManagerHeader';
+import { Sidebar } from './super-admin/components/layout/Sidebar'; // Using this as the unified sidebar
+import { Header } from './super-admin/components/layout/Header'; // Using this as the unified header
+import { AdminProvider, useAdmin } from './super-admin/context/AdminContext'; // We'll adapt this for the unified layout state (like collapsed sidebar)
 
-const ManagerShell = () => {
-  const { isSidebarCollapsed } = useManager();
+const DashboardShell = () => {
+  const { isSidebarCollapsed } = useAdmin();
 
   return (
     <div
       className="min-h-screen bg-white text-slate-900 flex flex-col font-sans"
       style={{ backgroundColor: '#ffffff', color: '#111827' }}
     >
-      <ManagerSidebar />
-      <ManagerHeader />
+      <Sidebar />
+      <Header />
       
       <main
         className={`flex-1 transition-all duration-300 p-4 sm:p-6 lg:p-8 bg-white ${
@@ -29,10 +29,10 @@ const ManagerShell = () => {
   );
 };
 
-export const ManagerLayout = () => {
+export const UnifiedDashboardLayout = () => {
   return (
-    <ManagerProvider>
-      <ManagerShell />
-    </ManagerProvider>
+    <AdminProvider>
+      <DashboardShell />
+    </AdminProvider>
   );
 };

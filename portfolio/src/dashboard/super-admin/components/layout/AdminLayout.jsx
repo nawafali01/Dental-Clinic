@@ -12,7 +12,10 @@ const MainShell = () => {
   const { isSidebarCollapsed } = useAdmin();
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans">
+    <div
+      className="min-h-screen bg-white text-slate-900 flex flex-col font-sans"
+      style={{ backgroundColor: '#ffffff', color: '#111827' }}
+    >
       {/* Sidebar Navigation */}
       <Sidebar />
 
@@ -27,9 +30,10 @@ const MainShell = () => {
 
       {/* Main Page Workspace Content */}
       <main
-        className={`flex-1 transition-all duration-300 p-4 sm:p-6 lg:p-8 ${
+        className={`flex-1 transition-all duration-300 p-4 sm:p-6 lg:p-8 bg-white ${
           isSidebarCollapsed ? 'lg:pl-24' : 'lg:pl-68'
         }`}
+        style={{ backgroundColor: '#ffffff', color: '#111827' }}
       >
         <div className="max-w-7xl mx-auto space-y-6">
           <Outlet />

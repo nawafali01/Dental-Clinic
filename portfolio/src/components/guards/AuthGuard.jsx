@@ -1,37 +1,44 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { STATUS } from "@/constants/roles";
-import { logout } from "@/services/auth.service";
-import { useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import React from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
-export function AuthGuard({ children }) {
-  const { user, loading } = useCurrentUser();
+/**
+ * Route guard for Authentication logic.
+ * Ensures the user is logged in, active, and redirects accordingly.
+ */
+export const AuthGuard = ({ children }) => {
+  const { isAuthenticated, loading, currentUser, logout } = useAuth();
   const location = useLocation();
-
-  useEffect(() => {
-    if (user && user.status === STATUS.DISABLED) {
-      logout().then(() => {
-        window.location.href = "/login";
-      });
-    }
-  }, [user]);
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="size-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
-  if (!user) {
+  // Not logged in -> Redirect to login
+  if (!isAuthenticated || !currentUser) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (user.status === STATUS.DISABLED) {
-    return null; // Will redirect via useEffect
+  // Disabled user -> Force logout and redirect
+  if (currentUser.status === 'disabled') {
+    // We call logout asynchronously, but immediately redirect.
+    // In a real flow, you might want to show a message first.
+    logout();
+    return <Navigate to="/login" replace />;
   }
 
-  return children || <Outlet />;
-}
+  // Invited user -> Must complete setup
+  if (currentUser.status === 'invited') {
+    // Check if they are already on the accept-invite page so we don't loop
+    if (!location.pathname.includes('/accept-invite')) {
+      return <Navigate to={`/accept-invite?token=${currentUser.inviteToken}`} replace />;
+    }
+  }
+
+  // Active user -> Allow rendering children
+  return children;
+};

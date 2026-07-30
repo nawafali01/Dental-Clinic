@@ -7,7 +7,7 @@ export const Card = ({ title, subtitle, action, children, className = '', header
     <div
       className={twMerge(
         clsx(
-          'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-2xs hover:shadow-xs transition-shadow',
+          'bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs hover:shadow-xs transition-shadow',
           className
         )
       )}
@@ -15,17 +15,17 @@ export const Card = ({ title, subtitle, action, children, className = '', header
       {(title || action) && (
         <div
           className={twMerge(
-            clsx('flex items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/80', headerClassName)
+            clsx('flex items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-100', headerClassName)
           )}
         >
           <div>
             {title && (
-              <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-base tracking-tight">
+              <h3 className="font-semibold text-slate-900 text-base tracking-tight">
                 {title}
               </h3>
             )}
             {subtitle && (
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              <p className="mt-0.5 text-xs text-slate-500">
                 {subtitle}
               </p>
             )}

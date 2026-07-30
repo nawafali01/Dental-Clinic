@@ -20,13 +20,13 @@ export const Button = ({
     primary:
       'bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20 border border-transparent',
     secondary:
-      'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-transparent',
+      'bg-slate-100 text-slate-800 hover:bg-slate-200:bg-slate-700 border border-transparent',
     outline:
-      'border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent',
+      'border border-slate-200 text-slate-700 hover:bg-slate-100:bg-slate-800 bg-transparent',
     danger:
       'bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/20 border border-transparent',
     ghost:
-      'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60 bg-transparent',
+      'text-slate-600 hover:text-slate-900:text-slate-100 hover:bg-slate-100:bg-slate-800/60 bg-transparent',
   };
 
   const sizeStyles = {

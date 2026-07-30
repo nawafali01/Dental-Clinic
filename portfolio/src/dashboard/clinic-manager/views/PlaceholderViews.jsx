@@ -7,8 +7,8 @@ const PlaceholderView = ({ title, description }) => (
       <Construction className="w-8 h-8 text-emerald-500" />
     </div>
     <div>
-      <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{title}</h2>
-      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-sm">
+      <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+      <p className="mt-2 text-sm text-slate-500 max-w-sm">
         {description}
       </p>
     </div>

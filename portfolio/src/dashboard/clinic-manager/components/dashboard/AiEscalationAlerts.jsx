@@ -13,25 +13,25 @@ export const AiEscalationAlerts = () => {
     >
       <div className="space-y-3 pt-2">
         {managerAiAlerts.map((alert) => (
-          <div key={alert.id} className="p-3 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-500">
+          <div key={alert.id} className="p-3 rounded-xl border border-red-200 bg-red-50 flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-red-100 text-red-500">
               <AlertTriangle className="w-4 h-4" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-red-700 dark:text-red-400 truncate">
+                <span className="text-xs font-bold text-red-700 truncate">
                   {alert.alert}
                 </span>
                 <span className="text-[10px] text-red-500 font-mono whitespace-nowrap ml-2">
                   {alert.time}
                 </span>
               </div>
-              <div className="mt-1 flex items-center gap-2 text-[11px] text-red-600 dark:text-red-300">
+              <div className="mt-1 flex items-center gap-2 text-[11px] text-red-600">
                 <span>{alert.patient}</span>
                 <span>•</span>
                 <span className="opacity-80">{alert.agent}</span>
               </div>
-              <button className="mt-2 flex items-center gap-1 text-[10px] font-bold text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors uppercase tracking-wider">
+              <button className="mt-2 flex items-center gap-1 text-[10px] font-bold text-red-600 hover:text-red-700:text-red-300 transition-colors uppercase tracking-wider">
                 Takeover Conversation <ArrowRight className="w-3 h-3" />
               </button>
             </div>

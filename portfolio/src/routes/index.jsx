@@ -2,14 +2,12 @@ import { lazy, Suspense } from "react";
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { PublicLayout } from "@/layouts/PublicLayout";
 import { AuthLayout } from "@/layouts/AuthLayout";
-import { AdminLayout } from "@/dashboard/super-admin/components/layout/AdminLayout";
-import { ManagerLayout } from "@/dashboard/clinic-manager/components/layout/ManagerLayout";
-import { superAdminRoutes } from "@/dashboard/super-admin/routes";
-import { clinicManagerRoutes } from "@/dashboard/clinic-manager/routes";
 import { AuthGuard } from "@/components/guards/AuthGuard";
 import { RoleGuard } from "@/components/guards/RoleGuard";
-import { ROLES } from "@/constants/roles";
+import { UnifiedDashboardLayout } from "@/dashboard/UnifiedDashboardLayout";
+import { ROLES, PERMISSIONS } from "@/constants/permissions";
 
+// --- Lazy Loads ---
 const Home = lazy(() => import("@/pages/Home"));
 const About = lazy(() => import("@/pages/About"));
 const ServicesPage = lazy(() => import("@/pages/ServicesPage"));
@@ -22,217 +20,106 @@ const BlogDetails = lazy(() => import("@/pages/BlogDetails"));
 const FAQ = lazy(() => import("@/pages/FAQ"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const BookAppointment = lazy(() => import("@/pages/BookAppointment"));
-const StaffLogin = lazy(() => import("@/pages/StaffLogin"));
-const ForgotPassword = lazy(() => import("@/features/auth/components/ForgotPassword"));
-const ResetPassword = lazy(() => import("@/features/auth/components/ResetPassword"));
-const AcceptInviteForm = lazy(() => import("@/features/invite/components/AcceptInviteForm"));
-const OnboardingForm = lazy(() => import("@/features/invite/components/OnboardingForm"));
-const UsersTable = lazy(() => import("@/features/users/components/UsersTable"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
+// --- New Auth Flows ---
+const LoginView = lazy(() => import("@/features/auth/LoginView"));
+const AcceptInviteView = lazy(() => import("@/features/auth/AcceptInviteView"));
+const OnboardingView = lazy(() => import("@/features/auth/OnboardingView"));
+
+// --- Dashboard & Users ---
+const UnifiedDashboard = lazy(() => import("@/dashboard/UnifiedDashboard"));
+// We will create these shortly
+const UsersView = lazy(() => import("@/features/users/UsersView"));
+const ProfileView = lazy(() => import("@/features/profile/ProfileView"));
+
 const fallback = (label = "Loading...") => (
-  <div className="h-screen w-screen flex items-center justify-center text-primary font-display font-semibold">
+  <div className="h-screen w-screen flex items-center justify-center text-primary font-display font-semibold bg-white">
     {label}
   </div>
 );
 
 const router = createBrowserRouter([
+  // Public Website Routes
   {
     path: "/",
     element: <PublicLayout />,
     children: [
-      {
-        index: true,
-        element: (
-          <Suspense fallback={fallback("Loading Aurea...")}>
-            <Home />
-          </Suspense>
-        ),
-      },
-      {
-        path: "about",
-        element: (
-          <Suspense fallback={fallback("Loading...")}>
-            <About />
-          </Suspense>
-        ),
-      },
-      {
-        path: "services",
-        element: (
-          <Suspense fallback={fallback("Loading...")}>
-            <ServicesPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: "doctors",
-        element: (
-          <Suspense fallback={fallback("Loading Doctors...")}>
-            <Doctors />
-          </Suspense>
-        ),
-      },
-      {
-        path: "doctors/:id",
-        element: (
-          <Suspense fallback={fallback("Loading Profile...")}>
-            <DoctorDetails />
-          </Suspense>
-        ),
-      },
-      {
-        path: "gallery",
-        element: (
-          <Suspense fallback={fallback("Loading Gallery...")}>
-            <Gallery />
-          </Suspense>
-        ),
-      },
-      {
-        path: "testimonials",
-        element: (
-          <Suspense fallback={fallback("Loading Testimonials...")}>
-            <Testimonials />
-          </Suspense>
-        ),
-      },
-      {
-        path: "blog",
-        element: (
-          <Suspense fallback={fallback("Loading Blog...")}>
-            <Blog />
-          </Suspense>
-        ),
-      },
-      {
-        path: "blog/:slug",
-        element: (
-          <Suspense fallback={fallback("Loading Article...")}>
-            <BlogDetails />
-          </Suspense>
-        ),
-      },
-      {
-        path: "faq",
-        element: (
-          <Suspense fallback={fallback("Loading FAQ...")}>
-            <FAQ />
-          </Suspense>
-        ),
-      },
-      {
-        path: "contact",
-        element: (
-          <Suspense fallback={fallback("Loading Contact...")}>
-            <Contact />
-          </Suspense>
-        ),
-      },
-      {
-        path: "book-appointment",
-        element: (
-          <Suspense fallback={fallback("Loading Booking...")}>
-            <BookAppointment />
-          </Suspense>
-        ),
-      },
-      {
-        path: "*",
-        element: (
-          <Suspense fallback={fallback("Loading...")}>
-            <NotFound />
-          </Suspense>
-        ),
-      },
+      { index: true, element: <Suspense fallback={fallback()}><Home /></Suspense> },
+      { path: "about", element: <Suspense fallback={fallback()}><About /></Suspense> },
+      { path: "services", element: <Suspense fallback={fallback()}><ServicesPage /></Suspense> },
+      { path: "doctors", element: <Suspense fallback={fallback()}><Doctors /></Suspense> },
+      { path: "doctors/:id", element: <Suspense fallback={fallback()}><DoctorDetails /></Suspense> },
+      { path: "gallery", element: <Suspense fallback={fallback()}><Gallery /></Suspense> },
+      { path: "testimonials", element: <Suspense fallback={fallback()}><Testimonials /></Suspense> },
+      { path: "blog", element: <Suspense fallback={fallback()}><Blog /></Suspense> },
+      { path: "blog/:slug", element: <Suspense fallback={fallback()}><BlogDetails /></Suspense> },
+      { path: "faq", element: <Suspense fallback={fallback()}><FAQ /></Suspense> },
+      { path: "contact", element: <Suspense fallback={fallback()}><Contact /></Suspense> },
+      { path: "book-appointment", element: <Suspense fallback={fallback()}><BookAppointment /></Suspense> },
+      { path: "*", element: <Suspense fallback={fallback()}><NotFound /></Suspense> },
     ],
   },
+
+  // Authentication Flow
   {
     path: "/",
     element: <AuthLayout />,
     children: [
       {
         path: "login",
-        element: (
-          <Suspense fallback={fallback("Loading Login...")}>
-            <StaffLogin />
-          </Suspense>
-        ),
-      },
-      {
-        path: "forgot-password",
-        element: (
-          <Suspense fallback={fallback("Loading...")}>
-            <ForgotPassword />
-          </Suspense>
-        ),
-      },
-      {
-        path: "reset-password",
-        element: (
-          <Suspense fallback={fallback("Loading...")}>
-            <ResetPassword />
-          </Suspense>
-        ),
+        element: <Suspense fallback={fallback("Loading Login...")}><LoginView /></Suspense>,
       },
       {
         path: "accept-invite",
-        element: (
-          <Suspense fallback={fallback("Loading...")}>
-            <AcceptInviteForm />
-          </Suspense>
-        ),
+        element: <Suspense fallback={fallback("Verifying Invite...")}><AcceptInviteView /></Suspense>,
       },
       {
         path: "onboarding",
         element: (
           <AuthGuard>
-            <Suspense fallback={fallback("Loading...")}>
-              <OnboardingForm />
-            </Suspense>
+            <Suspense fallback={fallback("Loading Onboarding...")}><OnboardingView /></Suspense>
           </AuthGuard>
         ),
       },
     ],
   },
+
+  // Protected Unified Dashboard Area
   {
-    path: "/admin",
+    path: "/",
     element: (
       <AuthGuard>
-        <AdminLayout />
+        <UnifiedDashboardLayout />
       </AuthGuard>
     ),
     children: [
       {
-        index: true,
-        element: <Navigate to="/admin/dashboard" replace />,
+        path: "dashboard",
+        element: (
+          <Suspense fallback={fallback("Loading Dashboard...")}>
+            <UnifiedDashboard />
+          </Suspense>
+        ),
       },
       {
         path: "users",
         element: (
-          <RoleGuard allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN]}>
+          <RoleGuard permission={PERMISSIONS.VIEW_USERS} fallback={<Navigate to="/dashboard" replace />}>
             <Suspense fallback={fallback("Loading Users...")}>
-              <UsersTable />
+              <UsersView />
             </Suspense>
           </RoleGuard>
         ),
       },
-      ...superAdminRoutes,
-    ],
-  },
-  {
-    path: "/manager",
-    element: (
-      <AuthGuard>
-        <ManagerLayout />
-      </AuthGuard>
-    ),
-    children: [
       {
-        index: true,
-        element: <Navigate to="/manager/dashboard" replace />,
+        path: "profile",
+        element: (
+          <Suspense fallback={fallback("Loading Profile...")}>
+            <ProfileView />
+          </Suspense>
+        ),
       },
-      ...clinicManagerRoutes,
     ],
   },
 ]);
@@ -240,5 +127,3 @@ const router = createBrowserRouter([
 export function AppRouter() {
   return <RouterProvider router={router} />;
 }
-
-

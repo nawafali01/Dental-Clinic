@@ -22,17 +22,17 @@ export const ClinicLeadWorkspace = () => {
           {funnelStages.map((stage, idx) => (
             <div 
               key={idx}
-              className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between"
+              className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between"
             >
               <div className="flex items-center gap-2">
                 <div className={`p-2 rounded-lg ${stage.bg} ${stage.color}`}>
                   <stage.icon className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                <span className="text-[11px] font-semibold text-slate-600">
                   {stage.stage}
                 </span>
               </div>
-              <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+              <span className="text-sm font-bold text-slate-800">
                 {stage.count}
               </span>
             </div>
@@ -40,12 +40,12 @@ export const ClinicLeadWorkspace = () => {
         </div>
 
         {/* Local Conversion Goals */}
-        <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+        <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
           <div className="flex items-center justify-between text-xs font-semibold mb-1">
-            <span className="text-slate-500 dark:text-slate-400">Monthly Lead Conversion Goal</span>
-            <span className="text-slate-800 dark:text-slate-200">72% / 80%</span>
+            <span className="text-slate-500">Monthly Lead Conversion Goal</span>
+            <span className="text-slate-800">72% / 80%</span>
           </div>
-          <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
             <div className="h-full bg-emerald-500 rounded-full" style={{ width: '90%' }} />
           </div>
         </div>
