@@ -51,7 +51,7 @@ export function AboutView() {
   return (
     <div className="bg-background">
       {/* ── Hero section ── */}
-      <section className="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden">
+      <section className="relative pb-10 md:pb-16 overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-accent/60 via-background to-background" />
         <div className="absolute -top-24 -left-24 size-[520px] bg-primary/15 blur-3xl animate-blob" />
         <div className="max-w-7xl mx-auto px-5 md:px-8 text-center">
@@ -77,10 +77,10 @@ export function AboutView() {
             className="mt-8 flex flex-wrap items-center justify-center gap-4"
           >
             <Button asChild className="group rounded-full h-12 px-6 bg-primary hover:bg-primary/95 text-primary-foreground shadow-[0_14px_40px_-12px_rgba(31,138,112,0.65)] transition-all">
-              <a href="/home/services">Explore Services <ArrowRight className="ml-1.5 size-4 transition-transform group-hover:translate-x-1" /></a>
+              <a href="/services">Explore Services <ArrowRight className="ml-1.5 size-4 transition-transform group-hover:translate-x-1" /></a>
             </Button>
             <Button asChild variant="outline" className="rounded-full h-12 px-6 border-border bg-white/70 backdrop-blur hover:bg-white transition-colors">
-              <a href="/home/contact">Book a Visit</a>
+              <a href="/contact">Book a Visit</a>
             </Button>
           </motion.div>
         </div>

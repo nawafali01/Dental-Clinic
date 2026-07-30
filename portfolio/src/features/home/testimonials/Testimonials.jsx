@@ -15,7 +15,7 @@ export function Testimonials() {
   const r = reviews[i];
 
   return (
-    <section id="testimonials" className="relative py-24 md:py-32">
+    <section id="testimonials" className="relative py-16 md:py-24">
       <div className="max-w-5xl mx-auto px-5 md:px-8 text-center">
         <Reveal>
           <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
@@ -71,9 +71,8 @@ export function Testimonials() {
                   key={k}
                   aria-label={`Go to review ${k + 1}`}
                   onClick={() => setI(k)}
-                  className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                    k === i ? "w-8 bg-primary" : "w-2 bg-border"
-                  }`}
+                  className={`h-1.5 rounded-full transition-all cursor-pointer ${k === i ? "w-8 bg-primary" : "w-2 bg-border"
+                    }`}
                 />
               ))}
             </div>
