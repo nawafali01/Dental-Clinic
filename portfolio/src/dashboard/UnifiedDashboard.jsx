@@ -18,7 +18,7 @@ const PlaceholderDashboard = ({ title }) => (
 // Mapped specific dashboard layouts if they exist, else placeholders
 const dashboardMap = {
   [ROLES.SUPER_ADMIN]: <DashboardOverviewView />,
-  [ROLES.ORG_ADMIN]: <PlaceholderDashboard title="Organization Admin Dashboard" />,
+  [ROLES.ORG_ADMIN]: <DashboardOverviewView />,
   [ROLES.CLINIC_MANAGER]: <PlaceholderDashboard title="Clinic Manager Dashboard" />,
   [ROLES.AGENT]: <PlaceholderDashboard title="Agent Dashboard" />,
   [ROLES.RECEPTIONIST]: <PlaceholderDashboard title="Receptionist Dashboard" />,

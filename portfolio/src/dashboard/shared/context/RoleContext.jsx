@@ -1,31 +1,35 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import { ROLES, CLINICS_SCOPE } from '@/dashboard/shared/constants/adminConstants';
 import { hasRolePermission } from '@/dashboard/shared/config/permissions';
+import { useAuth } from '@/context/AuthContext';
 
 const RoleContext = createContext(null);
 
 export { ROLES, CLINICS_SCOPE };
 
 export const RoleProvider = ({ children }) => {
-  // Roles supported: 'super_admin' or 'org_admin'
-  const [currentRole, setCurrentRole] = useState(ROLES[0]); // Default to Super Admin
-  const [activeClinic, setActiveClinic] = useState(CLINICS_SCOPE[0]);
+  const { currentUser } = useAuth();
+
+  // Derive currentRole from the authenticated user's role field.
+  // Falls back to the first role (Super Admin) if nothing matches.
+  const currentRole = useMemo(() => {
+    if (!currentUser?.role) return ROLES[0];
+    return ROLES.find(r => r.id === currentUser.role) || ROLES[0];
+  }, [currentUser]);
 
   const hasPermission = (permission) => {
     return hasRolePermission(currentRole.id, permission);
   };
 
-  const userRole = currentRole.id; // 'super_admin' | 'org_admin'
+  const userRole = currentRole.id;
 
   return (
     <RoleContext.Provider
       value={{
         currentRole,
-        setCurrentRole,
         userRole,
         roles: ROLES,
-        activeClinic,
-        setActiveClinic,
+        activeClinic: CLINICS_SCOPE[0],
         clinicsScope: CLINICS_SCOPE,
         hasPermission,
       }}

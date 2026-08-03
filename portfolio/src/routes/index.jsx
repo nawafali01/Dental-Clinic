@@ -3,9 +3,11 @@ import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 import { PublicLayout } from "@/layouts/PublicLayout";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { AuthGuard } from "@/components/guards/AuthGuard";
-import { RoleGuard } from "@/components/guards/RoleGuard";
 import { UnifiedDashboardLayout } from "@/dashboard/UnifiedDashboardLayout";
-import { ROLES, PERMISSIONS } from "@/constants/permissions";
+import { superAdminRoutes } from "./super-admin.routes";
+import { sharedRoutes } from "./shared.routes";
+import { orgAdminRoutes } from "./org-admin.routes";
+import { clinicManagerRoutes } from "./clinic-manager.routes";
 
 // --- Lazy Loads ---
 const Home = lazy(() => import("@/pages/Home"));
@@ -26,12 +28,6 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 const LoginView = lazy(() => import("@/features/auth/LoginView"));
 const AcceptInviteView = lazy(() => import("@/features/auth/AcceptInviteView"));
 const OnboardingView = lazy(() => import("@/features/auth/OnboardingView"));
-
-// --- Dashboard & Users ---
-const UnifiedDashboard = lazy(() => import("@/dashboard/UnifiedDashboard"));
-// We will create these shortly
-const UsersView = lazy(() => import("@/features/users/UsersView"));
-const ProfileView = lazy(() => import("@/features/profile/ProfileView"));
 
 const fallback = (label = "Loading...") => (
   <div className="h-screen w-screen flex items-center justify-center text-primary font-display font-semibold bg-white">
@@ -87,39 +83,17 @@ const router = createBrowserRouter([
 
   // Protected Unified Dashboard Area
   {
-    path: "/",
+    path: "/admin",
     element: (
       <AuthGuard>
         <UnifiedDashboardLayout />
       </AuthGuard>
     ),
     children: [
-      {
-        path: "dashboard",
-        element: (
-          <Suspense fallback={fallback("Loading Dashboard...")}>
-            <UnifiedDashboard />
-          </Suspense>
-        ),
-      },
-      {
-        path: "users",
-        element: (
-          <RoleGuard permission={PERMISSIONS.VIEW_USERS} fallback={<Navigate to="/dashboard" replace />}>
-            <Suspense fallback={fallback("Loading Users...")}>
-              <UsersView />
-            </Suspense>
-          </RoleGuard>
-        ),
-      },
-      {
-        path: "profile",
-        element: (
-          <Suspense fallback={fallback("Loading Profile...")}>
-            <ProfileView />
-          </Suspense>
-        ),
-      },
+      ...sharedRoutes,
+      ...superAdminRoutes,
+      ...orgAdminRoutes,
+      ...clinicManagerRoutes,
     ],
   },
 ]);

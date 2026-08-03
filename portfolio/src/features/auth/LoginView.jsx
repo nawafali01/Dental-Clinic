@@ -21,7 +21,7 @@ export default function LoginView() {
     const res = await login(data.email, data.password);
     
     if (res.success) {
-      navigate('/dashboard');
+      navigate('/admin/dashboard');
     } else {
       setAuthError(res.message);
     }

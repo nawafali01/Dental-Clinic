@@ -4,14 +4,13 @@ import { useRole } from '@/dashboard/shared/context/RoleContext';
 import { useOrg } from '@/dashboard/shared/context/OrgContext';
 import { Breadcrumbs } from './Breadcrumbs';
 import { RecentItems } from './RecentItems';
-import { RoleSwitcher } from './RoleSwitcher';
 import { UserMenu } from './UserMenu';
 import { OrgSwitcher } from './OrgSwitcher';
 import { Menu, Search, Bell } from 'lucide-react';
 
 export const Header = () => {
   const { isSidebarCollapsed, toggleMobileSidebar, setIsCommandPaletteOpen, setIsNotificationsOpen } = useAdmin();
-  const { userRole } = useRole();
+  const { userRole, currentRole } = useRole();
   const { currentOrg } = useOrg();
 
   return (
@@ -37,8 +36,17 @@ export const Header = () => {
         <RecentItems />
       </div>
 
-      {/* Right Section: Command Palette Trigger + Notifications + Role Switcher + User Menu */}
+      {/* Right Section: Role Badge + Command Palette Trigger + Notifications + User Menu */}
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* Dynamic Role Badge */}
+        <span
+          className={`hidden md:inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-bold border ${
+            currentRole?.badgeColor || 'bg-slate-100 text-slate-700 border-slate-200'
+          }`}
+        >
+          {currentRole?.label || 'Dashboard'}
+        </span>
+
         {userRole === 'super_admin' ? (
           <OrgSwitcher />
         ) : (
@@ -77,9 +85,6 @@ export const Header = () => {
           <Bell className="w-4 h-4" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary ring-2 ring-white animate-pulse" />
         </button>
-
-        {/* Role Switcher */}
-        <RoleSwitcher />
 
         {/* User Profile Menu */}
         <UserMenu />

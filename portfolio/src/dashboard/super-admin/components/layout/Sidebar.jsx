@@ -2,8 +2,8 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAdmin } from '@/dashboard/super-admin/context/AdminContext';
 import { useRole } from '@/dashboard/shared/context/RoleContext';
-import { NAVIGATION_GROUPS } from '@/dashboard/shared/constants/adminConstants';
-import { PERMISSIONS } from '@/dashboard/shared/config/permissions';
+import { NAVIGATION_MAP } from '@/dashboard/shared/constants/adminConstants';
+import { DentalAiLogoSvg } from '@/assets/svg/DentalAiLogoSvg';
 import {
   ChevronLeft,
   ChevronRight,
@@ -14,20 +14,12 @@ import {
 
 export const Sidebar = () => {
   const { isSidebarCollapsed, toggleSidebar, isMobileSidebarOpen, setIsMobileSidebarOpen } = useAdmin();
-  const { hasPermission } = useRole();
+  const { hasPermission, currentRole } = useRole();
+  const roleGroups = NAVIGATION_MAP[currentRole.id] || NAVIGATION_MAP.super_admin;
 
-  const isItemVisible = (path) => {
-    switch(path) {
-      case '/admin/clinics':
-        return hasPermission(PERMISSIONS.MANAGE_MULTI_TENANT);
-      case '/admin/ai-ops':
-        return hasPermission(PERMISSIONS.VIEW_AI_GOVERNANCE);
-      case '/admin/audit-logs':
-        return hasPermission(PERMISSIONS.VIEW_GLOBAL_AUDIT);
-      default:
-        return true;
-    }
-  };
+  // Navigation visibility is fully controlled by NAVIGATION_MAP (role-based).
+  // Route-level protection is handled by RoleGuard in the route definitions.
+  const isItemVisible = () => true;
 
   return (
     <>
@@ -51,7 +43,7 @@ export const Sidebar = () => {
         <div className="h-16 px-4 flex items-center justify-between border-b border-slate-200">
           <div className="flex items-center gap-2.5 overflow-hidden">
             <span className="grid place-items-center w-9 h-9 rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0 group-hover:scale-105 transition-transform">
-              <Sparkles className="w-5 h-5" />
+              <DentalAiLogoSvg className="w-5 h-5" />
             </span>
             {!isSidebarCollapsed && (
               <span className="font-display font-semibold text-lg tracking-tight text-secondary truncate">
@@ -79,7 +71,7 @@ export const Sidebar = () => {
 
         {/* Navigation List */}
         <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6 scrollbar-thin">
-          {NAVIGATION_GROUPS.map((group, gIdx) => {
+          {roleGroups.map((group, gIdx) => {
             const visibleItems = group.items.filter(item => isItemVisible(item.path));
             if (visibleItems.length === 0) return null;
 
