@@ -153,3 +153,194 @@ export const hasRolePermission = (roleId, permission) => {
   const perms = ROLE_PERMISSIONS[roleId] || [];
   return perms.includes(permission);
 };
+
+// ─────────────────────────────────────────────────────────────
+// Resource-Based Permissions Matrix
+// Used by <CanView permission="resource"> for dashboard widgets.
+//
+// Access levels:
+//   all              – full CRUD across the platform
+//   own              – own record / own organisation
+//   manage           – full CRUD within scope
+//   own_clinic       – read/write within assigned clinic
+//   own_clinic_manage– manage within assigned clinic
+//   view             – read-only access
+//   all_org          – full access within own organisation
+//   org_scope        – read within organisation scope
+//   org              – configure own organisation
+//   assigned_only    – only records assigned to the user
+//   assigned_manage  – manage records assigned to the user
+//   own_view         – view own records only
+//   clinic_team      – manage clinic team members
+//   manage_org       – manage users within own organisation
+//   clinic           – clinic-level reports
+//   personal         – personal reports only
+//   limited          – limited settings access
+//   self             – own profile only
+//   none             – no access
+// ─────────────────────────────────────────────────────────────
+export const RESOURCE_ACCESS = {
+  ALL:                'all',
+  OWN:                'own',
+  MANAGE:             'manage',
+  OWN_CLINIC:         'own_clinic',
+  OWN_CLINIC_MANAGE:  'own_clinic_manage',
+  VIEW:               'view',
+  ALL_ORG:            'all_org',
+  ORG_SCOPE:          'org_scope',
+  ORG:                'org',
+  ASSIGNED_ONLY:      'assigned_only',
+  ASSIGNED_MANAGE:    'assigned_manage',
+  OWN_VIEW:           'own_view',
+  CLINIC_TEAM:        'clinic_team',
+  MANAGE_ORG:         'manage_org',
+  CLINIC:             'clinic',
+  PERSONAL:           'personal',
+  LIMITED:            'limited',
+  SELF:               'self',
+  NONE:               'none',
+};
+
+/**
+ * RESOURCE_PERMISSIONS
+ * Maps every resource name to the access level each role has.
+ * This is the single source of truth consumed by <CanView>.
+ * Keys match the `permission` prop passed to <CanView>.
+ */
+export const RESOURCE_PERMISSIONS = {
+  organizations: {
+    super_admin:    RESOURCE_ACCESS.ALL,
+    org_admin:      RESOURCE_ACCESS.OWN,
+    clinic_manager: RESOURCE_ACCESS.VIEW,
+    agent:          RESOURCE_ACCESS.NONE,
+    receptionist:   RESOURCE_ACCESS.NONE,
+    finance:        RESOURCE_ACCESS.VIEW,
+    auditor:        RESOURCE_ACCESS.VIEW,
+  },
+  clinics: {
+    super_admin:    RESOURCE_ACCESS.ALL,
+    org_admin:      RESOURCE_ACCESS.MANAGE,
+    clinic_manager: RESOURCE_ACCESS.OWN_CLINIC,
+    agent:          RESOURCE_ACCESS.VIEW,
+    receptionist:   RESOURCE_ACCESS.VIEW,
+    finance:        RESOURCE_ACCESS.VIEW,
+    auditor:        RESOURCE_ACCESS.VIEW,
+  },
+  leads: {
+    super_admin:    RESOURCE_ACCESS.ALL,
+    org_admin:      RESOURCE_ACCESS.ALL_ORG,
+    clinic_manager: RESOURCE_ACCESS.OWN_CLINIC,
+    agent:          RESOURCE_ACCESS.ASSIGNED_ONLY,
+    receptionist:   RESOURCE_ACCESS.VIEW,
+    finance:        RESOURCE_ACCESS.NONE,
+    auditor:        RESOURCE_ACCESS.VIEW,
+  },
+  appointments: {
+    super_admin:    RESOURCE_ACCESS.ALL,
+    org_admin:      RESOURCE_ACCESS.ALL_ORG,
+    clinic_manager: RESOURCE_ACCESS.OWN_CLINIC_MANAGE,
+    agent:          RESOURCE_ACCESS.ASSIGNED_MANAGE,
+    receptionist:   RESOURCE_ACCESS.MANAGE,
+    finance:        RESOURCE_ACCESS.NONE,
+    auditor:        RESOURCE_ACCESS.VIEW,
+  },
+  revenue: {
+    super_admin:    RESOURCE_ACCESS.ALL,
+    org_admin:      RESOURCE_ACCESS.ALL_ORG,
+    clinic_manager: RESOURCE_ACCESS.OWN_CLINIC_MANAGE,
+    agent:          RESOURCE_ACCESS.OWN_VIEW,
+    receptionist:   RESOURCE_ACCESS.NONE,
+    finance:        RESOURCE_ACCESS.ALL_ORG,
+    auditor:        RESOURCE_ACCESS.VIEW,
+  },
+  payments: {
+    super_admin:    RESOURCE_ACCESS.ALL,
+    org_admin:      RESOURCE_ACCESS.ALL_ORG,
+    clinic_manager: RESOURCE_ACCESS.OWN_CLINIC,
+    agent:          RESOURCE_ACCESS.NONE,
+    receptionist:   RESOURCE_ACCESS.NONE,
+    finance:        RESOURCE_ACCESS.ALL_ORG,
+    auditor:        RESOURCE_ACCESS.VIEW,
+  },
+  users: {
+    super_admin:    RESOURCE_ACCESS.ALL,
+    org_admin:      RESOURCE_ACCESS.MANAGE_ORG,
+    clinic_manager: RESOURCE_ACCESS.CLINIC_TEAM,
+    agent:          RESOURCE_ACCESS.SELF,
+    receptionist:   RESOURCE_ACCESS.VIEW,
+    finance:        RESOURCE_ACCESS.NONE,
+    auditor:        RESOURCE_ACCESS.VIEW,
+  },
+  reports: {
+    super_admin:    RESOURCE_ACCESS.ALL,
+    org_admin:      RESOURCE_ACCESS.ALL_ORG,
+    clinic_manager: RESOURCE_ACCESS.CLINIC,
+    agent:          RESOURCE_ACCESS.PERSONAL,
+    receptionist:   RESOURCE_ACCESS.NONE,
+    finance:        RESOURCE_ACCESS.ALL_ORG,
+    auditor:        RESOURCE_ACCESS.VIEW,
+  },
+  audit_logs: {
+    super_admin:    RESOURCE_ACCESS.ALL,
+    org_admin:      RESOURCE_ACCESS.ORG_SCOPE,
+    clinic_manager: RESOURCE_ACCESS.NONE,
+    agent:          RESOURCE_ACCESS.NONE,
+    receptionist:   RESOURCE_ACCESS.NONE,
+    finance:        RESOURCE_ACCESS.NONE,
+    auditor:        RESOURCE_ACCESS.ALL,
+  },
+  settings: {
+    super_admin:    RESOURCE_ACCESS.ALL,
+    org_admin:      RESOURCE_ACCESS.ORG,
+    clinic_manager: RESOURCE_ACCESS.LIMITED,
+    agent:          RESOURCE_ACCESS.NONE,
+    receptionist:   RESOURCE_ACCESS.NONE,
+    finance:        RESOURCE_ACCESS.NONE,
+    auditor:        RESOURCE_ACCESS.NONE,
+  },
+};
+
+/**
+ * hasResourcePermission
+ * Returns true if the role has any non-'none' access to the resource.
+ *
+ * @param {string} roleId    – e.g. 'clinic_manager'
+ * @param {string} resource  – e.g. 'audit_logs'
+ * @returns {boolean}
+ *
+ * @example
+ * hasResourcePermission('org_admin', 'audit_logs') // true  (org_scope)
+ * hasResourcePermission('agent',     'audit_logs') // false (none)
+ */
+export const hasResourcePermission = (roleId, resource) => {
+  if (!roleId || !resource) return false;
+  // Super Admin always gets full access
+  if (roleId === 'super_admin') return true;
+
+  const resourceMap = RESOURCE_PERMISSIONS[resource];
+  if (!resourceMap) return false;
+
+  const level = resourceMap[roleId];
+  // Any access level other than 'none' (or missing) grants visibility
+  return Boolean(level) && level !== RESOURCE_ACCESS.NONE;
+};
+
+/**
+ * getResourceAccess
+ * Returns the precise access level string for a role/resource pair.
+ * Useful for components that need to adapt their UI to the scope
+ * (e.g. showing an "org-wide" label vs "assigned only").
+ *
+ * @param {string} roleId
+ * @param {string} resource
+ * @returns {string} – one of RESOURCE_ACCESS values, or 'none'
+ */
+export const getResourceAccess = (roleId, resource) => {
+  if (!roleId || !resource) return RESOURCE_ACCESS.NONE;
+  if (roleId === 'super_admin') return RESOURCE_ACCESS.ALL;
+
+  const resourceMap = RESOURCE_PERMISSIONS[resource];
+  if (!resourceMap) return RESOURCE_ACCESS.NONE;
+
+  return resourceMap[roleId] || RESOURCE_ACCESS.NONE;
+};
