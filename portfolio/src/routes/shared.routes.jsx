@@ -2,6 +2,10 @@ import { lazy, Suspense } from "react";
 import { Navigate } from "react-router-dom";
 import { RoleGuard } from "@/components/guards/RoleGuard";
 import { PERMISSIONS } from "@/dashboard/shared/config/permissions";
+import { useAuth } from "@/context/AuthContext";
+import { useClinic } from "@/context/ClinicContext";
+import { storageService } from "@/services/storage.service";
+import { scopeData } from "@/utils/scopeData";
 
 const UnifiedDashboard = lazy(() => import("@/dashboard/UnifiedDashboard"));
 
@@ -78,231 +82,319 @@ const Table = ({ headers, rows }) => (
 );
 
 // ════════════════════════════════════════════════════════════════
-// SHARED STUB VIEWS
+// SHARED STUB VIEWS (Data-Scoped)
 // ════════════════════════════════════════════════════════════════
 
 // ── Leads ────────────────────────────────────────────────────
-const LeadsView = () => (
-  <div className="space-y-6">
-    <PageHeader title="Leads" description="Track and manage your lead pipeline" action="+ New Lead" />
-    <div className="grid grid-cols-4 gap-4">
-      <StatCard label="Total Leads" value="1,284" sub="+12% this month" />
-      <StatCard label="New Today" value="23" sub="+5 since yesterday" />
-      <StatCard label="Qualified" value="342" sub="+8% this month" />
-      <StatCard label="Converted" value="89" sub="+15% this month" />
+const LeadsView = () => {
+  const { currentUser } = useAuth();
+  const { selectedClinicId } = useClinic();
+  const rawLeads = storageService.get(storageService.KEYS.LEADS) || [];
+  const leads = scopeData({ resource: 'leads', data: rawLeads, currentUser, selectedClinicId });
+
+  const total = leads.length;
+  const newCount = leads.filter(l => l.status === 'new').length;
+  const qualifiedCount = leads.filter(l => l.status === 'qualified').length;
+  const convertedCount = leads.filter(l => l.status === 'converted').length;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Leads" description="Track and manage your lead pipeline" action="+ New Lead" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="Total Leads" value={total} sub="Scoped dataset" />
+        <StatCard label="New Today" value={newCount} sub="Needs contact" />
+        <StatCard label="Qualified" value={qualifiedCount} sub="In pipeline" />
+        <StatCard label="Converted" value={convertedCount} sub="Won" />
+      </div>
+      <Table
+        headers={["Lead Name", "Status", "Source", "Clinic", "Date"]}
+        rows={leads.map(l => [
+          l.patientName || l.name,
+          <Badge color={l.status === 'converted' ? 'green' : l.status === 'qualified' ? 'purple' : l.status === 'lost' ? 'red' : 'blue'}>{l.status}</Badge>,
+          l.source || 'Website',
+          l.clinicId || 'Downtown Dental',
+          l.createdAt ? new Date(l.createdAt).toLocaleDateString() : '2026-08-03'
+        ])}
+      />
+      <DevBanner text="Full Leads CRM is under development" />
     </div>
-    <Table
-      headers={["Lead Name", "Status", "Source", "Clinic", "Date"]}
-      rows={[
-        ["Ahmed Al-Rashidi",  <Badge color="purple">Qualified</Badge>,  "Google Ads", "Downtown Dental",    "2026-08-03"],
-        ["Sara Johnson",      <Badge color="blue">New</Badge>,          "Instagram",  "Apex Orthodontics",  "2026-08-03"],
-        ["Mohammed Hassan",   <Badge color="amber">Contacted</Badge>,   "Website",    "Westside Pediatric", "2026-08-02"],
-        ["Fatima Al-Zaidi",   <Badge color="red">Lost</Badge>,          "Referral",   "Metro Cosmetic",     "2026-08-01"],
-        ["Khalid Mansour",    <Badge color="green">Converted</Badge>,   "WhatsApp",   "Downtown Dental",    "2026-07-31"],
-      ]}
-    />
-    <DevBanner text="Full Leads CRM is under development" />
-  </div>
-);
+  );
+};
 
 // ── Appointments ─────────────────────────────────────────────
-const AppointmentsView = () => (
-  <div className="space-y-6">
-    <PageHeader title="Appointments" description="Schedule and manage patient appointments" action="+ New Appointment" />
-    <div className="grid grid-cols-4 gap-4">
-      <StatCard label="Today"     value="18"  sub="2 remaining" />
-      <StatCard label="This Week" value="94"  sub="+6% vs last week" />
-      <StatCard label="Pending"   value="31"  sub="Needs confirmation" />
-      <StatCard label="Completed" value="63"  sub="This week" />
+const AppointmentsView = () => {
+  const { currentUser } = useAuth();
+  const { selectedClinicId } = useClinic();
+  const rawAppts = storageService.get(storageService.KEYS.APPOINTMENTS) || [];
+  const appts = scopeData({ resource: 'appointments', data: rawAppts, currentUser, selectedClinicId });
+
+  const total = appts.length;
+  const scheduled = appts.filter(a => a.status === 'scheduled').length;
+  const pending = appts.filter(a => a.status === 'pending').length;
+  const completed = appts.filter(a => a.status === 'completed').length;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Appointments" description="Schedule and manage patient appointments" action="+ New Appointment" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="Total Appts" value={total} sub="Scoped dataset" />
+        <StatCard label="Scheduled" value={scheduled} sub="Upcoming" />
+        <StatCard label="Pending" value={pending} sub="Needs confirmation" />
+        <StatCard label="Completed" value={completed} sub="Past visits" />
+      </div>
+      <Table
+        headers={["Patient ID / Name", "Clinic", "Date & Time", "Status"]}
+        rows={appts.map(a => [
+          a.patientName || a.patientId || 'Patient Record',
+          a.clinicId || 'Downtown Dental',
+          a.date ? new Date(a.date).toLocaleString() : 'Aug 3 — 09:00 AM',
+          <Badge color={a.status === 'completed' ? 'green' : a.status === 'pending' ? 'amber' : 'blue'}>{a.status}</Badge>
+        ])}
+      />
+      <DevBanner text="Full Appointment Scheduling is under development" />
     </div>
-    <Table
-      headers={["Patient", "Doctor", "Date & Time", "Type", "Status"]}
-      rows={[
-        ["Ahmed Al-Rashidi",  "Dr. Aisha Khan",     "Aug 3 — 09:00 AM", "Checkup",        <Badge color="green">Confirmed</Badge>],
-        ["Sara Johnson",      "Dr. Omar Hassan",    "Aug 3 — 10:30 AM", "Cleaning",       <Badge color="amber">Pending</Badge>],
-        ["Mohammed Hassan",   "Dr. Aisha Khan",     "Aug 3 — 12:00 PM", "Root Canal",     <Badge color="green">Confirmed</Badge>],
-        ["Fatima Al-Zaidi",   "Dr. Khalid Nasser",  "Aug 4 — 09:00 AM", "Whitening",      <Badge color="blue">Scheduled</Badge>],
-        ["Khalid Mansour",    "Dr. Omar Hassan",    "Aug 4 — 11:00 AM", "Implant Consult",<Badge color="blue">Scheduled</Badge>],
-      ]}
-    />
-    <DevBanner text="Full Appointment Scheduling is under development" />
-  </div>
-);
+  );
+};
 
 // ── Patients ─────────────────────────────────────────────────
-const PatientsView = () => (
-  <div className="space-y-6">
-    <PageHeader title="Patients" description="Patient records and history" action="+ Add Patient" />
-    <div className="grid grid-cols-4 gap-4">
-      <StatCard label="Total Patients"  value="3,841" sub="+42 this month" />
-      <StatCard label="New This Month"  value="42"    sub="+8% vs last month" />
-      <StatCard label="Active"          value="2,190" sub="Had visit in 3 months" />
-      <StatCard label="Inactive"        value="1,651" sub="No visit in 3+ months" />
+const PatientsView = () => {
+  const { currentUser } = useAuth();
+  const { selectedClinicId } = useClinic();
+  const rawPatients = storageService.get(storageService.KEYS.PATIENTS) || [];
+  const patients = scopeData({ resource: 'patients', data: rawPatients, currentUser, selectedClinicId });
+
+  const total = patients.length;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Patients" description="Patient records and history" action="+ Add Patient" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="Total Patients" value={total} sub="Scoped dataset" />
+        <StatCard label="Active" value={total} sub="In active clinic scope" />
+        <StatCard label="New This Month" value={Math.ceil(total * 0.4)} sub="Recent signups" />
+        <StatCard label="Records" value={total} sub="Verified records" />
+      </div>
+      <Table
+        headers={["Patient Name", "Phone", "Clinic ID", "Status"]}
+        rows={patients.map(p => [
+          p.fullName || p.name || 'John Doe',
+          p.phone || '+1-555-0000',
+          p.clinicId || 'Downtown Dental',
+          <Badge color="green">Active</Badge>
+        ])}
+      />
+      <DevBanner text="Full Patient Records module is under development" />
     </div>
-    <Table
-      headers={["Patient", "Age", "Last Visit", "Next Appointment", "Clinic"]}
-      rows={[
-        ["Ahmed Al-Rashidi",  "34", "Jul 15, 2026", "Aug 10, 2026",  "Downtown Dental"],
-        ["Sara Johnson",      "28", "Jun 30, 2026", "Aug 3, 2026",   "Apex Orthodontics"],
-        ["Mohammed Hassan",   "45", "Aug 1, 2026",  "Aug 8, 2026",   "Westside Pediatric"],
-        ["Fatima Al-Zaidi",   "31", "Jul 20, 2026", "Aug 4, 2026",   "Metro Cosmetic"],
-        ["Khalid Mansour",    "52", "Jul 5, 2026",  "Aug 12, 2026",  "Downtown Dental"],
-      ]}
-    />
-    <DevBanner text="Full Patient Records module is under development" />
-  </div>
-);
+  );
+};
 
 // ── Calls ─────────────────────────────────────────────────────
-const CallsView = () => (
-  <div className="space-y-6">
-    <PageHeader title="Calls" description="Track all inbound and outbound calls" action="+ Log Call" />
-    <div className="grid grid-cols-4 gap-4">
-      <StatCard label="Today"    value="47"  sub="12 missed" />
-      <StatCard label="This Week"value="218" sub="+15% vs last week" />
-      <StatCard label="Answered" value="181" sub="83% answer rate" />
-      <StatCard label="Missed"   value="37"  sub="17% miss rate" />
+const CallsView = () => {
+  const { currentUser } = useAuth();
+  const { selectedClinicId } = useClinic();
+  const rawCalls = storageService.get(storageService.KEYS.CALLS) || [];
+  const calls = scopeData({ resource: 'calls', data: rawCalls, currentUser, selectedClinicId });
+
+  const total = calls.length;
+  const booked = calls.filter(c => c.outcome === 'booked').length;
+  const missed = calls.filter(c => c.outcome === 'missed' || c.outcome === 'no-answer').length;
+  const contacted = calls.filter(c => c.outcome === 'contacted').length;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Calls" description="Track all inbound and outbound calls" action="+ Log Call" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="Total Calls" value={total} sub="Scoped dataset" />
+        <StatCard label="Booked" value={booked} sub="Successful bookings" />
+        <StatCard label="Contacted" value={contacted} sub="In conversation" />
+        <StatCard label="Missed / Unanswered" value={missed} sub="Follow-up needed" />
+      </div>
+      <Table
+        headers={["Caller / Lead", "Duration", "Outcome", "Date & Time"]}
+        rows={calls.map(c => [
+          c.leadName || 'Caller',
+          c.duration ? `${Math.floor(c.duration / 60)}m ${c.duration % 60}s` : '0m 0s',
+          <Badge color={c.outcome === 'booked' ? 'green' : c.outcome === 'missed' ? 'red' : 'amber'}>{c.outcome}</Badge>,
+          c.date ? new Date(c.date).toLocaleString() : 'Aug 3 — 09:15 AM'
+        ])}
+      />
+      <DevBanner text="Full Call Tracking module is under development" />
     </div>
-    <Table
-      headers={["Caller", "Type", "Duration", "Outcome", "Date & Time"]}
-      rows={[
-        ["Ahmed Al-Rashidi",  "Inbound",  "4m 32s", <Badge color="green">Booked</Badge>,   "Aug 3 — 09:15 AM"],
-        ["Sara Johnson",      "Outbound", "2m 10s", <Badge color="amber">Follow-up</Badge>,"Aug 3 — 10:00 AM"],
-        ["Unknown Caller",    "Inbound",  "0m 00s", <Badge color="red">Missed</Badge>,     "Aug 3 — 10:45 AM"],
-        ["Mohammed Hassan",   "Inbound",  "6m 05s", <Badge color="green">Booked</Badge>,   "Aug 3 — 11:00 AM"],
-        ["Khalid Mansour",    "Outbound", "3m 44s", <Badge color="blue">Informed</Badge>,  "Aug 3 — 12:30 PM"],
-      ]}
-    />
-    <DevBanner text="Full Call Tracking module is under development" />
-  </div>
-);
+  );
+};
 
 // ── Tasks ─────────────────────────────────────────────────────
-const TasksView = () => (
-  <div className="space-y-6">
-    <PageHeader title="Tasks" description="Manage team tasks and follow-ups" action="+ New Task" />
-    <div className="grid grid-cols-4 gap-4">
-      <StatCard label="Total"      value="156"  sub="Across all staff" />
-      <StatCard label="Due Today"  value="12"   sub="Needs attention" />
-      <StatCard label="In Progress"value="38"   sub="Being worked on" />
-      <StatCard label="Completed"  value="106"  sub="This week" />
+const TasksView = () => {
+  const { currentUser } = useAuth();
+  const { selectedClinicId } = useClinic();
+  const rawTasks = storageService.get(storageService.KEYS.TASKS) || [];
+  const tasks = scopeData({ resource: 'tasks', data: rawTasks, currentUser, selectedClinicId });
+
+  const total = tasks.length;
+  const pending = tasks.filter(t => t.status === 'pending').length;
+  const completed = tasks.filter(t => t.status === 'completed').length;
+  const highPriority = tasks.filter(t => t.priority === 'high').length;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Tasks" description="Manage team tasks and follow-ups" action="+ New Task" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="Total Tasks" value={total} sub="Assigned to your scope" />
+        <StatCard label="Pending" value={pending} sub="Needs attention" />
+        <StatCard label="High Priority" value={highPriority} sub="Urgent" />
+        <StatCard label="Completed" value={completed} sub="Finished tasks" />
+      </div>
+      <Table
+        headers={["Task / Lead", "Type", "Due Time", "Priority", "Status"]}
+        rows={tasks.map(t => [
+          t.leadName || t.taskType,
+          t.taskType || 'Follow-up',
+          t.dueTime || '09:00',
+          <Badge color={t.priority === 'high' ? 'red' : 'amber'}>{t.priority}</Badge>,
+          <Badge color={t.status === 'completed' ? 'green' : 'amber'}>{t.status}</Badge>
+        ])}
+      />
+      <DevBanner text="Full Task Management module is under development" />
     </div>
-    <Table
-      headers={["Task", "Assignee", "Due Date", "Priority", "Status"]}
-      rows={[
-        ["Follow up with Ahmed Al-Rashidi",    "Dr. Aisha Khan",    "Aug 3, 2026", <Badge color="red">High</Badge>,    <Badge color="amber">In Progress</Badge>],
-        ["Send appointment reminder to Sara",  "Receptionist Team", "Aug 3, 2026", <Badge color="amber">Medium</Badge>,<Badge color="blue">Pending</Badge>],
-        ["Update treatment plan for Mohammed", "Dr. Omar Hassan",   "Aug 4, 2026", <Badge color="red">High</Badge>,    <Badge color="blue">Pending</Badge>],
-        ["Prepare monthly revenue report",     "Finance Team",      "Aug 5, 2026", <Badge color="amber">Medium</Badge>,<Badge color="amber">In Progress</Badge>],
-        ["Review AI automation results",       "Admin Team",        "Aug 6, 2026", <Badge color="slate">Low</Badge>,   <Badge color="slate">Not Started</Badge>],
-      ]}
-    />
-    <DevBanner text="Full Task Management module is under development" />
-  </div>
-);
+  );
+};
 
 // ── Revenue ────────────────────────────────────────────────────
-const RevenueView = () => (
-  <div className="space-y-6">
-    <PageHeader title="Revenue" description="Financial overview and revenue tracking" />
-    <div className="grid grid-cols-4 gap-4">
-      <StatCard label="Total Revenue"  value="$284,500" sub="+18% YTD" />
-      <StatCard label="This Month"     value="$48,200"  sub="+12% vs last month" />
-      <StatCard label="Last Month"     value="$43,100"  sub="July 2026" />
-      <StatCard label="Avg per Clinic" value="$12,050"  sub="Across 4 clinics" />
+const RevenueView = () => {
+  const { currentUser } = useAuth();
+  const { selectedClinicId } = useClinic();
+  const rawRev = storageService.get(storageService.KEYS.REVENUE) || [];
+  const rev = scopeData({ resource: 'revenue', data: rawRev, currentUser, selectedClinicId });
+
+  const totalAmount = rev.reduce((acc, r) => acc + (r.revenue || 0), 0);
+  const formattedTotal = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(totalAmount);
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Revenue" description="Financial overview and revenue tracking" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="Total Revenue" value={formattedTotal} sub="Scoped dataset" />
+        <StatCard label="Monthly Records" value={rev.length} sub="Filtered stats" />
+        <StatCard label="Avg Revenue" value={rev.length > 0 ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(totalAmount / rev.length) : '$0'} sub="Average per record" />
+        <StatCard label="Scope" value={currentUser?.role === 'super_admin' ? 'Global' : 'Scoped'} sub="Row-level active" />
+      </div>
+      <Table
+        headers={["Clinic / Scope", "Month", "Revenue", "Conversions", "Conv. Rate"]}
+        rows={rev.map(r => [
+          r.clinicId || 'Downtown Dental',
+          r.month,
+          new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(r.revenue),
+          r.conversions,
+          `${r.conversionRate}%`
+        ])}
+      />
+      <DevBanner text="Full Revenue Dashboard is under development" />
     </div>
-    <Table
-      headers={["Clinic", "This Month", "Last Month", "Growth", "Status"]}
-      rows={[
-        ["Downtown Dental Excellence",   "$18,400", "$16,200", <Badge color="green">+13.6%</Badge>, <Badge color="green">On Track</Badge>],
-        ["Apex Orthodontics & Smiles",   "$12,100", "$10,800", <Badge color="green">+12.0%</Badge>, <Badge color="green">On Track</Badge>],
-        ["Westside Pediatric & Family",  "$9,800",  "$9,300",  <Badge color="green">+5.4%</Badge>,  <Badge color="amber">Moderate</Badge>],
-        ["Metro Cosmetic Care",          "$7,900",  "$6,800",  <Badge color="green">+16.2%</Badge>, <Badge color="green">On Track</Badge>],
-      ]}
-    />
-    <DevBanner text="Full Revenue Dashboard is under development" />
-  </div>
-);
+  );
+};
 
 // ── Payments ──────────────────────────────────────────────────
-const PaymentsView = () => (
-  <div className="space-y-6">
-    <PageHeader title="Payments" description="Track and manage all patient payments" action="+ Record Payment" />
-    <div className="grid grid-cols-4 gap-4">
-      <StatCard label="Collected"  value="$31,200" sub="This month" />
-      <StatCard label="Pending"    value="$8,400"  sub="Awaiting payment" />
-      <StatCard label="Failed"     value="$1,100"  sub="Needs follow-up" />
-      <StatCard label="Refunded"   value="$320"    sub="This month" />
+const PaymentsView = () => {
+  const { currentUser } = useAuth();
+  const { selectedClinicId } = useClinic();
+  const rawRev = storageService.get(storageService.KEYS.REVENUE) || [];
+  const rev = scopeData({ resource: 'payments', data: rawRev, currentUser, selectedClinicId });
+
+  const totalAmount = rev.reduce((acc, r) => acc + (r.revenue || 0), 0);
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Payments" description="Track and manage all patient payments" action="+ Record Payment" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="Collected" value={new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(totalAmount)} sub="Scoped payments" />
+        <StatCard label="Records" value={rev.length} sub="Processed" />
+        <StatCard label="Status" value="Verified" sub="In scope" />
+        <StatCard label="Pending" value="$0" sub="All clear" />
+      </div>
+      <Table
+        headers={["Clinic Scope", "Period", "Collected Amount", "Status"]}
+        rows={rev.map(r => [
+          r.clinicId || 'Downtown Dental',
+          r.month,
+          new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(r.revenue),
+          <Badge color="green">Paid</Badge>
+        ])}
+      />
+      <DevBanner text="Full Payments module is under development" />
     </div>
-    <Table
-      headers={["Patient", "Amount", "Method", "Clinic", "Status", "Date"]}
-      rows={[
-        ["Ahmed Al-Rashidi",  "$450",  "Credit Card", "Downtown Dental",   <Badge color="green">Paid</Badge>,    "Aug 3, 2026"],
-        ["Sara Johnson",      "$1,200","Insurance",   "Apex Orthodontics", <Badge color="green">Paid</Badge>,    "Aug 2, 2026"],
-        ["Mohammed Hassan",   "$680",  "Cash",        "Westside Pediatric",<Badge color="amber">Pending</Badge>, "Aug 2, 2026"],
-        ["Fatima Al-Zaidi",   "$250",  "Credit Card", "Metro Cosmetic",    <Badge color="red">Failed</Badge>,    "Aug 1, 2026"],
-        ["Khalid Mansour",    "$1,500","Bank Transfer","Downtown Dental",  <Badge color="green">Paid</Badge>,    "Aug 1, 2026"],
-      ]}
-    />
-    <DevBanner text="Full Payments module is under development" />
-  </div>
-);
+  );
+};
 
 // ── Reports ────────────────────────────────────────────────────
-const ReportsView = () => (
-  <div className="space-y-6">
-    <PageHeader title="Reports" description="Analytics and performance reports" action="Generate Report" />
-    <div className="grid grid-cols-4 gap-4">
-      <StatCard label="Total Reports"     value="48"   sub="All time" />
-      <StatCard label="Generated Today"   value="3"    sub="This session" />
-      <StatCard label="Scheduled"         value="12"   sub="Automated" />
-      <StatCard label="Shared"            value="8"    sub="With team" />
-    </div>
-    <div className="grid grid-cols-3 gap-4">
-      {[
-        { title: "Lead Conversion Report",  desc: "Track leads from source to conversion",  color: "blue",   tag: "CRM" },
-        { title: "Monthly Revenue Report",  desc: "Revenue breakdown by clinic and month",  color: "green",  tag: "Finance" },
-        { title: "Appointment Summary",     desc: "Appointment trends and no-show rates",   color: "purple", tag: "Operations" },
-        { title: "Patient Growth Report",   desc: "New vs returning patient trends",        color: "amber",  tag: "Patients" },
-        { title: "AI Performance Report",   desc: "AI automation results and efficiency",   color: "cyan",   tag: "AI" },
-        { title: "Staff Activity Report",   desc: "Task completion and team performance",   color: "slate",  tag: "Staff" },
-      ].map((r, i) => (
-        <div key={i} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-2 hover:shadow-md transition-shadow cursor-pointer">
-          <div className="flex items-center justify-between">
-            <Badge color={r.color}>{r.tag}</Badge>
-            <span className="text-xs text-slate-400">PDF</span>
+const ReportsView = () => {
+  const { currentUser } = useAuth();
+  const { selectedClinicId } = useClinic();
+  const reportsList = [
+    { title: "Lead Conversion Report",  desc: "Track leads from source to conversion",  color: "blue",   tag: "CRM" },
+    { title: "Monthly Revenue Report",  desc: "Revenue breakdown by clinic and month",  color: "green",  tag: "Finance" },
+    { title: "Appointment Summary",     desc: "Appointment trends and no-show rates",   color: "purple", tag: "Operations" },
+    { title: "Patient Growth Report",   desc: "New vs returning patient trends",        color: "amber",  tag: "Patients" },
+    { title: "AI Performance Report",   desc: "AI automation results and efficiency",   color: "cyan",   tag: "AI" },
+    { title: "Staff Activity Report",   desc: "Task completion and team performance",   color: "slate",  tag: "Staff" },
+  ];
+  const reports = scopeData({ resource: 'reports', data: reportsList, currentUser, selectedClinicId });
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Reports" description="Analytics and performance reports" action="Generate Report" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="Total Reports" value={reports.length} sub="Available in scope" />
+        <StatCard label="Scheduled" value={Math.min(reports.length, 3)} sub="Automated" />
+        <StatCard label="Scope" value={currentUser?.role} sub="Access level" />
+        <StatCard label="Status" value="Ready" sub="PDF exports" />
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        {reports.map((r, i) => (
+          <div key={i} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-2 hover:shadow-md transition-shadow cursor-pointer">
+            <div className="flex items-center justify-between">
+              <Badge color={r.color}>{r.tag}</Badge>
+              <span className="text-xs text-slate-400">PDF</span>
+            </div>
+            <p className="font-semibold text-slate-900">{r.title}</p>
+            <p className="text-xs text-slate-500">{r.desc}</p>
           </div>
-          <p className="font-semibold text-slate-900">{r.title}</p>
-          <p className="text-xs text-slate-500">{r.desc}</p>
-        </div>
-      ))}
+        ))}
+      </div>
+      <DevBanner text="Full Reports module is under development" />
     </div>
-    <DevBanner text="Full Reports module is under development" />
-  </div>
-);
+  );
+};
 
 // ── Clinics ────────────────────────────────────────────────────
-const ClinicsView = () => (
-  <div className="space-y-6">
-    <PageHeader title="Clinics" description="Manage clinic branches and details" action="+ Add Clinic" />
-    <div className="grid grid-cols-4 gap-4">
-      <StatCard label="Total Clinics"  value="4"   sub="All branches" />
-      <StatCard label="Active"         value="4"   sub="Fully operational" />
-      <StatCard label="Total Staff"    value="32"  sub="Across all clinics" />
-      <StatCard label="Avg Rating"     value="4.8" sub="Patient satisfaction" />
+const ClinicsView = () => {
+  const { currentUser } = useAuth();
+  const { selectedClinicId } = useClinic();
+  const rawClinics = storageService.get(storageService.KEYS.CLINICS) || [];
+  const clinics = scopeData({ resource: 'clinics', data: rawClinics, currentUser, selectedClinicId });
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Clinics" description="Manage clinic branches and details" action="+ Add Clinic" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="Total Clinics" value={clinics.length} sub="In scope" />
+        <StatCard label="Active" value={clinics.length} sub="Operational" />
+        <StatCard label="Status" value="Online" sub="Synced" />
+        <StatCard label="Avg Rating" value="4.8" sub="Patient satisfaction" />
+      </div>
+      <Table
+        headers={["Clinic Name", "City", "Clinic ID", "Status"]}
+        rows={clinics.map(c => [
+          c.name,
+          c.city,
+          c.id,
+          <Badge color="green">Active</Badge>
+        ])}
+      />
+      <DevBanner text="Full Clinic Management is under development" />
     </div>
-    <Table
-      headers={["Clinic Name", "Manager", "City", "Staff", "Status"]}
-      rows={[
-        ["Downtown Dental Excellence",  "Dr. Aisha Khan",   "Riyadh", "10", <Badge color="green">Active</Badge>],
-        ["Apex Orthodontics & Smiles",  "Dr. Omar Hassan",  "Jeddah", "8",  <Badge color="green">Active</Badge>],
-        ["Westside Pediatric & Family", "Dr. Sara Ahmed",   "Riyadh", "7",  <Badge color="green">Active</Badge>],
-        ["Metro Cosmetic Care",         "Dr. Khalid Nasser","Dammam", "7",  <Badge color="green">Active</Badge>],
-      ]}
-    />
-    <DevBanner text="Full Clinic Management is under development" />
-  </div>
-);
+  );
+};
+
 
 // ── Users ──────────────────────────────────────────────────────
 const UsersView = lazy(() => import("@/features/users/UsersView"));
@@ -555,6 +647,57 @@ const IntegrationsView = () => (
   </div>
 );
 
+// ── Patient Check-In ──────────────────────────────────────────────
+const PatientCheckInView = () => (
+  <div className="space-y-6">
+    <PageHeader title="Patient Check-In" description="Manage patient check-in and queue" action="Check In Patient" />
+    <div className="grid grid-cols-4 gap-4">
+      <StatCard label="Checked In" value="8" sub="Currently waiting" />
+      <StatCard label="In Treatment" value="4" sub="With doctor" />
+      <StatCard label="Completed Today" value="22" sub="Checked out" />
+      <StatCard label="Avg Wait Time" value="12m" sub="Target: <15m" />
+    </div>
+    <Table
+      headers={["Patient Name", "Doctor", "Arrival Time", "Status", "Action"]}
+      rows={[
+        ["Ahmed Al-Rashidi", "Dr. Aisha Khan", "08:50 AM", <Badge color="green">In Treatment</Badge>, "Check Out"],
+        ["Sara Johnson", "Dr. Omar Hassan", "09:15 AM", <Badge color="amber">Waiting</Badge>, "Call Patient"],
+        ["Mohammed Hassan", "Dr. Aisha Khan", "09:30 AM", <Badge color="amber">Waiting</Badge>, "Call Patient"],
+        ["Fatima Al-Zaidi", "Dr. Khalid Nasser", "09:45 AM", <Badge color="blue">Checked In</Badge>, "Start Treatment"],
+      ]}
+    />
+    <DevBanner text="Full Patient Check-In & Queue Management is under development" />
+  </div>
+);
+
+// ── Reschedule ────────────────────────────────────────────────────
+const RescheduleView = () => (
+  <div className="space-y-6">
+    <PageHeader title="Reschedule Appointments" description="Quickly reschedule patient appointments" />
+    <Table
+      headers={["Patient Name", "Original Slot", "Requested Slot", "Reason", "Status"]}
+      rows={[
+        ["Sara Johnson", "Aug 3 — 10:30 AM", "Aug 5 — 02:00 PM", "Work Conflict", <Badge color="amber">Pending</Badge>],
+        ["Khalid Mansour", "Aug 4 — 11:00 AM", "Aug 6 — 10:00 AM", "Doctor Request", <Badge color="blue">Processing</Badge>],
+      ]}
+    />
+    <DevBanner text="Quick Reschedule module is under development" />
+  </div>
+);
+
+// ── My Schedule ───────────────────────────────────────────────────
+const MyScheduleView = () => (
+  <div className="space-y-6">
+    <PageHeader title="My Schedule" description="Your daily desk schedule and assigned tasks" />
+    <div className="grid grid-cols-3 gap-4">
+      <StatCard label="Shift" value="08:00 - 16:00" sub="Morning Desk" />
+      <StatCard label="Check-Ins Done" value="18" sub="Today" />
+      <StatCard label="Pending Reminders" value="5" sub="To call" />
+    </div>
+    <DevBanner text="Personal Receptionist Schedule view is under development" />
+  </div>
+);
+
 // ════════════════════════════════════════════════════════════════
 // SHARED ROUTES EXPORT
 // ════════════════════════════════════════════════════════════════
@@ -562,7 +705,7 @@ const IntegrationsView = () => (
 const fallback = (label) => <PageLoader label={label} />;
 
 export const sharedRoutes = [
-  // ── Always accessible (all roles) ───────────────────────────
+  // ── Always accessible (all logged-in roles) ─────────────────
   {
     index: true,
     element: <Navigate to="dashboard" replace />,
@@ -571,60 +714,130 @@ export const sharedRoutes = [
     path: "dashboard",
     element: <Suspense fallback={fallback("Loading Dashboard...")}><UnifiedDashboard /></Suspense>,
   },
+
+  // ── Resource-gated routes (protected via RoleGuard) ──────────
   {
     path: "leads",
-    element: <LeadsView />,
+    element: (
+      <RoleGuard permission={PERMISSIONS.VIEW_LEADS}>
+        <LeadsView />
+      </RoleGuard>
+    ),
   },
   {
     path: "appointments",
-    element: <AppointmentsView />,
+    element: (
+      <RoleGuard permission={PERMISSIONS.VIEW_APPOINTMENTS}>
+        <AppointmentsView />
+      </RoleGuard>
+    ),
   },
   {
     path: "patients",
-    element: <PatientsView />,
+    element: (
+      <RoleGuard permission={PERMISSIONS.VIEW_PATIENTS}>
+        <PatientsView />
+      </RoleGuard>
+    ),
   },
   {
     path: "calls",
-    element: <CallsView />,
+    element: (
+      <RoleGuard permission={PERMISSIONS.VIEW_CALLS}>
+        <CallsView />
+      </RoleGuard>
+    ),
   },
   {
     path: "tasks",
-    element: <TasksView />,
+    element: (
+      <RoleGuard permission={PERMISSIONS.VIEW_TASKS}>
+        <TasksView />
+      </RoleGuard>
+    ),
   },
   {
     path: "revenue",
-    element: <RevenueView />,
+    element: (
+      <RoleGuard permission={PERMISSIONS.VIEW_REVENUE}>
+        <RevenueView />
+      </RoleGuard>
+    ),
   },
   {
     path: "reports",
-    element: <ReportsView />,
+    element: (
+      <RoleGuard permission={PERMISSIONS.VIEW_REPORTS}>
+        <ReportsView />
+      </RoleGuard>
+    ),
   },
   {
     path: "clinics",
-    element: <ClinicsView />,
+    element: (
+      <RoleGuard permission={PERMISSIONS.VIEW_CLINICS}>
+        <ClinicsView />
+      </RoleGuard>
+    ),
   },
   {
     path: "users",
-    element: <Suspense fallback={fallback("Loading Users...")}><UsersView /></Suspense>,
+    element: (
+      <RoleGuard permission={PERMISSIONS.VIEW_USERS}>
+        <Suspense fallback={fallback("Loading Users...")}><UsersView /></Suspense>
+      </RoleGuard>
+    ),
+  },
+  {
+    path: "patient-checkin",
+    element: (
+      <RoleGuard permission={PERMISSIONS.VIEW_APPOINTMENTS}>
+        <PatientCheckInView />
+      </RoleGuard>
+    ),
+  },
+  {
+    path: "reschedule",
+    element: (
+      <RoleGuard permission={PERMISSIONS.VIEW_APPOINTMENTS}>
+        <RescheduleView />
+      </RoleGuard>
+    ),
+  },
+  {
+    path: "my-schedule",
+    element: (
+      <RoleGuard permission={PERMISSIONS.VIEW_APPOINTMENTS}>
+        <MyScheduleView />
+      </RoleGuard>
+    ),
   },
   {
     path: "notifications",
-    element: <NotificationsView />,
+    element: (
+      <RoleGuard permission={PERMISSIONS.VIEW_NOTIFICATIONS}>
+        <NotificationsView />
+      </RoleGuard>
+    ),
   },
   {
     path: "ai-copilot",
-    element: <AiCopilotView />,
+    element: (
+      <RoleGuard permission={PERMISSIONS.VIEW_AI_COPILOT}>
+        <AiCopilotView />
+      </RoleGuard>
+    ),
   },
   {
     path: "profile",
     element: <Suspense fallback={fallback("Loading Profile...")}><ProfileView /></Suspense>,
   },
 
-  // ── Permission-gated (SA + OA only) ─────────────────────────
+  // ── Config & Admin Routes ──────────────────────────────────
   {
     path: "payments",
     element: (
-      <RoleGuard permission={PERMISSIONS.VIEW_PAYMENTS} fallback={<Navigate to="/admin/dashboard" replace />}>
+      <RoleGuard permission={PERMISSIONS.VIEW_PAYMENTS}>
         <PaymentsView />
       </RoleGuard>
     ),
@@ -632,7 +845,7 @@ export const sharedRoutes = [
   {
     path: "treatments-config",
     element: (
-      <RoleGuard permission={PERMISSIONS.MANAGE_TREATMENTS} fallback={<Navigate to="/admin/dashboard" replace />}>
+      <RoleGuard permission={PERMISSIONS.MANAGE_TREATMENTS}>
         <TreatmentsConfigView />
       </RoleGuard>
     ),
@@ -640,7 +853,7 @@ export const sharedRoutes = [
   {
     path: "lead-sources",
     element: (
-      <RoleGuard permission={PERMISSIONS.MANAGE_LEAD_SOURCES} fallback={<Navigate to="/admin/dashboard" replace />}>
+      <RoleGuard permission={PERMISSIONS.MANAGE_LEAD_SOURCES}>
         <LeadSourcesView />
       </RoleGuard>
     ),
@@ -648,7 +861,7 @@ export const sharedRoutes = [
   {
     path: "lead-statuses",
     element: (
-      <RoleGuard permission={PERMISSIONS.MANAGE_LEAD_STATUSES} fallback={<Navigate to="/admin/dashboard" replace />}>
+      <RoleGuard permission={PERMISSIONS.MANAGE_LEAD_STATUSES}>
         <LeadStatusesView />
       </RoleGuard>
     ),
@@ -656,7 +869,7 @@ export const sharedRoutes = [
   {
     path: "ai-runs",
     element: (
-      <RoleGuard permission={PERMISSIONS.MANAGE_AI_RUNS} fallback={<Navigate to="/admin/dashboard" replace />}>
+      <RoleGuard permission={PERMISSIONS.MANAGE_AI_RUNS}>
         <AiRunsView />
       </RoleGuard>
     ),
@@ -664,7 +877,7 @@ export const sharedRoutes = [
   {
     path: "ai-automations",
     element: (
-      <RoleGuard permission={PERMISSIONS.MANAGE_AI_AUTOMATIONS} fallback={<Navigate to="/admin/dashboard" replace />}>
+      <RoleGuard permission={PERMISSIONS.MANAGE_AI_AUTOMATIONS}>
         <AiAutomationsView />
       </RoleGuard>
     ),
@@ -672,7 +885,7 @@ export const sharedRoutes = [
   {
     path: "website-content",
     element: (
-      <RoleGuard permission={PERMISSIONS.MANAGE_WEBSITE_CONTENT} fallback={<Navigate to="/admin/dashboard" replace />}>
+      <RoleGuard permission={PERMISSIONS.MANAGE_WEBSITE_CONTENT}>
         <WebsiteContentView />
       </RoleGuard>
     ),
@@ -680,7 +893,7 @@ export const sharedRoutes = [
   {
     path: "lead-forms",
     element: (
-      <RoleGuard permission={PERMISSIONS.MANAGE_LEAD_FORMS} fallback={<Navigate to="/admin/dashboard" replace />}>
+      <RoleGuard permission={PERMISSIONS.MANAGE_LEAD_FORMS}>
         <LeadFormsView />
       </RoleGuard>
     ),
@@ -688,7 +901,7 @@ export const sharedRoutes = [
   {
     path: "integrations",
     element: (
-      <RoleGuard permission={PERMISSIONS.MANAGE_INTEGRATIONS} fallback={<Navigate to="/admin/dashboard" replace />}>
+      <RoleGuard permission={PERMISSIONS.MANAGE_INTEGRATIONS}>
         <IntegrationsView />
       </RoleGuard>
     ),

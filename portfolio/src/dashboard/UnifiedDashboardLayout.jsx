@@ -7,6 +7,7 @@ import { NotificationsDrawer } from './super-admin/components/layout/Notificatio
 import { AdminProvider, useAdmin } from './super-admin/context/AdminContext'; // We'll adapt this for the unified layout state (like collapsed sidebar)
 import { RoleProvider } from './shared/context/RoleContext';
 import { OrgProvider } from './shared/context/OrgContext';
+import { ClinicProvider } from '@/context/ClinicContext';
 
 const DashboardShell = () => {
   const { isSidebarCollapsed } = useAdmin();
@@ -40,7 +41,9 @@ export const UnifiedDashboardLayout = () => {
     <AdminProvider>
       <RoleProvider>
         <OrgProvider>
-          <DashboardShell />
+          <ClinicProvider>
+            <DashboardShell />
+          </ClinicProvider>
         </OrgProvider>
       </RoleProvider>
     </AdminProvider>

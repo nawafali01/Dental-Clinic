@@ -1,19 +1,28 @@
 import React from 'react';
 import { Users, PhoneCall, TrendingUp, Clock, ArrowRight } from 'lucide-react';
-import { getUserResourceAccess } from '../../utils/hasPermission';
-import { getScopeLabel, getVisibleLeads } from '../../utils/dashboardUtils';
+import { useAuth } from '@/context/AuthContext';
+import { useClinic } from '@/context/ClinicContext';
+import { storageService } from '@/services/storage.service';
+import { scopeData } from '@/utils/scopeData';
 import { LEAD_STATUS_STYLES } from '../../constants/dashboardWidgetConstants';
 
 const LeadsWidget = () => {
-  const accessLevel  = getUserResourceAccess('leads');
-  const scopeLabel   = getScopeLabel('leads', accessLevel) || 'Leads';
-  const visibleLeads = getVisibleLeads(accessLevel);
+  const { currentUser } = useAuth();
+  const { selectedClinicId } = useClinic();
+
+  const rawLeads = storageService.get(storageService.KEYS.LEADS) || [];
+  const leads = scopeData({ resource: 'leads', data: rawLeads, currentUser, selectedClinicId });
+
+  const total = leads.length;
+  const hotCount = leads.filter(l => l.priority === 'high').length;
+  const contactedCount = leads.filter(l => l.status === 'contacted').length;
+  const pendingCount = leads.filter(l => l.status === 'new' || l.status === 'qualified').length;
 
   const kpis = [
-    { label: 'Total',     value: visibleLeads.length, icon: Users,      color: 'bg-blue-500/10   text-blue-600'   },
-    { label: 'Hot',       value: 2,                   icon: TrendingUp,  color: 'bg-rose-500/10   text-rose-600'   },
-    { label: 'Contacted', value: 1,                   icon: PhoneCall,   color: 'bg-amber-500/10  text-amber-600'  },
-    { label: 'Pending',   value: 1,                   icon: Clock,       color: 'bg-slate-500/10  text-slate-600'  },
+    { label: 'Total',     value: total,          icon: Users,      color: 'bg-blue-500/10   text-blue-600'   },
+    { label: 'Hot',       value: hotCount,       icon: TrendingUp,  color: 'bg-rose-500/10   text-rose-600'   },
+    { label: 'Contacted', value: contactedCount, icon: PhoneCall,   color: 'bg-amber-500/10  text-amber-600'  },
+    { label: 'Pending',   value: pendingCount,   icon: Clock,       color: 'bg-slate-500/10  text-slate-600'  },
   ];
 
   return (
@@ -21,7 +30,7 @@ const LeadsWidget = () => {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-sm font-bold text-slate-900">Leads Pipeline</h2>
-          <p className="text-xs text-slate-500 mt-0.5">{scopeLabel}</p>
+          <p className="text-xs text-slate-500 mt-0.5">Scoped view ({currentUser?.role})</p>
         </div>
         <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-blue-100 text-blue-700">
           Leads
@@ -41,22 +50,21 @@ const LeadsWidget = () => {
       </div>
 
       <div className="divide-y divide-slate-100">
-        {visibleLeads.map((lead) => (
+        {leads.slice(0, 4).map((lead) => (
           <div key={lead.id} className="flex items-center justify-between py-2.5 gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0">
-                {lead.name.split(' ').map(n => n[0]).join('')}
+                {(lead.patientName || lead.name || 'L').split(' ').map(n => n[0]).join('')}
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-slate-900 truncate">{lead.name}</p>
-                <p className="text-[10px] text-slate-500">{lead.source}</p>
+                <p className="text-xs font-semibold text-slate-900 truncate">{lead.patientName || lead.name}</p>
+                <p className="text-[10px] text-slate-500">{lead.source || 'Direct'}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize ${LEAD_STATUS_STYLES[lead.status]}`}>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize ${LEAD_STATUS_STYLES[lead.status] || 'bg-slate-100 text-slate-700'}`}>
                 {lead.status}
               </span>
-              <span className="text-xs font-bold text-slate-700">{lead.value}</span>
             </div>
           </div>
         ))}

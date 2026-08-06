@@ -122,27 +122,39 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_NOTIFICATIONS,
   ],
 
+  // ── Receptionist — front-desk operations only ────────────────
   receptionist: [
     PERMISSIONS.VIEW_APPOINTMENTS,
     PERMISSIONS.MANAGE_APPOINTMENTS,
     PERMISSIONS.VIEW_PATIENTS,
-    PERMISSIONS.VIEW_USERS,
     PERMISSIONS.VIEW_NOTIFICATIONS,
   ],
 
+  // ── Finance — financial data, read-only on appointments ──────
   finance: [
+    PERMISSIONS.VIEW_APPOINTMENTS, // read-only (no MANAGE_APPOINTMENTS)
     PERMISSIONS.VIEW_REVENUE,
     PERMISSIONS.VIEW_PAYMENTS,
     PERMISSIONS.MANAGE_BILLING,
     PERMISSIONS.VIEW_REPORTS,
+    PERMISSIONS.VIEW_NOTIFICATIONS,
   ],
 
+  // ── Auditor — read-only across the board ─────────────────────
   auditor: [
     PERMISSIONS.READ_ONLY,
     PERMISSIONS.VIEW_USERS,
+    PERMISSIONS.VIEW_CLINICS,
+    PERMISSIONS.VIEW_LEADS,
+    PERMISSIONS.VIEW_APPOINTMENTS,
+    PERMISSIONS.VIEW_PATIENTS,
+    PERMISSIONS.VIEW_CALLS,
+    PERMISSIONS.VIEW_TASKS,
     PERMISSIONS.VIEW_REVENUE,
+    PERMISSIONS.VIEW_PAYMENTS,
     PERMISSIONS.VIEW_GLOBAL_AUDIT,
     PERMISSIONS.VIEW_REPORTS,
+    PERMISSIONS.VIEW_NOTIFICATIONS,
   ],
 };
 
@@ -231,7 +243,7 @@ export const RESOURCE_PERMISSIONS = {
     org_admin:      RESOURCE_ACCESS.ALL_ORG,
     clinic_manager: RESOURCE_ACCESS.OWN_CLINIC,
     agent:          RESOURCE_ACCESS.ASSIGNED_ONLY,
-    receptionist:   RESOURCE_ACCESS.VIEW,
+    receptionist:   RESOURCE_ACCESS.NONE,
     finance:        RESOURCE_ACCESS.NONE,
     auditor:        RESOURCE_ACCESS.VIEW,
   },
@@ -241,7 +253,7 @@ export const RESOURCE_PERMISSIONS = {
     clinic_manager: RESOURCE_ACCESS.OWN_CLINIC_MANAGE,
     agent:          RESOURCE_ACCESS.ASSIGNED_MANAGE,
     receptionist:   RESOURCE_ACCESS.MANAGE,
-    finance:        RESOURCE_ACCESS.NONE,
+    finance:        RESOURCE_ACCESS.VIEW,   // read-only for finance
     auditor:        RESOURCE_ACCESS.VIEW,
   },
   revenue: {
@@ -267,7 +279,7 @@ export const RESOURCE_PERMISSIONS = {
     org_admin:      RESOURCE_ACCESS.MANAGE_ORG,
     clinic_manager: RESOURCE_ACCESS.CLINIC_TEAM,
     agent:          RESOURCE_ACCESS.SELF,
-    receptionist:   RESOURCE_ACCESS.VIEW,
+    receptionist:   RESOURCE_ACCESS.NONE,
     finance:        RESOURCE_ACCESS.NONE,
     auditor:        RESOURCE_ACCESS.VIEW,
   },
@@ -303,37 +315,21 @@ export const RESOURCE_PERMISSIONS = {
 /**
  * hasResourcePermission
  * Returns true if the role has any non-'none' access to the resource.
- *
- * @param {string} roleId    – e.g. 'clinic_manager'
- * @param {string} resource  – e.g. 'audit_logs'
- * @returns {boolean}
- *
- * @example
- * hasResourcePermission('org_admin', 'audit_logs') // true  (org_scope)
- * hasResourcePermission('agent',     'audit_logs') // false (none)
  */
 export const hasResourcePermission = (roleId, resource) => {
   if (!roleId || !resource) return false;
-  // Super Admin always gets full access
   if (roleId === 'super_admin') return true;
 
   const resourceMap = RESOURCE_PERMISSIONS[resource];
   if (!resourceMap) return false;
 
   const level = resourceMap[roleId];
-  // Any access level other than 'none' (or missing) grants visibility
   return Boolean(level) && level !== RESOURCE_ACCESS.NONE;
 };
 
 /**
  * getResourceAccess
  * Returns the precise access level string for a role/resource pair.
- * Useful for components that need to adapt their UI to the scope
- * (e.g. showing an "org-wide" label vs "assigned only").
- *
- * @param {string} roleId
- * @param {string} resource
- * @returns {string} – one of RESOURCE_ACCESS values, or 'none'
  */
 export const getResourceAccess = (roleId, resource) => {
   if (!roleId || !resource) return RESOURCE_ACCESS.NONE;
@@ -344,3 +340,254 @@ export const getResourceAccess = (roleId, resource) => {
 
   return resourceMap[roleId] || RESOURCE_ACCESS.NONE;
 };
+
+// ─────────────────────────────────────────────────────────────
+// ACTION-LEVEL PERMISSIONS
+//
+// Defines which roles can perform each CRUD / workflow action on
+// each resource. This is the source of truth for:
+//   • usePermission() hook  (canCreate, canEdit, canDelete, …)
+//   • PermissionGuard component
+//
+// Adding a new role: add its id to the arrays for each action.
+// Adding a new resource: add a new key with the full action map.
+//
+// Note: super_admin is granted everything via the canDoAction()
+// short-circuit below — it does not need to appear in these arrays.
+// ─────────────────────────────────────────────────────────────
+export const ACTION_PERMISSIONS = {
+  leads: {
+    view:    ['org_admin', 'clinic_manager', 'agent', 'auditor'],
+    create:  ['org_admin', 'clinic_manager', 'agent'],
+    edit:    ['org_admin', 'clinic_manager', 'agent'],
+    delete:  ['org_admin', 'clinic_manager'],
+    approve: ['org_admin', 'clinic_manager'],
+    assign:  ['org_admin', 'clinic_manager'],
+    export:  ['org_admin', 'clinic_manager'],
+    import:  ['org_admin'],
+  },
+  appointments: {
+    view:    ['org_admin', 'clinic_manager', 'agent', 'receptionist', 'finance', 'auditor'],
+    create:  ['org_admin', 'clinic_manager', 'agent', 'receptionist'],
+    edit:    ['org_admin', 'clinic_manager', 'agent', 'receptionist'],
+    delete:  ['org_admin', 'clinic_manager'],
+    approve: ['org_admin', 'clinic_manager'],
+    assign:  ['org_admin', 'clinic_manager'],
+    export:  ['org_admin', 'clinic_manager', 'finance'],
+    import:  ['org_admin'],
+  },
+  patients: {
+    view:    ['org_admin', 'clinic_manager', 'agent', 'receptionist', 'auditor'],
+    create:  ['org_admin', 'clinic_manager', 'agent', 'receptionist'],
+    edit:    ['org_admin', 'clinic_manager', 'agent', 'receptionist'],
+    delete:  ['org_admin', 'clinic_manager'],
+    export:  ['org_admin', 'clinic_manager'],
+    import:  ['org_admin'],
+  },
+  revenue: {
+    view:    ['org_admin', 'clinic_manager', 'finance', 'auditor'],
+    export:  ['org_admin', 'clinic_manager', 'finance'],
+  },
+  payments: {
+    view:    ['org_admin', 'clinic_manager', 'finance', 'auditor'],
+    create:  ['org_admin', 'clinic_manager', 'finance'],
+    edit:    ['org_admin', 'clinic_manager'],
+    delete:  ['org_admin'],
+    export:  ['org_admin', 'clinic_manager', 'finance'],
+  },
+  reports: {
+    view:    ['org_admin', 'clinic_manager', 'finance', 'auditor'],
+    export:  ['org_admin', 'clinic_manager', 'finance'],
+  },
+  users: {
+    view:    ['org_admin', 'clinic_manager', 'auditor'],
+    create:  ['org_admin'],
+    edit:    ['org_admin', 'clinic_manager'],
+    delete:  ['org_admin'],
+    assign:  ['org_admin', 'clinic_manager'],
+  },
+  calls: {
+    view:    ['org_admin', 'clinic_manager', 'agent', 'auditor'],
+    create:  ['org_admin', 'clinic_manager', 'agent'],
+    edit:    ['org_admin', 'clinic_manager', 'agent'],
+    delete:  ['org_admin', 'clinic_manager'],
+  },
+  tasks: {
+    view:    ['org_admin', 'clinic_manager', 'agent', 'auditor'],
+    create:  ['org_admin', 'clinic_manager', 'agent'],
+    edit:    ['org_admin', 'clinic_manager', 'agent'],
+    delete:  ['org_admin', 'clinic_manager', 'agent'],
+    assign:  ['org_admin', 'clinic_manager'],
+  },
+  clinics: {
+    view:    ['org_admin', 'clinic_manager', 'receptionist', 'finance', 'auditor'],
+    create:  ['org_admin'],
+    edit:    ['org_admin'],
+    delete:  [],
+  },
+  patient_checkin: {
+    view:     ['org_admin', 'clinic_manager', 'receptionist'],
+    checkin:  ['org_admin', 'clinic_manager', 'receptionist'],
+    checkout: ['org_admin', 'clinic_manager', 'receptionist'],
+  },
+  settings: {
+    view:  ['org_admin', 'clinic_manager'],
+    edit:  ['org_admin'],
+  },
+  ai_automations: {
+    view:   ['org_admin', 'clinic_manager'],
+    create: ['org_admin'],
+    edit:   ['org_admin'],
+    delete: ['org_admin'],
+  },
+};
+
+/**
+ * canDoAction
+ *
+ * The canonical way to check if a role can perform an action on a resource.
+ * Used internally by usePermission() and PermissionGuard.
+ *
+ * @param {string} roleId   - e.g. 'receptionist'
+ * @param {string} resource - e.g. 'appointments'
+ * @param {string} action   - e.g. 'create'
+ * @returns {boolean}
+ */
+export const canDoAction = (roleId, resource, action) => {
+  if (!roleId || !resource || !action) return false;
+  // Super Admin always has full access
+  if (roleId === 'super_admin') return true;
+
+  const resourceActions = ACTION_PERMISSIONS[resource];
+  if (!resourceActions) return false;
+
+  const allowedRoles = resourceActions[action] || [];
+  return allowedRoles.includes(roleId);
+};
+
+// ─────────────────────────────────────────────────────────────
+// Multi-Clinic Access
+// Only roles in this list can use the ClinicSwitcher and change
+// the active branch scope. All others are locked to their assigned clinic.
+// ─────────────────────────────────────────────────────────────
+export const MULTI_CLINIC_ROLES = ['super_admin', 'org_admin'];
+
+// ─────────────────────────────────────────────────────────────
+// DATA SCOPING (Row-Level Access Control)
+// Defines the data visibility scope per resource for each role.
+// Used by scopeData() utility to filter mock datasets before rendering.
+// ─────────────────────────────────────────────────────────────
+export const SCOPE_TYPES = {
+  GLOBAL:       'global',       // All records across all orgs & clinics (super_admin)
+  ORGANIZATION: 'organization', // Records matching currentUser.organizationId (org_admin)
+  CLINIC:       'clinic',       // Records matching active selectedClinicId or currentUser.clinicId (clinic_manager, receptionist, finance)
+  ASSIGNEE:     'assignee',     // Records assigned to currentUser.id (agent)
+  APPROVED:     'approved',     // Records approved / not draft for auditing (auditor)
+  NONE:         'none',         // No access
+};
+
+export const RESOURCE_SCOPES = {
+  leads: {
+    super_admin:    SCOPE_TYPES.GLOBAL,
+    org_admin:      SCOPE_TYPES.ORGANIZATION,
+    clinic_manager: SCOPE_TYPES.CLINIC,
+    agent:          SCOPE_TYPES.ASSIGNEE,
+    receptionist:   SCOPE_TYPES.NONE,
+    finance:        SCOPE_TYPES.NONE,
+    auditor:        SCOPE_TYPES.APPROVED,
+  },
+  appointments: {
+    super_admin:    SCOPE_TYPES.GLOBAL,
+    org_admin:      SCOPE_TYPES.ORGANIZATION,
+    clinic_manager: SCOPE_TYPES.CLINIC,
+    agent:          SCOPE_TYPES.ASSIGNEE,
+    receptionist:   SCOPE_TYPES.CLINIC,
+    finance:        SCOPE_TYPES.CLINIC,
+    auditor:        SCOPE_TYPES.APPROVED,
+  },
+  patients: {
+    super_admin:    SCOPE_TYPES.GLOBAL,
+    org_admin:      SCOPE_TYPES.ORGANIZATION,
+    clinic_manager: SCOPE_TYPES.CLINIC,
+    agent:          SCOPE_TYPES.CLINIC,
+    receptionist:   SCOPE_TYPES.CLINIC,
+    finance:        SCOPE_TYPES.NONE,
+    auditor:        SCOPE_TYPES.APPROVED,
+  },
+  calls: {
+    super_admin:    SCOPE_TYPES.GLOBAL,
+    org_admin:      SCOPE_TYPES.ORGANIZATION,
+    clinic_manager: SCOPE_TYPES.CLINIC,
+    agent:          SCOPE_TYPES.ASSIGNEE,
+    receptionist:   SCOPE_TYPES.NONE,
+    finance:        SCOPE_TYPES.NONE,
+    auditor:        SCOPE_TYPES.APPROVED,
+  },
+  tasks: {
+    super_admin:    SCOPE_TYPES.GLOBAL,
+    org_admin:      SCOPE_TYPES.ORGANIZATION,
+    clinic_manager: SCOPE_TYPES.CLINIC,
+    agent:          SCOPE_TYPES.ASSIGNEE,
+    receptionist:   SCOPE_TYPES.NONE,
+    finance:        SCOPE_TYPES.NONE,
+    auditor:        SCOPE_TYPES.APPROVED,
+  },
+  revenue: {
+    super_admin:    SCOPE_TYPES.GLOBAL,
+    org_admin:      SCOPE_TYPES.ORGANIZATION,
+    clinic_manager: SCOPE_TYPES.CLINIC,
+    agent:          SCOPE_TYPES.NONE,
+    receptionist:   SCOPE_TYPES.NONE,
+    finance:        SCOPE_TYPES.ORGANIZATION,
+    auditor:        SCOPE_TYPES.APPROVED,
+  },
+  payments: {
+    super_admin:    SCOPE_TYPES.GLOBAL,
+    org_admin:      SCOPE_TYPES.ORGANIZATION,
+    clinic_manager: SCOPE_TYPES.CLINIC,
+    agent:          SCOPE_TYPES.NONE,
+    receptionist:   SCOPE_TYPES.NONE,
+    finance:        SCOPE_TYPES.ORGANIZATION,
+    auditor:        SCOPE_TYPES.APPROVED,
+  },
+  reports: {
+    super_admin:    SCOPE_TYPES.GLOBAL,
+    org_admin:      SCOPE_TYPES.ORGANIZATION,
+    clinic_manager: SCOPE_TYPES.CLINIC,
+    agent:          SCOPE_TYPES.ASSIGNEE,
+    receptionist:   SCOPE_TYPES.NONE,
+    finance:        SCOPE_TYPES.ORGANIZATION,
+    auditor:        SCOPE_TYPES.APPROVED,
+  },
+  users: {
+    super_admin:    SCOPE_TYPES.GLOBAL,
+    org_admin:      SCOPE_TYPES.ORGANIZATION,
+    clinic_manager: SCOPE_TYPES.CLINIC,
+    agent:          SCOPE_TYPES.NONE,
+    receptionist:   SCOPE_TYPES.NONE,
+    finance:        SCOPE_TYPES.NONE,
+    auditor:        SCOPE_TYPES.APPROVED,
+  },
+  clinics: {
+    super_admin:    SCOPE_TYPES.GLOBAL,
+    org_admin:      SCOPE_TYPES.ORGANIZATION,
+    clinic_manager: SCOPE_TYPES.CLINIC,
+    agent:          SCOPE_TYPES.CLINIC,
+    receptionist:   SCOPE_TYPES.CLINIC,
+    finance:        SCOPE_TYPES.CLINIC,
+    auditor:        SCOPE_TYPES.APPROVED,
+  },
+};
+
+/**
+ * getResourceScope
+ * Returns the scope type string for a role/resource pair.
+ */
+export const getResourceScope = (roleId, resource) => {
+  if (!roleId || !resource) return SCOPE_TYPES.NONE;
+  if (roleId === 'super_admin') return SCOPE_TYPES.GLOBAL;
+  const resMap = RESOURCE_SCOPES[resource];
+  if (!resMap) return SCOPE_TYPES.NONE;
+  return resMap[roleId] || SCOPE_TYPES.NONE;
+};
+

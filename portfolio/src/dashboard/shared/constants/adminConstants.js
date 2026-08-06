@@ -38,6 +38,7 @@ export const ROLES = [
   { id: 'agent',          label: 'AI Operations Agent',     badgeColor: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20' },
   { id: 'receptionist',   label: 'Front Desk / Reception',  badgeColor: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
   { id: 'finance',        label: 'Finance Controller',      badgeColor: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' },
+  { id: 'auditor',        label: 'External Auditor',        badgeColor: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20' },
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -219,15 +220,107 @@ export const CLINIC_MANAGER_NAVIGATION = [
 ];
 
 // ─────────────────────────────────────────────────────────────
+// Agent Navigation (CRM-focused, no financial data)
+// ─────────────────────────────────────────────────────────────
+export const AGENT_NAVIGATION = [
+  {
+    title: 'CRM',
+    items: [
+      { name: 'Dashboard',    path: '/admin/dashboard',    icon: LayoutDashboard },
+      { name: 'Leads',        path: '/admin/leads',        icon: Users },
+      { name: 'Appointments', path: '/admin/appointments', icon: Calendar },
+      { name: 'Calls',        path: '/admin/calls',        icon: Phone },
+      { name: 'Tasks',        path: '/admin/tasks',        icon: CheckSquare },
+    ],
+  },
+  {
+    title: 'Tools',
+    items: [
+      { name: 'AI Copilot',    path: '/admin/ai-copilot',    icon: Sparkles },
+      { name: 'Notifications', path: '/admin/notifications', icon: Bell },
+    ],
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
+// Receptionist Navigation — front-desk operations only
+// ─────────────────────────────────────────────────────────────
+export const RECEPTIONIST_NAVIGATION = [
+  {
+    title: 'Front Desk',
+    items: [
+      { name: 'Dashboard',        path: '/admin/dashboard',       icon: LayoutDashboard },
+      { name: 'Appointments',     path: '/admin/appointments',    icon: Calendar },
+      { name: 'Patient Check-In', path: '/admin/patient-checkin', icon: UserCheck },
+      { name: 'Reschedule',       path: '/admin/reschedule',      icon: CalendarCheck },
+      { name: 'My Schedule',      path: '/admin/my-schedule',     icon: CalendarCheck },
+    ],
+  },
+  {
+    title: 'Patients',
+    items: [
+      { name: 'Patients',       path: '/admin/patients',       icon: UserCircle },
+      { name: 'Notifications',  path: '/admin/notifications',  icon: Bell },
+    ],
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
+// Finance Navigation — financial data; appointments read-only
+// ─────────────────────────────────────────────────────────────
+export const FINANCE_NAVIGATION = [
+  {
+    title: 'Finance',
+    items: [
+      { name: 'Dashboard',        path: '/admin/dashboard',    icon: LayoutDashboard },
+      { name: 'Revenue',          path: '/admin/revenue',      icon: DollarSign },
+      { name: 'Payments',         path: '/admin/payments',     icon: CreditCard },
+      { name: 'Finance Reports',  path: '/admin/reports',      icon: FileText },
+    ],
+  },
+  {
+    title: 'Operations',
+    items: [
+      { name: 'Appointments',  path: '/admin/appointments',  icon: Calendar, badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-500' },
+      { name: 'Notifications', path: '/admin/notifications', icon: Bell },
+    ],
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
+// Auditor Navigation — read-only view across key modules
+// ─────────────────────────────────────────────────────────────
+export const AUDITOR_NAVIGATION = [
+  {
+    title: 'Audit View',
+    items: [
+      { name: 'Dashboard',    path: '/admin/dashboard',    icon: LayoutDashboard },
+      { name: 'Leads',        path: '/admin/leads',        icon: Users,         badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-500' },
+      { name: 'Appointments', path: '/admin/appointments', icon: Calendar,      badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-500' },
+      { name: 'Revenue',      path: '/admin/revenue',      icon: DollarSign,    badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-500' },
+      { name: 'Reports',      path: '/admin/reports',      icon: FileText,      badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-500' },
+    ],
+  },
+  {
+    title: 'Platform',
+    items: [
+      { name: 'Notifications', path: '/admin/notifications', icon: Bell },
+    ],
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
 // Navigation Map — keyed by role ID
+// Each role is mapped to its own dedicated navigation group.
 // ─────────────────────────────────────────────────────────────
 export const NAVIGATION_MAP = {
   super_admin:    SUPER_ADMIN_NAVIGATION,
   org_admin:      ORG_ADMIN_NAVIGATION,
   clinic_manager: CLINIC_MANAGER_NAVIGATION,
-  agent:          CLINIC_MANAGER_NAVIGATION,
-  receptionist:   CLINIC_MANAGER_NAVIGATION,
-  finance:        ORG_ADMIN_NAVIGATION,
+  agent:          AGENT_NAVIGATION,
+  receptionist:   RECEPTIONIST_NAVIGATION,
+  finance:        FINANCE_NAVIGATION,
+  auditor:        AUDITOR_NAVIGATION,
 };
 
 // Backward compatibility alias

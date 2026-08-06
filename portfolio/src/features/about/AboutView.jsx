@@ -108,7 +108,7 @@ export function AboutView() {
   return (
     <div className="bg-background">
       {/* ── Hero section ── */}
-      <section className="relative pb-18 md:pb-32 overflow-hidden">
+      <section className="relative pt-12 md:pt-20 pb-18 md:pb-32 overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-accent/60 via-background to-background" />
         <div className="absolute -top-24 -left-24 size-[520px] bg-primary/15 blur-3xl animate-blob" />
         <div className="max-w-7xl mx-auto px-5 md:px-8 text-center">
