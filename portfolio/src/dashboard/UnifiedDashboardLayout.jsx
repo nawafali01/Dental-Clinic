@@ -2,7 +2,12 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './super-admin/components/layout/Sidebar'; // Using this as the unified sidebar
 import { Header } from './super-admin/components/layout/Header'; // Using this as the unified header
+import { CommandPalette } from './super-admin/components/layout/CommandPalette';
+import { NotificationsDrawer } from './super-admin/components/layout/NotificationsDrawer';
 import { AdminProvider, useAdmin } from './super-admin/context/AdminContext'; // We'll adapt this for the unified layout state (like collapsed sidebar)
+import { RoleProvider } from './shared/context/RoleContext';
+import { OrgProvider } from './shared/context/OrgContext';
+import { ClinicProvider } from '@/context/ClinicContext';
 
 const DashboardShell = () => {
   const { isSidebarCollapsed } = useAdmin();
@@ -14,6 +19,8 @@ const DashboardShell = () => {
     >
       <Sidebar />
       <Header />
+      <CommandPalette />
+      <NotificationsDrawer />
       
       <main
         className={`flex-1 transition-all duration-300 p-4 sm:p-6 lg:p-8 bg-white ${
@@ -32,7 +39,13 @@ const DashboardShell = () => {
 export const UnifiedDashboardLayout = () => {
   return (
     <AdminProvider>
-      <DashboardShell />
+      <RoleProvider>
+        <OrgProvider>
+          <ClinicProvider>
+            <DashboardShell />
+          </ClinicProvider>
+        </OrgProvider>
+      </RoleProvider>
     </AdminProvider>
   );
 };

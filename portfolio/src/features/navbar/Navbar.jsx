@@ -4,6 +4,7 @@ import { Menu, X, Sparkles } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/shared/ui/Button";
 import { navLinks } from "./data";
+import { DentalAiLogoSvg } from "@/assets/svg/DentalAiLogoSvg";
 
 function scrollToHash(hash) {
   const el = document.getElementById(hash);
@@ -77,7 +78,7 @@ export function Navbar() {
         <nav className="max-w-7xl mx-auto flex items-center justify-between px-5 md:px-8 h-16 md:h-18">
           <Link to="/" className="flex items-center gap-2 group">
             <span className="grid place-items-center size-9 rounded-xl bg-primary text-primary-foreground soft-shadow group-hover:scale-105 transition-transform">
-              <Sparkles className="size-5" />
+              <DentalAiLogoSvg className="size-5" />
             </span>
             <span className="font-display font-semibold text-lg tracking-tight text-secondary">
               Aurea<span className="text-primary">.</span>

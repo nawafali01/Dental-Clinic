@@ -1,93 +1,397 @@
 import {
   LayoutDashboard,
-  BarChart3,
   Users,
+  Calendar,
+  UserCircle,
+  Phone,
+  CheckSquare,
+  DollarSign,
+  CreditCard,
+  FileText,
   Building2,
   UserCheck,
+  Activity,
+  Target,
+  Tag,
+  Play,
+  GitBranch,
+  Globe,
+  FileInput,
+  Link,
+  BarChart3,
   Cpu,
-  DollarSign,
   ShieldCheck,
   Settings,
+  Bell,
   Zap,
+  CalendarCheck,
+  Sparkles,
 } from 'lucide-react';
 
-// Platform Roles Constant Data
+// ─────────────────────────────────────────────────────────────
+// Platform Roles
+// ─────────────────────────────────────────────────────────────
 export const ROLES = [
-  { id: 'super_admin', label: 'Super Admin', badgeColor: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' },
-  { id: 'org_admin', label: 'Org Admin', badgeColor: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
-  { id: 'clinic_manager', label: 'Clinic Manager', badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
-  { id: 'agent', label: 'AI Operations Agent', badgeColor: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20' },
-  { id: 'receptionist', label: 'Front Desk / Reception', badgeColor: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
-  { id: 'finance', label: 'Finance Controller', badgeColor: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' },
+  { id: 'super_admin',    label: 'Super Admin',             badgeColor: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' },
+  { id: 'org_admin',      label: 'Org Admin',               badgeColor: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
+  { id: 'clinic_manager', label: 'Clinic Manager',          badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+  { id: 'agent',          label: 'AI Operations Agent',     badgeColor: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20' },
+  { id: 'receptionist',   label: 'Front Desk / Reception',  badgeColor: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+  { id: 'finance',        label: 'Finance Controller',      badgeColor: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' },
+  { id: 'auditor',        label: 'External Auditor',        badgeColor: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20' },
 ];
 
-// Multi-Clinic Scope Constant Data
+// ─────────────────────────────────────────────────────────────
+// Multi-Clinic Scope
+// ─────────────────────────────────────────────────────────────
 export const CLINICS_SCOPE = [
   { id: 'all', name: 'All Clinics (System-Wide)' },
-  { id: 'c1', name: 'Downtown Dental Excellence' },
-  { id: 'c2', name: 'Apex Orthodontics & Smiles' },
-  { id: 'c3', name: 'Westside Pediatric & Family' },
-  { id: 'c4', name: 'Metro Cosmetic Care' },
+  { id: 'c1',  name: 'Downtown Dental Excellence' },
+  { id: 'c2',  name: 'Apex Orthodontics & Smiles' },
+  { id: 'c3',  name: 'Westside Pediatric & Family' },
+  { id: 'c4',  name: 'Metro Cosmetic Care' },
 ];
 
-// Sidebar Navigation Groups Constant Data
-export const NAVIGATION_GROUPS = [
+// ─────────────────────────────────────────────────────────────
+// Super Admin Navigation (Full Access)
+// ─────────────────────────────────────────────────────────────
+export const SUPER_ADMIN_NAVIGATION = [
   {
-    title: 'Core Platform',
+    title: 'Core Operations',
     items: [
-      { name: 'Dashboard Overview', path: '/admin/dashboard', icon: LayoutDashboard },
-      { name: 'Analytics Suite', path: '/admin/analytics', icon: BarChart3 },
-      { name: 'Lead Pipeline (CRM)', path: '/admin/pipeline', icon: Users, badge: 'Live' },
+      { name: 'Dashboard',    path: '/admin/dashboard',    icon: LayoutDashboard },
+      { name: 'Leads',        path: '/admin/leads',        icon: Users },
+      { name: 'Appointments', path: '/admin/appointments', icon: Calendar },
+      { name: 'Patients',     path: '/admin/patients',     icon: UserCircle },
+      { name: 'Calls',        path: '/admin/calls',        icon: Phone },
+      { name: 'Tasks',        path: '/admin/tasks',        icon: CheckSquare },
+    ],
+  },
+  {
+    title: 'Revenue',
+    items: [
+      { name: 'Revenue',  path: '/admin/revenue',  icon: DollarSign },
+      { name: 'Payments', path: '/admin/payments', icon: CreditCard },
+      { name: 'Reports',  path: '/admin/reports',  icon: FileText },
+    ],
+  },
+  {
+    title: 'Management',
+    items: [
+      { name: 'Clinics', path: '/admin/clinics', icon: Building2 },
+      { name: 'Users',   path: '/admin/users',   icon: UserCheck },
+    ],
+  },
+  {
+    title: 'Configuration',
+    items: [
+      { name: 'Treatments',    path: '/admin/treatments-config', icon: Activity },
+      { name: 'Lead Sources',  path: '/admin/lead-sources',      icon: Target },
+      { name: 'Lead Statuses', path: '/admin/lead-statuses',     icon: Tag },
+    ],
+  },
+  {
+    title: 'AI & Automation',
+    items: [
+      { name: 'AI Copilot',    path: '/admin/ai-copilot',    icon: Sparkles },
+      { name: 'AI Runs',       path: '/admin/ai-runs',       icon: Play },
+      { name: 'AI Automations',path: '/admin/ai-automations',icon: GitBranch },
+      { name: 'AI Ops',        path: '/admin/ai-ops',        icon: Cpu, badge: 'Active', badgeColor: 'bg-emerald-500/10 text-emerald-600' },
+    ],
+  },
+  {
+    title: 'Content & Integrations',
+    items: [
+      { name: 'Website Content', path: '/admin/website-content', icon: Globe },
+      { name: 'Lead Forms',      path: '/admin/lead-forms',      icon: FileInput },
+      { name: 'Integrations',    path: '/admin/integrations',    icon: Link },
+    ],
+  },
+  {
+    title: 'Platform',
+    items: [
+      { name: 'Analytics',    path: '/admin/analytics',   icon: BarChart3 },
+      { name: 'Audit Logs',   path: '/admin/audit-logs',  icon: ShieldCheck },
+      { name: 'Notifications',path: '/admin/notifications',icon: Bell },
+      { name: 'Settings',     path: '/admin/settings',    icon: Settings },
+    ],
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
+// Organization Admin Navigation (Org Scope)
+// ─────────────────────────────────────────────────────────────
+export const ORG_ADMIN_NAVIGATION = [
+  {
+    title: 'Core Operations',
+    items: [
+      { name: 'Dashboard',    path: '/admin/dashboard',    icon: LayoutDashboard },
+      { name: 'Leads',        path: '/admin/leads',        icon: Users },
+      { name: 'Appointments', path: '/admin/appointments', icon: Calendar },
+      { name: 'Patients',     path: '/admin/patients',     icon: UserCircle },
+      { name: 'Calls',        path: '/admin/calls',        icon: Phone },
+      { name: 'Tasks',        path: '/admin/tasks',        icon: CheckSquare },
+    ],
+  },
+  {
+    title: 'Revenue',
+    items: [
+      { name: 'Revenue',  path: '/admin/revenue',  icon: DollarSign },
+      { name: 'Payments', path: '/admin/payments', icon: CreditCard },
+      { name: 'Reports',  path: '/admin/reports',  icon: FileText },
+    ],
+  },
+  {
+    title: 'Management',
+    items: [
+      { name: 'Clinics', path: '/admin/clinics', icon: Building2 },
+      { name: 'Users',   path: '/admin/users',   icon: UserCheck },
+    ],
+  },
+  {
+    title: 'Configuration',
+    items: [
+      { name: 'Treatments',    path: '/admin/treatments-config', icon: Activity },
+      { name: 'Lead Sources',  path: '/admin/lead-sources',      icon: Target },
+      { name: 'Lead Statuses', path: '/admin/lead-statuses',     icon: Tag },
+    ],
+  },
+  {
+    title: 'AI & Automation',
+    items: [
+      { name: 'AI Copilot',    path: '/admin/ai-copilot',     icon: Sparkles },
+      { name: 'AI Runs',       path: '/admin/ai-runs',        icon: Play },
+      { name: 'AI Automations',path: '/admin/ai-automations', icon: GitBranch },
+    ],
+  },
+  {
+    title: 'Content & Integrations',
+    items: [
+      { name: 'Website Content', path: '/admin/website-content', icon: Globe },
+      { name: 'Lead Forms',      path: '/admin/lead-forms',      icon: FileInput },
+      { name: 'Integrations',    path: '/admin/integrations',    icon: Link },
+    ],
+  },
+  {
+    title: 'Settings',
+    items: [
+      { name: 'Notifications',        path: '/admin/notifications', icon: Bell },
+      { name: 'Organization Settings',path: '/admin/org-settings',  icon: Settings },
+    ],
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
+// Clinic Manager Navigation (Clinic Scope)
+// ─────────────────────────────────────────────────────────────
+export const CLINIC_MANAGER_NAVIGATION = [
+  {
+    title: 'Operations',
+    items: [
+      { name: 'Dashboard',    path: '/admin/dashboard',    icon: LayoutDashboard },
+      { name: 'Leads',        path: '/admin/leads',        icon: Users },
+      { name: 'Appointments', path: '/admin/appointments', icon: Calendar },
+      { name: 'Patients',     path: '/admin/patients',     icon: UserCircle },
+      { name: 'Calls',        path: '/admin/calls',        icon: Phone },
+      { name: 'Tasks',        path: '/admin/tasks',        icon: CheckSquare },
+    ],
+  },
+  {
+    title: 'Finance',
+    items: [
+      { name: 'Revenue', path: '/admin/revenue', icon: DollarSign },
+      { name: 'Reports', path: '/admin/reports', icon: FileText },
+    ],
+  },
+  {
+    title: 'Clinic',
+    items: [
+      { name: 'Clinics', path: '/admin/clinics', icon: Building2 },
+      { name: 'Users',   path: '/admin/users',   icon: UserCheck },
+    ],
+  },
+  {
+    title: 'Tools',
+    items: [
+      { name: 'AI Copilot',   path: '/admin/ai-copilot',   icon: Sparkles },
+      { name: 'Notifications',path: '/admin/notifications', icon: Bell },
+    ],
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
+// Agent Navigation (CRM-focused, no financial data)
+// ─────────────────────────────────────────────────────────────
+export const AGENT_NAVIGATION = [
+  {
+    title: 'CRM',
+    items: [
+      { name: 'Dashboard',    path: '/admin/dashboard',    icon: LayoutDashboard },
+      { name: 'Leads',        path: '/admin/leads',        icon: Users },
+      { name: 'Appointments', path: '/admin/appointments', icon: Calendar },
+      { name: 'Calls',        path: '/admin/calls',        icon: Phone },
+      { name: 'Tasks',        path: '/admin/tasks',        icon: CheckSquare },
+    ],
+  },
+  {
+    title: 'Tools',
+    items: [
+      { name: 'AI Copilot',    path: '/admin/ai-copilot',    icon: Sparkles },
+      { name: 'Notifications', path: '/admin/notifications', icon: Bell },
+    ],
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
+// Receptionist Navigation — front-desk operations only
+// ─────────────────────────────────────────────────────────────
+export const RECEPTIONIST_NAVIGATION = [
+  {
+    title: 'Front Desk',
+    items: [
+      { name: 'Dashboard',        path: '/admin/dashboard',       icon: LayoutDashboard },
+      { name: 'Appointments',     path: '/admin/appointments',    icon: Calendar },
+      { name: 'Patient Check-In', path: '/admin/patient-checkin', icon: UserCheck },
+      { name: 'Reschedule',       path: '/admin/reschedule',      icon: CalendarCheck },
+      { name: 'My Schedule',      path: '/admin/my-schedule',     icon: CalendarCheck },
+    ],
+  },
+  {
+    title: 'Patients',
+    items: [
+      { name: 'Patients',       path: '/admin/patients',       icon: UserCircle },
+      { name: 'Notifications',  path: '/admin/notifications',  icon: Bell },
+    ],
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
+// Finance Navigation — financial data; appointments read-only
+// ─────────────────────────────────────────────────────────────
+export const FINANCE_NAVIGATION = [
+  {
+    title: 'Finance',
+    items: [
+      { name: 'Dashboard',        path: '/admin/dashboard',    icon: LayoutDashboard },
+      { name: 'Revenue',          path: '/admin/revenue',      icon: DollarSign },
+      { name: 'Payments',         path: '/admin/payments',     icon: CreditCard },
+      { name: 'Finance Reports',  path: '/admin/reports',      icon: FileText },
     ],
   },
   {
     title: 'Operations',
     items: [
-      { name: 'Clinic Management', path: '/admin/clinics', icon: Building2 },
-      { name: 'User & Access Control', path: '/admin/users', icon: UserCheck },
-      { name: 'AI Operations & Kill Switch', path: '/admin/ai-ops', icon: Cpu, badge: 'Active', badgeColor: 'bg-emerald-500/10 text-emerald-500' },
+      { name: 'Appointments',  path: '/admin/appointments',  icon: Calendar, badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-500' },
+      { name: 'Notifications', path: '/admin/notifications', icon: Bell },
+    ],
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
+// Auditor Navigation — read-only view across key modules
+// ─────────────────────────────────────────────────────────────
+export const AUDITOR_NAVIGATION = [
+  {
+    title: 'Audit View',
+    items: [
+      { name: 'Dashboard',    path: '/admin/dashboard',    icon: LayoutDashboard },
+      { name: 'Leads',        path: '/admin/leads',        icon: Users,         badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-500' },
+      { name: 'Appointments', path: '/admin/appointments', icon: Calendar,      badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-500' },
+      { name: 'Revenue',      path: '/admin/revenue',      icon: DollarSign,    badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-500' },
+      { name: 'Reports',      path: '/admin/reports',      icon: FileText,      badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-500' },
     ],
   },
   {
-    title: 'Governance & Config',
+    title: 'Platform',
     items: [
-      { name: 'Revenue & Financials', path: '/admin/revenue', icon: DollarSign },
-      { name: 'Audit Logs & Compliance', path: '/admin/audit-logs', icon: ShieldCheck },
-      { name: 'Settings & Integrations', path: '/admin/settings', icon: Settings },
+      { name: 'Notifications', path: '/admin/notifications', icon: Bell },
     ],
   },
 ];
 
-// Command Palette Navigation & Quick Actions Constant Data
+// ─────────────────────────────────────────────────────────────
+// Navigation Map — keyed by role ID
+// Each role is mapped to its own dedicated navigation group.
+// ─────────────────────────────────────────────────────────────
+export const NAVIGATION_MAP = {
+  super_admin:    SUPER_ADMIN_NAVIGATION,
+  org_admin:      ORG_ADMIN_NAVIGATION,
+  clinic_manager: CLINIC_MANAGER_NAVIGATION,
+  agent:          AGENT_NAVIGATION,
+  receptionist:   RECEPTIONIST_NAVIGATION,
+  finance:        FINANCE_NAVIGATION,
+  auditor:        AUDITOR_NAVIGATION,
+};
+
+// Backward compatibility alias
+export const NAVIGATION_GROUPS = SUPER_ADMIN_NAVIGATION;
+
+// ─────────────────────────────────────────────────────────────
+// Command Palette
+// ─────────────────────────────────────────────────────────────
 export const COMMAND_NAVIGATION_ITEMS = [
-  { title: 'Dashboard Overview', path: '/admin/dashboard', icon: LayoutDashboard, category: 'Navigation' },
-  { title: 'Analytics & Funnels', path: '/admin/analytics', icon: BarChart3, category: 'Navigation' },
-  { title: 'Lead Pipeline (CRM)', path: '/admin/pipeline', icon: Users, category: 'Navigation' },
-  { title: 'Clinic Management', path: '/admin/clinics', icon: Building2, category: 'Navigation' },
-  { title: 'User Management & Roles', path: '/admin/users', icon: UserCheck, category: 'Navigation' },
-  { title: 'AI Operations & Kill Switch', path: '/admin/ai-ops', icon: Cpu, category: 'Navigation' },
-  { title: 'Revenue & Financials', path: '/admin/revenue', icon: DollarSign, category: 'Navigation' },
-  { title: 'Audit Logs & Compliance', path: '/admin/audit-logs', icon: ShieldCheck, category: 'Navigation' },
-  { title: 'Settings & Integrations', path: '/admin/settings', icon: Settings, category: 'Navigation' },
+  { title: 'Dashboard',          path: '/admin/dashboard',         icon: LayoutDashboard, category: 'Navigation' },
+  { title: 'Leads',              path: '/admin/leads',             icon: Users,           category: 'Navigation' },
+  { title: 'Appointments',       path: '/admin/appointments',      icon: Calendar,        category: 'Navigation' },
+  { title: 'Patients',           path: '/admin/patients',          icon: UserCircle,      category: 'Navigation' },
+  { title: 'Calls',              path: '/admin/calls',             icon: Phone,           category: 'Navigation' },
+  { title: 'Tasks',              path: '/admin/tasks',             icon: CheckSquare,     category: 'Navigation' },
+  { title: 'Revenue',            path: '/admin/revenue',           icon: DollarSign,      category: 'Navigation' },
+  { title: 'Payments',           path: '/admin/payments',          icon: CreditCard,      category: 'Navigation' },
+  { title: 'Reports',            path: '/admin/reports',           icon: FileText,        category: 'Navigation' },
+  { title: 'Clinics',            path: '/admin/clinics',           icon: Building2,       category: 'Navigation' },
+  { title: 'Users',              path: '/admin/users',             icon: UserCheck,       category: 'Navigation' },
+  { title: 'Treatments Config',  path: '/admin/treatments-config', icon: Activity,        category: 'Navigation' },
+  { title: 'AI Copilot',         path: '/admin/ai-copilot',        icon: Sparkles,        category: 'Navigation' },
+  { title: 'AI Runs',            path: '/admin/ai-runs',           icon: Play,            category: 'Navigation' },
+  { title: 'AI Automations',     path: '/admin/ai-automations',    icon: GitBranch,       category: 'Navigation' },
+  { title: 'AI Ops',             path: '/admin/ai-ops',            icon: Cpu,             category: 'Navigation' },
+  { title: 'Website Content',    path: '/admin/website-content',   icon: Globe,           category: 'Navigation' },
+  { title: 'Lead Forms',         path: '/admin/lead-forms',        icon: FileInput,       category: 'Navigation' },
+  { title: 'Integrations',       path: '/admin/integrations',      icon: Link,            category: 'Navigation' },
+  { title: 'Analytics',          path: '/admin/analytics',         icon: BarChart3,       category: 'Navigation' },
+  { title: 'Audit Logs',         path: '/admin/audit-logs',        icon: ShieldCheck,     category: 'Navigation' },
+  { title: 'Notifications',      path: '/admin/notifications',     icon: Bell,            category: 'Navigation' },
+  { title: 'Settings',           path: '/admin/settings',          icon: Settings,        category: 'Navigation' },
 ];
 
 export const COMMAND_QUICK_ACTIONS = [
-  { title: 'Trigger AI Emergency Kill Switch', action: 'kill_switch', icon: Zap, category: 'Quick Action', path: '/admin/ai-ops' },
-  { title: 'Export Lead Conversion Report', action: 'export', icon: BarChart3, category: 'Quick Action', path: '/admin/analytics' },
-  { title: 'Add New Dental Clinic Branch', action: 'add_clinic', icon: Building2, category: 'Quick Action', path: '/admin/clinics' },
-  { title: 'Create Super Admin User', action: 'add_user', icon: UserCheck, category: 'Quick Action', path: '/admin/users' },
+  { title: 'Trigger AI Emergency Kill Switch', action: 'kill_switch', icon: Zap,       category: 'Quick Action', path: '/admin/ai-ops' },
+  { title: 'Export Lead Conversion Report',    action: 'export',      icon: BarChart3, category: 'Quick Action', path: '/admin/analytics' },
+  { title: 'Add New Dental Clinic Branch',     action: 'add_clinic',  icon: Building2, category: 'Quick Action', path: '/admin/clinics' },
+  { title: 'Create Super Admin User',          action: 'add_user',    icon: UserCheck, category: 'Quick Action', path: '/admin/users' },
 ];
 
-// Route Name Mapping Constant Data
+// ─────────────────────────────────────────────────────────────
+// Route Name Map
+// ─────────────────────────────────────────────────────────────
 export const ROUTE_NAME_MAP = {
-  admin: 'Super Admin',
-  dashboard: 'Dashboard Overview',
-  analytics: 'Analytics & Performance',
-  pipeline: 'Lead Pipeline (CRM)',
-  clinics: 'Clinic Management',
-  users: 'User & Access Control',
-  'ai-ops': 'AI Operations & Monitoring',
-  revenue: 'Revenue & Financials',
-  'audit-logs': 'Audit Logs & Compliance',
-  settings: 'Settings & Integrations',
+  admin:               'Dashboard',
+  dashboard:           'Dashboard Overview',
+  leads:               'Leads',
+  appointments:        'Appointments',
+  patients:            'Patients',
+  calls:               'Calls',
+  tasks:               'Tasks',
+  revenue:             'Revenue',
+  payments:            'Payments',
+  reports:             'Reports',
+  clinics:             'Clinic Management',
+  users:               'Users',
+  'treatments-config': 'Treatments Configuration',
+  'lead-sources':      'Lead Sources',
+  'lead-statuses':     'Lead Statuses',
+  'ai-copilot':        'AI Copilot',
+  'ai-runs':           'AI Runs',
+  'ai-automations':    'AI Automations',
+  'ai-ops':            'AI Operations',
+  'website-content':   'Website Content',
+  'lead-forms':        'Lead Forms',
+  integrations:        'Integrations',
+  analytics:           'Analytics Suite',
+  'audit-logs':        'Audit Logs',
+  notifications:       'Notifications',
+  settings:            'System Settings',
+  'org-settings':      'Organization Settings',
+  profile:             'My Profile',
 };

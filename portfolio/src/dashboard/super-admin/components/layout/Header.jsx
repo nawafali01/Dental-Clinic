@@ -2,17 +2,21 @@ import React from 'react';
 import { useAdmin } from '@/dashboard/super-admin/context/AdminContext';
 import { useRole } from '@/dashboard/shared/context/RoleContext';
 import { useOrg } from '@/dashboard/shared/context/OrgContext';
+import { useClinic } from '@/context/ClinicContext';
 import { Breadcrumbs } from './Breadcrumbs';
 import { RecentItems } from './RecentItems';
-import { RoleSwitcher } from './RoleSwitcher';
 import { UserMenu } from './UserMenu';
 import { OrgSwitcher } from './OrgSwitcher';
-import { Menu, Search, Bell } from 'lucide-react';
+import { ClinicSwitcher } from '@/components/ClinicSwitcher';
+import { Menu, Search, Bell, Building2 } from 'lucide-react';
 
 export const Header = () => {
   const { isSidebarCollapsed, toggleMobileSidebar, setIsCommandPaletteOpen, setIsNotificationsOpen } = useAdmin();
-  const { userRole } = useRole();
+  const { userRole, currentRole } = useRole();
   const { currentOrg } = useOrg();
+  const { selectedClinic, canSwitch } = useClinic();
+
+  const isMultiAdmin = userRole === 'super_admin' || userRole === 'org_admin';
 
   return (
     <header
@@ -37,22 +41,31 @@ export const Header = () => {
         <RecentItems />
       </div>
 
-      {/* Right Section: Command Palette Trigger + Notifications + Role Switcher + User Menu */}
+      {/* Right Section: Role Badge + Scope Indicator / Switchers + Command Palette Trigger + Notifications + User Menu */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {userRole === 'super_admin' ? (
-          <OrgSwitcher />
+        {/* Dynamic Role Badge */}
+        <span
+          className={`hidden md:inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-bold border ${
+            currentRole?.badgeColor || 'bg-slate-100 text-slate-700 border-slate-200'
+          }`}
+        >
+          {currentRole?.label || 'Dashboard'}
+        </span>
+
+        {/* Multi-Clinic Branch Switcher (Interactive dropdown for super_admin and org_admin only) */}
+        {isMultiAdmin ? (
+          <>
+            <ClinicSwitcher />
+            {userRole === 'super_admin' && <OrgSwitcher />}
+          </>
         ) : (
+          /* Read-Only Clinic Badge for non-admin roles (clinic_manager, agent, receptionist, finance, auditor) */
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold">
-            {currentOrg.isGlobal ? (
-               <div className="w-5 h-5 rounded-md flex items-center justify-center bg-purple-100 text-purple-600">
-                 <span className="text-[10px]">🌐</span>
-               </div>
-            ) : (
-              <div className={`w-5 h-5 rounded-md bg-gradient-to-tr ${currentOrg.logoColor} text-white flex items-center justify-center font-bold text-[9px]`}>
-                {currentOrg.logoText}
-              </div>
-            )}
-            <span className="text-slate-800">{currentOrg.name}</span>
+            <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span className="text-slate-500 font-medium">Clinic:</span>
+            <span className="text-slate-900 font-bold truncate max-w-[170px]">
+              {selectedClinic?.name || 'Downtown Dental Excellence'}
+            </span>
           </div>
         )}
 
@@ -77,9 +90,6 @@ export const Header = () => {
           <Bell className="w-4 h-4" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary ring-2 ring-white animate-pulse" />
         </button>
-
-        {/* Role Switcher */}
-        <RoleSwitcher />
 
         {/* User Profile Menu */}
         <UserMenu />
