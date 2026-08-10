@@ -1,10 +1,10 @@
 import React from 'react';
-import { Users, PhoneCall, TrendingUp, Clock, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useClinic } from '@/context/ClinicContext';
 import { storageService } from '@/services/storage.service';
 import { scopeData } from '@/utils/scopeData';
-import { LEAD_STATUS_STYLES } from '../../constants/dashboardWidgetConstants';
+import { LEAD_STATUS_STYLES, LEADS_KPI_CONFIG } from '../../constants/dashboardWidgetConstants';
 
 const LeadsWidget = () => {
   const { currentUser } = useAuth();
@@ -13,17 +13,14 @@ const LeadsWidget = () => {
   const rawLeads = storageService.get(storageService.KEYS.LEADS) || [];
   const leads = scopeData({ resource: 'leads', data: rawLeads, currentUser, selectedClinicId });
 
-  const total = leads.length;
-  const hotCount = leads.filter(l => l.priority === 'high').length;
+  const total          = leads.length;
+  const hotCount       = leads.filter(l => l.priority === 'high').length;
   const contactedCount = leads.filter(l => l.status === 'contacted').length;
-  const pendingCount = leads.filter(l => l.status === 'new' || l.status === 'qualified').length;
+  const pendingCount   = leads.filter(l => l.status === 'new' || l.status === 'qualified').length;
 
-  const kpis = [
-    { label: 'Total',     value: total,          icon: Users,      color: 'bg-blue-500/10   text-blue-600'   },
-    { label: 'Hot',       value: hotCount,       icon: TrendingUp,  color: 'bg-rose-500/10   text-rose-600'   },
-    { label: 'Contacted', value: contactedCount, icon: PhoneCall,   color: 'bg-amber-500/10  text-amber-600'  },
-    { label: 'Pending',   value: pendingCount,   icon: Clock,       color: 'bg-slate-500/10  text-slate-600'  },
-  ];
+  const kpiValues = { total, hot: hotCount, contacted: contactedCount, pending: pendingCount };
+
+  const kpis = LEADS_KPI_CONFIG.map((k) => ({ ...k, value: kpiValues[k.key] ?? 0 }));
 
   return (
     <section className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">

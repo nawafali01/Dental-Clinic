@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAdmin } from '@/dashboard/super-admin/context/AdminContext';
+import { useAdmin } from '@/dashboard/shared/context/AdminContext';
 import { useRole } from '@/dashboard/shared/context/RoleContext';
 import { useOrg } from '@/dashboard/shared/context/OrgContext';
 import { useClinic } from '@/context/ClinicContext';

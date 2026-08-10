@@ -1,7 +1,7 @@
 import React from 'react';
-import { Building2, TrendingUp, Users, Activity } from 'lucide-react';
 import { getUserResourceAccess } from '../../utils/hasPermission';
 import { getScopeLabel } from '../../utils/dashboardUtils';
+import { OVERVIEW_STATS_CONFIG } from '../../constants/dashboardWidgetConstants';
 
 /**
  * OverviewWidget
@@ -12,12 +12,12 @@ const OverviewWidget = () => {
   const accessLevel = getUserResourceAccess('organizations');
   const scopeLabel  = getScopeLabel('organizations', accessLevel) || 'Overview';
 
-  const stats = [
-    { label: 'Active Organizations', value: accessLevel === 'all' ? '12' : '1',  icon: Building2, color: 'bg-violet-500/10 text-violet-600' },
-    { label: 'Total Clinics',        value: accessLevel === 'all' ? '48' : '6',  icon: Activity,  color: 'bg-blue-500/10   text-blue-600'   },
-    { label: 'Platform Users',       value: accessLevel === 'all' ? '234' : '32', icon: Users,     color: 'bg-emerald-500/10 text-emerald-600' },
-    { label: 'System Health',        value: '99.8%',                              icon: TrendingUp, color: 'bg-amber-500/10  text-amber-600'  },
-  ];
+  const stats = OVERVIEW_STATS_CONFIG.map((s) => ({
+    label: s.label,
+    icon:  s.icon,
+    color: s.color,
+    value: accessLevel === 'all' ? s.allValue : s.scopedValue,
+  }));
 
   return (
     <section className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">

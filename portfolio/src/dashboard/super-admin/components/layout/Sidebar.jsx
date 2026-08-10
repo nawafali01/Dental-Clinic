@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { useAdmin } from '@/dashboard/super-admin/context/AdminContext';
+import { useAdmin } from '@/dashboard/shared/context/AdminContext';
 import { useRole } from '@/dashboard/shared/context/RoleContext';
 import { NAVIGATION_MAP } from '@/dashboard/shared/constants/adminConstants';
 import { DentalAiLogoSvg } from '@/assets/svg/DentalAiLogoSvg';

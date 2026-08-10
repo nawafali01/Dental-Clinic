@@ -8,7 +8,7 @@ import { KpiCard } from '@/dashboard/shared/components/ui/KpiCard';
 import { Card } from '@/dashboard/shared/components/ui/Card';
 import { Button } from '@/dashboard/shared/components/ui/Button';
 import { Badge } from '@/dashboard/shared/components/ui/Badge';
-import { useAdmin } from '@/dashboard/super-admin/context/AdminContext';
+import { useAdmin } from '@/dashboard/shared/context/AdminContext';
 import { useRole } from '@/dashboard/shared/context/RoleContext';
 import { useOrg } from '@/dashboard/shared/context/OrgContext';
 import {

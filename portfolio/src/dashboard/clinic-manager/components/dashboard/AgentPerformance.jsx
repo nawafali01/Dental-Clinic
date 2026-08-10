@@ -1,15 +1,12 @@
 import React from 'react';
 import { Card } from '@/dashboard/shared/components/ui/Card';
-import { managerAiPerformance } from '../../mock-data/managerMockData';
-import { Phone, Clock, ArrowUpRight, CheckCircle2 } from 'lucide-react';
+import { managerAiPerformance, agentPerformanceMetricsConfig } from '../../mock-data/managerMockData';
 
 export const AgentPerformance = () => {
-  const metrics = [
-    { label: 'Outbound Calls', value: managerAiPerformance.callsHandled, icon: Phone, desc: 'Handled by local AI today' },
-    { label: 'Avg Handle Time', value: managerAiPerformance.avgHandleTime, icon: Clock, desc: 'AI response latency & talk time' },
-    { label: 'Human Escalation', value: managerAiPerformance.humanEscalationRate, icon: ArrowUpRight, desc: 'Transferred to desk staff' },
-    { label: 'Bookings Secured', value: managerAiPerformance.appointmentsSecured, icon: CheckCircle2, desc: 'Appointments auto-booked' }
-  ];
+  const metrics = agentPerformanceMetricsConfig.map((item) => ({
+    ...item,
+    value: managerAiPerformance[item.key] ?? '',
+  }));
 
   return (
     <Card 

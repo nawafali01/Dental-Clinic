@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAdmin } from '@/dashboard/super-admin/context/AdminContext';
+import { useAdmin } from '@/dashboard/shared/context/AdminContext';
 import { Clock, ChevronDown, ExternalLink } from 'lucide-react';
 
 export const RecentItems = () => {

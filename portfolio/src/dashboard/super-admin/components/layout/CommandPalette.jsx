@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAdmin } from '@/dashboard/super-admin/context/AdminContext';
+import { useAdmin } from '@/dashboard/shared/context/AdminContext';
 import { COMMAND_NAVIGATION_ITEMS, COMMAND_QUICK_ACTIONS } from '@/dashboard/shared/constants/adminConstants';
 import { Search, X, ArrowRight } from 'lucide-react';
 

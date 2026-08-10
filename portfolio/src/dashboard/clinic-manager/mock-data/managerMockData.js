@@ -5,7 +5,17 @@ import {
   CheckCircle, 
   DollarSign,
   Activity,
-  AlertTriangle
+  AlertTriangle,
+  MessageSquare,
+  Calendar,
+  UserCheck,
+  FileText,
+  CreditCard,
+  Stethoscope,
+  Phone,
+  Clock,
+  ArrowUpRight,
+  CheckCircle2
 } from 'lucide-react';
 
 export const managerKpis = [
@@ -92,6 +102,13 @@ export const managerAiPerformance = {
   appointmentsSecured: 12
 };
 
+export const agentPerformanceMetricsConfig = [
+  { key: 'callsHandled', label: 'Outbound Calls', icon: Phone, desc: 'Handled by local AI today' },
+  { key: 'avgHandleTime', label: 'Avg Handle Time', icon: Clock, desc: 'AI response latency & talk time' },
+  { key: 'humanEscalationRate', label: 'Human Escalation', icon: ArrowUpRight, desc: 'Transferred to desk staff' },
+  { key: 'appointmentsSecured', label: 'Bookings Secured', icon: CheckCircle2, desc: 'Appointments auto-booked' },
+];
+
 export const managerFinancials = {
   dailyTarget: 10000,
   currentCollected: 8450,
@@ -99,3 +116,23 @@ export const managerFinancials = {
   insurancePending: 2300,
   patientPending: 850
 };
+
+export const clinicLeadWorkspaceFunnel = [
+  { stage: 'New Ingested', count: 42, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+  { stage: 'AI Outreach', count: 28, icon: MessageSquare, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+  { stage: 'Appt Scheduled', count: 18, icon: Calendar, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  { stage: 'Consultation Complete', count: 12, icon: UserCheck, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+];
+
+export const clinicLeadWorkspaceGoal = {
+  currentPct: 72,
+  targetPct: 80,
+  progressWidth: '90%',
+};
+
+export const checkInShortcutsList = [
+  { title: 'Patient Check-in', icon: UserCheck, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+  { title: 'Intake Forms', icon: FileText, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+  { title: 'Collect Co-pay', icon: CreditCard, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  { title: 'Start Exam', icon: Stethoscope, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+];
