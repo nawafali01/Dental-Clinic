@@ -1,6 +1,8 @@
 // Organization Admin Exclusive Routes
 // Currently only one OA-exclusive page: Organization Settings.
-// All other Org Admin pages are shared via shared.routes.jsx.
+// All other Org Admin pages are shared via sharedRoutes.jsx.
+
+import { orgSettingsSections } from "@/data/routesData";
 
 const Badge = ({ children, color = "blue" }) => {
   const colors = { blue: "bg-blue-100 text-blue-700", green: "bg-emerald-100 text-emerald-700", amber: "bg-amber-100 text-amber-700", red: "bg-red-100 text-red-700", slate: "bg-slate-100 text-slate-600" };
@@ -21,14 +23,7 @@ const OrgSettingsView = () => (
       <p className="text-sm text-slate-500 mt-0.5">Manage your organization's preferences and configuration</p>
     </div>
     <div className="grid grid-cols-3 gap-4">
-      {[
-        { section: "Organization Profile", items: ["Organization Name", "Logo", "Business Type", "Registration Number"], color: "blue" },
-        { section: "Clinics",              items: ["Active Clinics", "Clinic Limit", "Shared Resources", "Inter-clinic Access"], color: "green" },
-        { section: "Branding",             items: ["Primary Color", "Secondary Color", "Font Style", "Email Footer"], color: "purple" },
-        { section: "Notifications",        items: ["Alert Preferences", "Digest Emails", "Mobile Push", "Escalation Rules"], color: "amber" },
-        { section: "Team Access",          items: ["Invite Policy", "Default Role", "Auto-assign Leads", "Access Expiry"], color: "slate" },
-        { section: "Data & Privacy",       items: ["Data Retention", "Export Data", "Delete Account", "GDPR Compliance"], color: "red" },
-      ].map((s, i) => (
+      {orgSettingsSections.map((s, i) => (
         <div key={i} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-slate-900">{s.section}</h3>

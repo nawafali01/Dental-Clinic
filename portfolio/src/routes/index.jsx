@@ -4,10 +4,10 @@ import { PublicLayout } from "@/layouts/PublicLayout";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { AuthGuard } from "@/components/guards/AuthGuard";
 import { UnifiedDashboardLayout } from "@/dashboard/UnifiedDashboardLayout";
-import { superAdminRoutes } from "./super-admin.routes";
-import { sharedRoutes } from "./shared.routes";
-import { orgAdminRoutes } from "./org-admin.routes";
-import { clinicManagerRoutes } from "./clinic-manager.routes";
+import { superAdminRoutes } from "./superAdminRoutes";
+import { sharedRoutes } from "./sharedRoutes";
+import { orgAdminRoutes } from "./orgAdminRoutes";
+import { clinicManagerRoutes } from "./clinicManagerRoutes";
 
 // --- Lazy Loads ---
 const Home = lazy(() => import("@/pages/Home"));

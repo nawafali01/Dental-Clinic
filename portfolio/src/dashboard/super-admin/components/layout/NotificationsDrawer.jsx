@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAdmin } from '@/dashboard/super-admin/context/AdminContext';
+import { useAdmin } from '@/dashboard/shared/context/AdminContext';
 import { X, Bell, AlertTriangle, CheckCircle2, Info, Bot, UserPlus } from 'lucide-react';
 
 const mockNotifications = [

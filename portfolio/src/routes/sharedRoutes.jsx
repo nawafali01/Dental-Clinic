@@ -6,6 +6,21 @@ import { useAuth } from "@/context/AuthContext";
 import { useClinic } from "@/context/ClinicContext";
 import { storageService } from "@/services/storage.service";
 import { scopeData } from "@/utils/scopeData";
+import {
+  reportsList,
+  notificationsList,
+  aiCopilotInitialMessages,
+  treatmentsConfigRows,
+  leadSourcesRows,
+  leadStatusesRows,
+  aiRunsRows,
+  aiAutomationsRows,
+  websitePagesList,
+  leadFormsRows,
+  integrationsList,
+  patientCheckInRows,
+  rescheduleRequestsRows,
+} from "@/data/routesData";
 
 const UnifiedDashboard = lazy(() => import("@/dashboard/UnifiedDashboard"));
 
@@ -329,14 +344,6 @@ const PaymentsView = () => {
 const ReportsView = () => {
   const { currentUser } = useAuth();
   const { selectedClinicId } = useClinic();
-  const reportsList = [
-    { title: "Lead Conversion Report",  desc: "Track leads from source to conversion",  color: "blue",   tag: "CRM" },
-    { title: "Monthly Revenue Report",  desc: "Revenue breakdown by clinic and month",  color: "green",  tag: "Finance" },
-    { title: "Appointment Summary",     desc: "Appointment trends and no-show rates",   color: "purple", tag: "Operations" },
-    { title: "Patient Growth Report",   desc: "New vs returning patient trends",        color: "amber",  tag: "Patients" },
-    { title: "AI Performance Report",   desc: "AI automation results and efficiency",   color: "cyan",   tag: "AI" },
-    { title: "Staff Activity Report",   desc: "Task completion and team performance",   color: "slate",  tag: "Staff" },
-  ];
   const reports = scopeData({ resource: 'reports', data: reportsList, currentUser, selectedClinicId });
 
   return (
@@ -404,14 +411,7 @@ const NotificationsView = () => (
   <div className="space-y-6">
     <PageHeader title="Notifications" description="System and activity notifications" />
     <div className="space-y-3">
-      {[
-        { title: "New lead assigned",              desc: "Ahmed Al-Rashidi was assigned to you from Google Ads",    time: "5 minutes ago",  dot: "bg-blue-500" },
-        { title: "Appointment confirmed",          desc: "Sara Johnson confirmed her appointment for Aug 3, 10:30 AM",time: "20 minutes ago", dot: "bg-green-500" },
-        { title: "Payment received",               desc: "Khalid Mansour paid $1,500 via Bank Transfer",           time: "1 hour ago",      dot: "bg-emerald-500" },
-        { title: "AI automation completed",        desc: "Lead nurturing sequence ran for 12 leads successfully",  time: "2 hours ago",     dot: "bg-purple-500" },
-        { title: "Missed call follow-up needed",   desc: "3 calls were missed this morning and need follow-up",    time: "3 hours ago",     dot: "bg-amber-500" },
-        { title: "Monthly report generated",       desc: "July 2026 revenue report is ready to download",         time: "1 day ago",       dot: "bg-slate-400" },
-      ].map((n, i) => (
+      {notificationsList.map((n, i) => (
         <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 flex items-start gap-3 hover:bg-slate-50 transition-colors">
           <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.dot}`} />
           <div className="flex-1 min-w-0">
@@ -432,13 +432,7 @@ const AiCopilotView = () => (
     <PageHeader title="AI Copilot" description="Your intelligent assistant for clinic operations" />
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col" style={{ height: '500px' }}>
       <div className="flex-1 p-6 space-y-4 overflow-y-auto bg-slate-50">
-        {[
-          { role: "ai",   text: "Hello! I'm your AI Copilot. I can help you analyze leads, draft follow-up messages, summarize reports, and much more. What would you like to do today?" },
-          { role: "user", text: "How many leads came in this week?" },
-          { role: "ai",   text: "This week you received 47 new leads. Google Ads contributed the most with 18 leads (38%), followed by Instagram with 14 leads (30%), and referrals with 9 leads (19%). Your best performing day was Wednesday with 12 new leads." },
-          { role: "user", text: "Which leads need follow-up today?" },
-          { role: "ai",   text: "You have 8 leads that need follow-up today. The highest priority is Ahmed Al-Rashidi who was qualified 3 days ago with no contact, followed by 3 leads from last week's Google Ads campaign that haven't been called yet. Would you like me to draft follow-up messages for them?" },
-        ].map((msg, i) => (
+        {aiCopilotInitialMessages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm ${msg.role === 'user' ? 'bg-primary text-white rounded-br-md' : 'bg-white border border-slate-200 text-slate-800 rounded-bl-md'}`}>
               {msg.text}
@@ -468,14 +462,13 @@ const TreatmentsConfigView = () => (
     <PageHeader title="Treatments Configuration" description="Manage available dental treatments and pricing" action="+ Add Treatment" />
     <Table
       headers={["Treatment", "Category", "Duration", "Base Price", "Status"]}
-      rows={[
-        ["Teeth Cleaning",     "Preventive",  "45 min",  "$80",    <Badge color="green">Active</Badge>],
-        ["Root Canal",         "Restorative", "90 min",  "$650",   <Badge color="green">Active</Badge>],
-        ["Teeth Whitening",    "Cosmetic",    "60 min",  "$250",   <Badge color="green">Active</Badge>],
-        ["Dental Implant",     "Surgical",    "120 min", "$1,500", <Badge color="green">Active</Badge>],
-        ["Orthodontic Consult","Orthodontic", "30 min",  "$100",   <Badge color="green">Active</Badge>],
-        ["Tooth Extraction",   "Surgical",    "30 min",  "$150",   <Badge color="amber">Review</Badge>],
-      ]}
+      rows={treatmentsConfigRows.map((t) => [
+        t.treatment,
+        t.category,
+        t.duration,
+        t.price,
+        <Badge color={t.color}>{t.status}</Badge>,
+      ])}
     />
     <DevBanner text="Full Treatments Configuration is under development" />
   </div>
@@ -493,14 +486,13 @@ const LeadSourcesView = () => (
     </div>
     <Table
       headers={["Source Name", "Type", "Leads This Month", "Conv. Rate", "Status"]}
-      rows={[
-        ["Google Ads",     "Paid",    "108", "8.3%", <Badge color="green">Active</Badge>],
-        ["Instagram",      "Social",  "79",  "5.1%", <Badge color="green">Active</Badge>],
-        ["Website",        "Organic", "52",  "7.7%", <Badge color="green">Active</Badge>],
-        ["WhatsApp",       "Direct",  "28",  "9.2%", <Badge color="green">Active</Badge>],
-        ["Referral",       "Referral","17",  "11.8%",<Badge color="green">Active</Badge>],
-        ["TV Advertisement","Offline","0",   "0%",   <Badge color="amber">Paused</Badge>],
-      ]}
+      rows={leadSourcesRows.map((s) => [
+        s.source,
+        s.type,
+        s.leads,
+        s.rate,
+        <Badge color={s.color}>{s.status}</Badge>,
+      ])}
     />
     <DevBanner text="Full Lead Sources Configuration is under development" />
   </div>
@@ -512,14 +504,13 @@ const LeadStatusesView = () => (
     <PageHeader title="Lead Statuses Configuration" description="Define and manage lead pipeline stages" action="+ Add Status" />
     <Table
       headers={["Status Name", "Color", "Order", "Leads Count", "Actions"]}
-      rows={[
-        ["New",        <Badge color="blue">Blue</Badge>,    "1", "156", "Edit / Delete"],
-        ["Contacted",  <Badge color="amber">Amber</Badge>,  "2", "89",  "Edit / Delete"],
-        ["Qualified",  <Badge color="purple">Purple</Badge>,"3", "67",  "Edit / Delete"],
-        ["Proposal",   <Badge color="blue">Cyan</Badge>,    "4", "34",  "Edit / Delete"],
-        ["Converted",  <Badge color="green">Green</Badge>,  "5", "89",  "Edit / Delete"],
-        ["Lost",       <Badge color="red">Red</Badge>,      "6", "49",  "Edit / Delete"],
-      ]}
+      rows={leadStatusesRows.map((s) => [
+        s.name,
+        <Badge color={s.color}>{s.color.charAt(0).toUpperCase() + s.color.slice(1)}</Badge>,
+        s.order,
+        s.leads,
+        s.actions,
+      ])}
     />
     <DevBanner text="Full Lead Statuses Configuration is under development" />
   </div>
@@ -537,13 +528,14 @@ const AiRunsView = () => (
     </div>
     <Table
       headers={["Run ID", "Automation", "Trigger", "Duration", "Status", "Time"]}
-      rows={[
-        ["RUN-4829", "Lead Welcome Message",   "New Lead Created",  "0.8s",  <Badge color="green">Success</Badge>, "Aug 3 — 12:05 PM"],
-        ["RUN-4828", "Appointment Reminder",   "24h Before Appt",   "1.1s",  <Badge color="green">Success</Badge>, "Aug 3 — 11:00 AM"],
-        ["RUN-4827", "Follow-up Sequence",     "Lead Inactive 3d",  "2.3s",  <Badge color="amber">Warning</Badge>, "Aug 3 — 10:30 AM"],
-        ["RUN-4826", "Payment Confirmation",   "Payment Received",  "0.5s",  <Badge color="green">Success</Badge>, "Aug 3 — 10:00 AM"],
-        ["RUN-4825", "Lead Score Update",      "Scheduled Daily",   "5.1s",  <Badge color="red">Failed</Badge>,    "Aug 3 — 09:00 AM"],
-      ]}
+      rows={aiRunsRows.map((r) => [
+        r.id,
+        r.automation,
+        r.trigger,
+        r.duration,
+        <Badge color={r.color}>{r.status}</Badge>,
+        r.timestamp,
+      ])}
     />
     <DevBanner text="Full AI Runs monitoring is under development" />
   </div>
@@ -561,13 +553,13 @@ const AiAutomationsView = () => (
     </div>
     <Table
       headers={["Automation Name", "Trigger", "Actions", "Runs Today", "Status"]}
-      rows={[
-        ["New Lead Welcome",        "Lead Created",       "Send WhatsApp + Email",    "18", <Badge color="green">Active</Badge>],
-        ["Appointment Reminder",    "24h Before Appt",    "Send SMS + Email",         "12", <Badge color="green">Active</Badge>],
-        ["Follow-up Sequence",      "No Contact 3 Days",  "Send Email → Call Task",   "8",  <Badge color="green">Active</Badge>],
-        ["Payment Receipt",         "Payment Confirmed",  "Send Email + Receipt PDF", "9",  <Badge color="green">Active</Badge>],
-        ["Lost Lead Re-engagement", "Lead Marked Lost",   "Wait 7d → Send Offer",    "0",  <Badge color="amber">Paused</Badge>],
-      ]}
+      rows={aiAutomationsRows.map((a) => [
+        a.name,
+        a.trigger,
+        a.actions,
+        a.runsToday,
+        <Badge color={a.color}>{a.status}</Badge>,
+      ])}
     />
     <DevBanner text="Full AI Automations builder is under development" />
   </div>
@@ -578,14 +570,7 @@ const WebsiteContentView = () => (
   <div className="space-y-6">
     <PageHeader title="Website Content" description="Manage your clinic website content and pages" action="+ New Page" />
     <div className="grid grid-cols-3 gap-4">
-      {[
-        { title: "Homepage",       desc: "Hero, services, testimonials",  status: "Published", tag: "Main" },
-        { title: "Services",       desc: "All dental services listing",    status: "Published", tag: "Services" },
-        { title: "Doctors",        desc: "Doctor profiles and specialties",status: "Published", tag: "Team" },
-        { title: "Book Appointment",desc: "Online booking form & calendar",status: "Published", tag: "Booking" },
-        { title: "Blog",           desc: "Dental health articles",         status: "Draft",     tag: "Content" },
-        { title: "Contact",        desc: "Contact form and clinic locations",status:"Published", tag: "Contact" },
-      ].map((p, i) => (
+      {websitePagesList.map((p, i) => (
         <div key={i} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-2 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <Badge color="slate">{p.tag}</Badge>
@@ -606,13 +591,13 @@ const LeadFormsView = () => (
     <PageHeader title="Lead Forms" description="Create and manage lead capture forms" action="+ New Form" />
     <Table
       headers={["Form Name", "Source", "Leads Captured", "Conv. Rate", "Status"]}
-      rows={[
-        ["Google Ads Landing Page Form", "Google Ads", "108", "8.3%",  <Badge color="green">Active</Badge>],
-        ["Instagram Campaign Form",      "Instagram",  "79",  "5.1%",  <Badge color="green">Active</Badge>],
-        ["Website Contact Form",         "Organic",    "52",  "7.7%",  <Badge color="green">Active</Badge>],
-        ["WhatsApp Opt-in Form",         "WhatsApp",   "28",  "9.2%",  <Badge color="green">Active</Badge>],
-        ["Ramadan Offer Form",           "Seasonal",   "12",  "12.5%", <Badge color="amber">Paused</Badge>],
-      ]}
+      rows={leadFormsRows.map((f) => [
+        f.name,
+        f.source,
+        f.leads,
+        f.rate,
+        <Badge color={f.color}>{f.status}</Badge>,
+      ])}
     />
     <DevBanner text="Full Lead Forms builder is under development" />
   </div>
@@ -623,17 +608,7 @@ const IntegrationsView = () => (
   <div className="space-y-6">
     <PageHeader title="Integrations" description="Connect your tools and third-party services" action="+ Add Integration" />
     <div className="grid grid-cols-3 gap-4">
-      {[
-        { name: "WhatsApp Business", category: "Messaging",  status: "Connected",     color: "green" },
-        { name: "Google Ads",        category: "Marketing",  status: "Connected",     color: "green" },
-        { name: "Twilio (SMS/Calls)",category: "Telephony",  status: "Connected",     color: "green" },
-        { name: "Stripe",            category: "Payments",   status: "Connected",     color: "green" },
-        { name: "Google Calendar",   category: "Scheduling", status: "Not Connected", color: "slate" },
-        { name: "Mailchimp",         category: "Email",      status: "Not Connected", color: "slate" },
-        { name: "Zapier",            category: "Automation", status: "Not Connected", color: "slate" },
-        { name: "HubSpot CRM",       category: "CRM",        status: "Coming Soon",   color: "amber" },
-        { name: "Salesforce",        category: "CRM",        status: "Coming Soon",   color: "amber" },
-      ].map((integration, i) => (
+      {integrationsList.map((integration, i) => (
         <div key={i} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-2">
           <div className="flex items-center justify-between">
             <Badge color="slate">{integration.category}</Badge>
@@ -659,12 +634,13 @@ const PatientCheckInView = () => (
     </div>
     <Table
       headers={["Patient Name", "Doctor", "Arrival Time", "Status", "Action"]}
-      rows={[
-        ["Ahmed Al-Rashidi", "Dr. Aisha Khan", "08:50 AM", <Badge color="green">In Treatment</Badge>, "Check Out"],
-        ["Sara Johnson", "Dr. Omar Hassan", "09:15 AM", <Badge color="amber">Waiting</Badge>, "Call Patient"],
-        ["Mohammed Hassan", "Dr. Aisha Khan", "09:30 AM", <Badge color="amber">Waiting</Badge>, "Call Patient"],
-        ["Fatima Al-Zaidi", "Dr. Khalid Nasser", "09:45 AM", <Badge color="blue">Checked In</Badge>, "Start Treatment"],
-      ]}
+      rows={patientCheckInRows.map((p) => [
+        p.name,
+        p.doctor,
+        p.arrivalTime,
+        <Badge color={p.color}>{p.status}</Badge>,
+        p.actionText,
+      ])}
     />
     <DevBanner text="Full Patient Check-In & Queue Management is under development" />
   </div>
@@ -676,10 +652,13 @@ const RescheduleView = () => (
     <PageHeader title="Reschedule Appointments" description="Quickly reschedule patient appointments" />
     <Table
       headers={["Patient Name", "Original Slot", "Requested Slot", "Reason", "Status"]}
-      rows={[
-        ["Sara Johnson", "Aug 3 — 10:30 AM", "Aug 5 — 02:00 PM", "Work Conflict", <Badge color="amber">Pending</Badge>],
-        ["Khalid Mansour", "Aug 4 — 11:00 AM", "Aug 6 — 10:00 AM", "Doctor Request", <Badge color="blue">Processing</Badge>],
-      ]}
+      rows={rescheduleRequestsRows.map((r) => [
+        r.patientName,
+        r.originalSlot,
+        r.requestedSlot,
+        r.reason,
+        <Badge color={r.color}>{r.status}</Badge>,
+      ])}
     />
     <DevBanner text="Quick Reschedule module is under development" />
   </div>

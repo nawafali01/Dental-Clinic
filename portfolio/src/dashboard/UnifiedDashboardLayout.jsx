@@ -4,7 +4,7 @@ import { Sidebar } from './super-admin/components/layout/Sidebar'; // Using this
 import { Header } from './super-admin/components/layout/Header'; // Using this as the unified header
 import { CommandPalette } from './super-admin/components/layout/CommandPalette';
 import { NotificationsDrawer } from './super-admin/components/layout/NotificationsDrawer';
-import { AdminProvider, useAdmin } from './super-admin/context/AdminContext'; // We'll adapt this for the unified layout state (like collapsed sidebar)
+import { AdminProvider, useAdmin } from './shared/context/AdminContext'; // We'll adapt this for the unified layout state (like collapsed sidebar)
 import { RoleProvider } from './shared/context/RoleContext';
 import { OrgProvider } from './shared/context/OrgContext';
 import { ClinicProvider } from '@/context/ClinicContext';

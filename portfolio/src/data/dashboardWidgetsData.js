@@ -10,7 +10,13 @@ import {
   Settings,
   User,
   AlertTriangle,
-  ShieldCheck
+  ShieldCheck,
+  Building2,
+  TrendingUp,
+  Users,
+  Activity,
+  PhoneCall,
+  Clock
 } from 'lucide-react';
 
 // --- Leads Widget Data ---
@@ -30,6 +36,22 @@ export const LEAD_STATUS_STYLES = {
   converted: 'bg-emerald-100 text-emerald-700',
   lost:      'bg-red-100    text-red-700',
 };
+
+// --- Overview Widget Config ---
+export const OVERVIEW_STATS_CONFIG = [
+  { key: 'orgs',    label: 'Active Organizations', icon: Building2,  color: 'bg-violet-500/10  text-violet-600',  allValue: '12',    scopedValue: '1'     },
+  { key: 'clinics', label: 'Total Clinics',        icon: Activity,   color: 'bg-blue-500/10    text-blue-600',    allValue: '48',    scopedValue: '6'     },
+  { key: 'users',   label: 'Platform Users',       icon: Users,      color: 'bg-emerald-500/10 text-emerald-600', allValue: '234',   scopedValue: '32'    },
+  { key: 'health',  label: 'System Health',        icon: TrendingUp, color: 'bg-amber-500/10   text-amber-600',   allValue: '99.8%', scopedValue: '99.8%' },
+];
+
+// --- Leads KPI Config ---
+export const LEADS_KPI_CONFIG = [
+  { key: 'total',     label: 'Total',     icon: Users,      color: 'bg-blue-500/10   text-blue-600'  },
+  { key: 'hot',       label: 'Hot',       icon: TrendingUp, color: 'bg-rose-500/10   text-rose-600'  },
+  { key: 'contacted', label: 'Contacted', icon: PhoneCall,  color: 'bg-amber-500/10  text-amber-600' },
+  { key: 'pending',   label: 'Pending',   icon: Clock,      color: 'bg-slate-500/10  text-slate-600' },
+];
 
 // --- Appointments Widget Data ---
 export const MOCK_APPOINTMENTS = [
@@ -93,6 +115,12 @@ export const ALL_REPORTS_LIST = [
   { id: 'r5', title: 'My Activity Report',          period: 'Weekly',    scope: 'personal',status: 'ready'    },
   { id: 'r6', title: 'Personal Revenue Target',     period: 'Monthly',   scope: 'personal',status: 'ready'    },
 ];
+
+export const REPORT_STATUS_STYLES = {
+  ready:      'bg-emerald-100 text-emerald-700',
+  generating: 'bg-amber-100   text-amber-700',
+  failed:     'bg-red-100     text-red-700',
+};
 
 // --- Audit Logs Widget Data ---
 export const MOCK_AUDIT_LOGS = [

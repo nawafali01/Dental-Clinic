@@ -2,12 +2,7 @@ import React from 'react';
 import { FileText, Download, ArrowRight } from 'lucide-react';
 import { getUserResourceAccess } from '../../utils/hasPermission';
 import { getScopeLabel, getVisibleReports } from '../../utils/dashboardUtils';
-
-const STATUS_STYLES = {
-  ready:      'bg-emerald-100 text-emerald-700',
-  generating: 'bg-amber-100   text-amber-700',
-  failed:     'bg-red-100     text-red-700',
-};
+import { REPORT_STATUS_STYLES } from '../../constants/dashboardWidgetConstants';
 
 const ReportsWidget = () => {
   const accessLevel  = getUserResourceAccess('reports');
@@ -40,7 +35,7 @@ const ReportsWidget = () => {
                 <p className="text-[10px] text-slate-500">{report.period}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${STATUS_STYLES[report.status]}`}>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${REPORT_STATUS_STYLES[report.status]}`}>
                   {report.status}
                 </span>
                 {report.status === 'ready' && (
