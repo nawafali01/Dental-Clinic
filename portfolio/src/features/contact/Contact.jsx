@@ -1,17 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Reveal } from "@/shared/ui/Reveal";
-import { MapPin, Phone, Mail, Clock, Send } from "lucide-react";
+import { MapPin, Send } from "lucide-react";
 import { submitAppointment } from "@/services/api/appointment.api";
 import { sendTestEmail } from "@/services/api/emailApi";
 import { toast } from "sonner";
-
-const contactInfo = [
-  { Icon: MapPin, t: "Studio", b: "108 Nordic Ave, Copenhagen" },
-  { Icon: Phone, t: "Phone", b: "+1 (555) 123-4567" },
-  { Icon: Mail, t: "Email", b: "syedhussain@gmail.com" },
-  { Icon: Clock, t: "Hours", b: "Mon–Sat · 8am – 8pm" },
-];
+import { GridMapSVG } from "@/assets/svg/GridMapSVG";
+import { contactInfo, CONTACT_META } from "./contactConstants";
 
 function Field({ label, value, onChange, type = "text", textarea = false }) {
   const filled = value.length > 0 || type === "date";
@@ -62,7 +57,6 @@ export function Contact() {
     setSubmitting(true);
     try {
       await submitAppointment(formData);
-      // Confirmation email send karo
       await sendTestEmail(formData.email, formData.fullName);
       toast.success(
         "Appointment submitted successfully! We've sent a confirmation email."
@@ -92,22 +86,20 @@ export function Contact() {
   return (
     <section id="contact" className="relative py-24 md:py-32">
       <div className="max-w-7xl mx-auto px-5 md:px-8 grid lg:grid-cols-12 gap-10">
-        {/* Left column */}
         <div className="lg:col-span-5">
           <Reveal>
             <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-              Contact
+              {CONTACT_META.sectionLabel}
             </span>
           </Reveal>
           <Reveal delay={0.05}>
             <h2 className="mt-3 font-display text-4xl md:text-5xl font-semibold text-secondary leading-[1.05]">
-              Book a visit, or just say hi.
+              {CONTACT_META.heading}
             </h2>
           </Reveal>
           <Reveal delay={0.1}>
             <p className="mt-5 text-muted-foreground leading-relaxed max-w-md">
-              Prefer talking? Call us. Prefer texting? Aurea AI is on. We reply
-              to every message.
+              {CONTACT_META.subtext}
             </p>
           </Reveal>
 
@@ -133,40 +125,19 @@ export function Contact() {
           <Reveal delay={0.2}>
             <div className="mt-6 rounded-3xl overflow-hidden border border-border relative aspect-[16/10] bg-muted">
               <div className="absolute inset-0 bg-[radial-gradient(600px_300px_at_30%_40%,rgba(31,138,112,0.25),transparent),linear-gradient(180deg,#eef4f6,#dbe6ea)]" />
-              <svg
-                className="absolute inset-0 w-full h-full opacity-40"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <defs>
-                  <pattern
-                    id="grid"
-                    width="32"
-                    height="32"
-                    patternUnits="userSpaceOnUse"
-                  >
-                    <path
-                      d="M32 0H0V32"
-                      fill="none"
-                      stroke="#94a3b8"
-                      strokeWidth="0.5"
-                    />
-                  </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#grid)" />
-              </svg>
+              <GridMapSVG />
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                 <span className="relative grid place-items-center size-12 rounded-full bg-primary text-primary-foreground soft-shadow animate-pulse-ring">
                   <MapPin className="size-5" />
                 </span>
               </div>
               <div className="absolute bottom-3 left-3 glass rounded-full px-3 py-1 text-xs font-medium text-secondary">
-                Aurea Dental · Nordic Ave
+                {CONTACT_META.mapLabel}
               </div>
             </div>
           </Reveal>
         </div>
 
-        {/* Right column — form */}
         <motion.form
           onSubmit={submit}
           initial={{ opacity: 0, y: 20 }}
@@ -175,10 +146,10 @@ export function Contact() {
           className="lg:col-span-7 rounded-[32px] bg-white border border-border soft-shadow p-6 md:p-10 h-fit"
         >
           <p className="font-display text-2xl font-semibold text-secondary">
-            Book your appointment
+            {CONTACT_META.formTitle}
           </p>
           <p className="text-sm text-muted-foreground mt-1">
-            We usually respond within an hour.
+            {CONTACT_META.formSubtext}
           </p>
           <div className="mt-8 grid sm:grid-cols-2 gap-4">
             <Field
@@ -215,8 +186,7 @@ export function Contact() {
           </div>
           <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
             <p className="text-xs text-muted-foreground max-w-xs">
-              By submitting you agree to our privacy terms. We never share your
-              info.
+              {CONTACT_META.privacyNote}
             </p>
             <button
               type="submit"

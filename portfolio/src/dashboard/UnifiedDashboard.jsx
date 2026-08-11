@@ -9,7 +9,7 @@ import DashboardOverviewView from './super-admin/views/DashboardOverviewView';
 
 // Agent view lazy-loaded to avoid bloating other roles' bundles
 const AgentDashboardView = lazy(() =>
-  import('../features/agent/views/AgentDashboardView')
+  import('./agent/AgentDashboardView')
 );
 
 // ── Shared Dashboard Widgets ──────────────────────────────────

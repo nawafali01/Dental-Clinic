@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { motion, useInView, useMotionValue, animate } from "framer-motion";
 import { Reveal, stagger, staggerItem } from "@/shared/ui/Reveal";
 import clinic from "@/assets/images/clinic-interior.jpg";
-import { timeline, coreValues } from "./data";
+import { timeline, coreValues, ABOUT_STATS } from "./data";
 
 function Counter({ to, suffix = "" }) {
   const ref = useRef(null);
@@ -70,11 +70,7 @@ export function About() {
             viewport={{ once: true, amount: 0.3 }}
             className="mt-8 grid grid-cols-3 gap-4"
           >
-            {[
-              { k: "14+", label: "Years of care", n: 14, s: "+" },
-              { k: "42", label: "Specialists", n: 42, s: "" },
-              { k: "12k", label: "Happy patients", n: 12000, s: "" },
-            ].map((s) => (
+            {ABOUT_STATS.map((s) => (
               <motion.div
                 key={s.label}
                 variants={staggerItem}

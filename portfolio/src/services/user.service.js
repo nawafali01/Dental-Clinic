@@ -223,3 +223,13 @@ class UserService {
 }
 
 export const userService = new UserService();
+
+export const getUsers = (...args) => userService.getUsers(...args);
+export const getUserById = (...args) => userService.getUserById(...args);
+export const inviteUser = (...args) => userService.inviteUser(...args);
+export const updateUser = (...args) => userService.updateUser(...args);
+export const updateProfile = (...args) => userService.updateProfile(...args);
+export const disableUser = (...args) => userService.disableUser(...args);
+export const enableUser = (...args) => userService.enableUser(...args);
+export const resendInvite = (...args) => userService.resendInvite(...args);
+export const revokeInvite = (...args) => userService.revokeInvite(...args);

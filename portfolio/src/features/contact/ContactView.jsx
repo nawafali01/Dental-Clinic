@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Reveal } from "@/shared/ui/Reveal";
 import { Button } from "@/shared/ui/Button";
 import { MapPin, Phone, Mail, CheckCircle, ShieldCheck, Clock, Heart, Send } from "lucide-react";
+import { CLINIC_SCHEDULE, CONTACT_TOPICS } from "./contactConstants";
 
 export function ContactView() {
   const [form, setForm] = useState({ name: "", email: "", phone: "", subject: "", message: "" });
@@ -88,22 +89,15 @@ export function ContactView() {
                   <Clock className="size-5 text-primary" /> Daily Schedule
                 </h3>
                 <div className="space-y-3.5 text-sm text-muted-foreground">
-                  <div className="flex justify-between border-b border-neutral-50 pb-2.5">
-                    <span>Monday — Thursday</span>
-                    <span className="font-bold text-secondary">08:00 AM - 07:00 PM</span>
-                  </div>
-                  <div className="flex justify-between border-b border-neutral-50 pb-2.5">
-                    <span>Friday</span>
-                    <span className="font-bold text-secondary">08:00 AM - 05:00 PM</span>
-                  </div>
-                  <div className="flex justify-between border-b border-neutral-50 pb-2.5">
-                    <span>Saturday</span>
-                    <span className="font-bold text-secondary">09:00 AM - 04:00 PM</span>
-                  </div>
-                  <div className="flex justify-between text-rose-500 font-semibold">
-                    <span>Sunday</span>
-                    <span>Closed (On-call triage)</span>
-                  </div>
+                  {CLINIC_SCHEDULE.map((item) => (
+                    <div
+                      key={item.days}
+                      className={`flex justify-between ${item.isClosed ? "text-rose-500 font-semibold" : "border-b border-neutral-50 pb-2.5"}`}
+                    >
+                      <span>{item.days}</span>
+                      <span className={item.isClosed ? "" : "font-bold text-secondary"}>{item.hours}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -181,10 +175,11 @@ export function ContactView() {
                         className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-sm outline-none text-secondary focus:border-primary transition-colors cursor-pointer"
                       >
                         <option value="" disabled>Select a topic...</option>
-                        <option value="general">General Consultation</option>
-                        <option value="appointment">Appointment Inquiry</option>
-                        <option value="billing">Insurance & Billing</option>
-                        <option value="emergency">Emergency Dental Care</option>
+                        {CONTACT_TOPICS.map((topic) => (
+                          <option key={topic.value} value={topic.value}>
+                            {topic.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -217,29 +212,29 @@ export function ContactView() {
         </div>
       </section>
 
-    {/* ── Mock Google Map ── */ }
-    < section className = "py-8 bg-muted/30" >
-      <div className="max-w-7xl mx-auto px-5 md:px-8">
-        <div className="rounded-[32px] overflow-hidden border border-border bg-white p-3 soft-shadow relative h-[360px] flex items-center justify-center">
-          <div className="absolute inset-0 bg-neutral-100 grid place-items-center selection:bg-transparent">
-            <div className="text-center font-display p-6 z-10">
-              <MapPin className="size-10 text-primary mx-auto mb-3" />
-              <h4 className="text-secondary font-bold text-lg">Aesthetic Boulevard Map Location</h4>
-              <p className="text-xs text-muted-foreground mt-1">Mock Google Map Frame Placeholder</p>
-              <a
-                href="https://maps.google.com"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex mt-4 text-xs font-semibold px-4 py-2 border border-border bg-white rounded-full text-secondary hover:bg-neutral-50 transition-colors shadow-sm"
-              >
-                Open Google Maps directions
-              </a>
+      {/* ── Mock Google Map ── */}
+      <section className="py-8 bg-muted/30">
+        <div className="max-w-7xl mx-auto px-5 md:px-8">
+          <div className="rounded-[32px] overflow-hidden border border-border bg-white p-3 soft-shadow relative h-[360px] flex items-center justify-center">
+            <div className="absolute inset-0 bg-neutral-100 grid place-items-center selection:bg-transparent">
+              <div className="text-center font-display p-6 z-10">
+                <MapPin className="size-10 text-primary mx-auto mb-3" />
+                <h4 className="text-secondary font-bold text-lg">Aesthetic Boulevard Map Location</h4>
+                <p className="text-xs text-muted-foreground mt-1">Mock Google Map Frame Placeholder</p>
+                <a
+                  href="https://maps.google.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex mt-4 text-xs font-semibold px-4 py-2 border border-border bg-white rounded-full text-secondary hover:bg-neutral-50 transition-colors shadow-sm"
+                >
+                  Open Google Maps directions
+                </a>
+              </div>
+              <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(#0f172a_1px,transparent_1px)] [background-size:16px_16px]" />
             </div>
-            <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(#0f172a_1px,transparent_1px)] [background-size:16px_16px]" />
           </div>
         </div>
-      </div>
-      </section >
-    </div >
+      </section>
+    </div>
   );
 }

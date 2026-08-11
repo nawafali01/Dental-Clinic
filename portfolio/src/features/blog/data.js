@@ -90,3 +90,18 @@ export const blogPosts = [
 ];
 
 export const blogCategories = ["All", "Dental Tips", "Technology", "Orthodontics"];
+
+export const INITIAL_COMMENTS = [
+  { author: "Michael D.", date: "1 day ago", text: "Truly helpful method! I started flossing before brushing this week, and my mouth feels noticeably cleaner already." },
+  { author: "Elena R.", date: "3 days ago", text: "Great suggestions. Could you clarify if electric flossing tools are as effective as string?" },
+];
+
+export const BLOG_DETAIL_META = {
+  backLinkLabel: "Back to journal",
+  pressTag: "Aurea Clinic Press",
+  commentsHeading: "Patient Discussions",
+  commentPlaceholder: "Share your thoughts or ask a question...",
+  relatedHeading: "Related Articles",
+  readArticleLink: "Read article",
+};
+

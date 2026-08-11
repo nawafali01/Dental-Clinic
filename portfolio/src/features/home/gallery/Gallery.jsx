@@ -4,18 +4,7 @@ import { X } from "lucide-react";
 import { Reveal } from "@/shared/ui/Reveal";
 import { BeforeAfterSlider } from "./BeforeAfterSlider";
 import { getGalleryItems } from "@/services/api/gallery.api";
-import gallery1 from "@/assets/images/gallery-1.jpg";
-import gallery2 from "@/assets/images/gallery-2.jpg";
-import gallery3 from "@/assets/images/gallery-3.jpg";
-import clinicInterior from "@/assets/images/clinic-interior.jpg";
-
-const galleryCategories = ["All", "Cosmetic", "Family", "Clinic", "Interior"];
-const galleryAssetMap = {
-  "gallery-1.jpg": gallery1,
-  "gallery-2.jpg": gallery2,
-  "gallery-3.jpg": gallery3,
-  "clinic-interior.jpg": clinicInterior,
-};
+import { GALLERY_CATEGORIES, GALLERY_ASSET_MAP } from "./galleryConstants";
 
 export function Gallery() {
   const [cat, setCat] = useState("All");
@@ -30,7 +19,7 @@ export function Gallery() {
           const fileName = item.src?.split("/").pop();
           return {
             ...item,
-            src: galleryAssetMap[fileName] ?? item.src,
+            src: GALLERY_ASSET_MAP[fileName] ?? item.src,
           };
         });
         setGalleryItems(normalizedItems);
@@ -62,7 +51,7 @@ export function Gallery() {
           </div>
           <Reveal delay={0.1}>
             <div className="flex flex-wrap gap-2">
-              {galleryCategories.map((c) => (
+              {GALLERY_CATEGORIES.map((c) => (
                 <button
                   key={c}
                   onClick={() => setCat(c)}

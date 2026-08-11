@@ -1,11 +1,11 @@
-import { Sparkles, Globe, ExternalLink, Share2, BookMarked, ArrowRight } from "lucide-react";
+import { Sparkles, ArrowRight } from "lucide-react";
 import { Reveal } from "@/shared/ui/Reveal";
-
-const footerCols = [
-  { title: "Clinic", links: [{ label: "Services", href: "#services" }, { label: "Doctors", href: "/home/doctors" }, { label: "Gallery", href: "#gallery" }, { label: "About", href: "/home/about" }] },
-  { title: "Care", links: [{ label: "AI Assistant", href: "#ai" }, { label: "Emergency", href: "#live-slots" }, { label: "Insurance", href: "#faq" }, { label: "Financing", href: "#treatment-finder" }] },
-  { title: "Legal & Governance", links: [{ label: "Privacy Policy", href: "#" }, { label: "Terms of Service", href: "#" }, { label: "Cookie Policy", href: "#" }, { label: "Accessibility Statement", href: "#" }, { label: "Non-emergency Disclaimer", href: "#" }, { label: "Non-clinical Advice Disclaimer", href: "#" }] },
-];
+import {
+  FOOTER_COLS,
+  FOOTER_LEGAL_LINKS,
+  FOOTER_SOCIAL_ICONS,
+  FOOTER_META,
+} from "./footerConstants";
 
 function FooterCol({ title, links }) {
   return (
@@ -33,10 +33,10 @@ export function Footer() {
           <div className="rounded-[28px] bg-white/5 border border-white/10 backdrop-blur p-8 md:p-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="max-w-md">
               <p className="font-display text-2xl md:text-3xl font-semibold leading-tight">
-                Get gentle dental wisdom, monthly.
+                {FOOTER_META.newsletter.heading}
               </p>
               <p className="text-white/60 mt-2 text-sm">
-                No spam. Just tips, offers, and the occasional smile story.
+                {FOOTER_META.newsletter.subtext}
               </p>
             </div>
             <form
@@ -45,7 +45,7 @@ export function Footer() {
             >
               <input
                 type="email"
-                placeholder="you@email.com"
+                placeholder={FOOTER_META.newsletter.placeholder}
                 className="bg-transparent flex-1 outline-none text-sm placeholder:text-white/50"
               />
               <button
@@ -65,14 +65,14 @@ export function Footer() {
                 <Sparkles className="size-5" />
               </span>
               <span className="font-display font-semibold text-lg">
-                Aurea<span className="text-primary">.</span>
+                {FOOTER_META.brand}<span className="text-primary">.</span>
               </span>
             </div>
             <p className="mt-4 text-sm text-white/60 max-w-xs">
-              Modern, AI-powered dentistry designed to feel calm, considered, and quietly luxurious.
+              {FOOTER_META.tagline}
             </p>
             <div className="flex gap-2 mt-6">
-              {[Globe, ExternalLink, Share2, BookMarked].map((I, i) => (
+              {FOOTER_SOCIAL_ICONS.map((I, i) => (
                 <a
                   key={i}
                   href="#"
@@ -84,7 +84,7 @@ export function Footer() {
               ))}
             </div>
           </div>
-          {footerCols.map((col) => (
+          {FOOTER_COLS.map((col) => (
             <FooterCol key={col.title} title={col.title} links={col.links} />
           ))}
         </div>
@@ -92,24 +92,17 @@ export function Footer() {
         {/* Legal Disclaimers Bar */}
         <div className="mt-12 pt-6 border-t border-white/10 space-y-3 text-xs text-white/40 leading-relaxed">
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-white/60">
-            <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-            <a href="#" className="hover:text-white transition-colors">Cookie Policy</a>
-            <a href="#" className="hover:text-white transition-colors">Accessibility Statement</a>
-            <a href="#" className="hover:text-white transition-colors">Non-emergency Medical Disclaimer</a>
-            <a href="#" className="hover:text-white transition-colors">Non-clinical Advice Disclaimer</a>
+            {FOOTER_LEGAL_LINKS.map((l) => (
+              <a key={l.label} href={l.href} className="hover:text-white transition-colors">
+                {l.label}
+              </a>
+            ))}
           </div>
-          {/* <p>
-            <b>Non-emergency Medical Disclaimer:</b> If you are experiencing a life-threatening medical emergency or severe acute dental trauma, please call your local emergency services (112 / 911) immediately.
-          </p>
-          <p>
-            <b>Non-clinical Advice Disclaimer:</b> Information provided by Aurea AI and interactive questionnaires is for informational guidance only and does not constitute formal medical or dental diagnosis.
-          </p> */}
         </div>
 
         <div className="mt-6 pt-4 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-white/50">
-          <p>© {new Date().getFullYear()} Aurea Dental. Crafted with care in Copenhagen.</p>
-          <p>Aurea AI is a UI demonstration and enterprise healthcare concept.</p>
+          <p>{FOOTER_META.copyright}</p>
+          <p>{FOOTER_META.disclaimer}</p>
         </div>
       </div>
     </footer>

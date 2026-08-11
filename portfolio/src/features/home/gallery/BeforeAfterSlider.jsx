@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Sparkles, MoveHorizontal } from "lucide-react";
 import beforeImg from "@/assets/images/gallery-1.jpg";
 import afterImg from "@/assets/images/gallery-2.jpg";
+import { BEFORE_AFTER_CASE } from "./galleryConstants";
 
 export function BeforeAfterSlider() {
   const [sliderPosition, setSliderPosition] = useState(50);
@@ -52,14 +53,14 @@ export function BeforeAfterSlider() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-accent text-primary text-xs font-semibold px-3 py-1 border border-primary/15">
-            <Sparkles className="size-3.5" /> Interactive Smile Transformation
+            <Sparkles className="size-3.5" /> {BEFORE_AFTER_CASE.label}
           </span>
           <h3 className="mt-2 font-display text-2xl font-semibold text-secondary">
-            Porcelain Atelier Veneers & Alignment
+            {BEFORE_AFTER_CASE.title}
           </h3>
         </div>
         <p className="text-xs text-muted-foreground max-w-xs">
-          Drag the handle left or right to compare pre-treatment alignment with final porcelain restoration results.
+          {BEFORE_AFTER_CASE.description}
         </p>
       </div>
 
@@ -112,20 +113,20 @@ export function BeforeAfterSlider() {
       <div className="mt-6 pt-4 border-t border-border flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-6">
           <p>
-            <span className="font-semibold text-secondary">Case:</span> Full Upper Smile Rehabilitation
+            <span className="font-semibold text-secondary">Case:</span> {BEFORE_AFTER_CASE.case}
           </p>
           <p>
-            <span className="font-semibold text-secondary">Duration:</span> 3 Visits over 2 Weeks
+            <span className="font-semibold text-secondary">Duration:</span> {BEFORE_AFTER_CASE.duration}
           </p>
           <p className="hidden sm:block">
-            <span className="font-semibold text-secondary">Clinician:</span> Dr. Marcus Thorne
+            <span className="font-semibold text-secondary">Clinician:</span> {BEFORE_AFTER_CASE.clinician}
           </p>
         </div>
         <a
-          href="#contact"
+          href={BEFORE_AFTER_CASE.ctaHref}
           className="text-primary font-semibold hover:underline flex items-center gap-1 cursor-pointer"
         >
-          Book Similar Transformation →
+          {BEFORE_AFTER_CASE.ctaLabel}
         </a>
       </div>
     </div>

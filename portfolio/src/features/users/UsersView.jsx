@@ -4,17 +4,10 @@ import { userService } from '../../services/user.service';
 import { RoleGuard } from '../../components/guards/RoleGuard';
 import { PERMISSIONS } from '../../constants/permissions';
 import { Search, Filter, MoreVertical, Plus, UserPlus, X, Loader2, ShieldAlert } from 'lucide-react';
-import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-
-const inviteSchema = z.object({
-  fullName: z.string().min(2, "Full name required"),
-  email: z.string().email("Valid email required"),
-  role: z.string().min(1, "Role is required"),
-  organizationId: z.string().optional(),
-  clinicIds: z.array(z.string()).default([])
-});
+import { inviteSchema } from '@/schemas/user.schema';
+import { filterUsers, formatRole, getStatusBadgeStyle, formatDate } from '@/utils/userUtils';
 
 export default function UsersView() {
   const { currentUser } = useAuth();
@@ -49,10 +42,8 @@ export default function UsersView() {
     fetchUsers();
   };
 
-  const filteredUsers = users.filter(user => 
-    user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = filterUsers(users, searchTerm);
+
 
   return (
     <div className="space-y-6">
@@ -131,20 +122,16 @@ export default function UsersView() {
                     </td>
                     <td className="px-6 py-4">
                       <span className="capitalize bg-slate-100 px-2 py-1 rounded-md text-xs font-semibold text-slate-700">
-                        {user.role.replace('_', ' ')}
+                        {formatRole(user.role)}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                        user.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
-                        user.status === 'invited' ? 'bg-amber-100 text-amber-700' :
-                        'bg-rose-100 text-rose-700'
-                      }`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${getStatusBadgeStyle(user.status)}`}>
                         {user.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-slate-500 text-xs">
-                      {new Date(user.updatedAt).toLocaleDateString()}
+                      {formatDate(user.updatedAt)}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <RoleGuard permission={PERMISSIONS.DISABLE_USER} fallback={<span className="text-slate-300 text-xs">Read Only</span>}>

@@ -5,16 +5,8 @@ import * as Lucide from "lucide-react";
 import { Reveal, stagger, staggerItem } from "@/shared/ui/Reveal";
 import { axiosInstance } from "@/services/api/axiosInstance";
 
-const iconMap = {
-  Sparkles: Lucide.Sparkles,
-  Crown: Lucide.Crown,
-  Smile: Lucide.Smile,
-  Wrench: Lucide.Wrench,
-  Stethoscope: Lucide.Stethoscope,
-  Baby: Lucide.Baby,
-  ShieldPlus: Lucide.ShieldPlus,
-  Zap: Lucide.Zap,
-};
+import { iconMap } from "./servicesData";
+
 
 export function Services() {
   const [services, setServices] = useState([]);

@@ -1,17 +1,13 @@
 import { useParams, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Reveal } from "@/shared/ui/Reveal";
-import { Button } from "@/shared/ui/Button";
 import { Calendar, User, Clock, ArrowLeft, Heart, Share2, MessageSquare, Send } from "lucide-react";
-import { blogPosts } from "./data";
+import { blogPosts, INITIAL_COMMENTS, BLOG_DETAIL_META } from "./data";
 
 export function BlogDetailView() {
   const { slug } = useParams();
   const [post, setPost] = useState(null);
-  const [comments, setComments] = useState([
-    { author: "Michael D.", date: "1 day ago", text: "Truly helpful method! I started flossing before brushing this week, and my mouth feels noticeably cleaner already." },
-    { author: "Elena R.", date: "3 days ago", text: "Great suggestions. Could you clarify if electric flossing tools are as effective as string?" }
-  ]);
+  const [comments, setComments] = useState(INITIAL_COMMENTS);
   const [newComment, setNewComment] = useState("");
   const [likes, setLikes] = useState(32);
   const [liked, setLiked] = useState(false);
@@ -52,7 +48,7 @@ export function BlogDetailView() {
         {/* Back Link */}
         <Reveal>
           <Link to="/blog" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-8 cursor-pointer">
-            <ArrowLeft className="size-4" /> Back to journal
+            <ArrowLeft className="size-4" /> {BLOG_DETAIL_META.backLinkLabel}
           </Link>
         </Reveal>
 
@@ -112,13 +108,13 @@ export function BlogDetailView() {
               <Share2 className="size-4" /> Share Article
             </button>
           </div>
-          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Aurea Clinic Press</span>
+          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{BLOG_DETAIL_META.pressTag}</span>
         </div>
 
         {/* ── Comments Section ── */}
         <section className="mb-14">
           <h3 className="font-display text-xl font-bold text-secondary mb-6 flex items-center gap-2">
-            <MessageSquare className="size-5 text-primary" /> Patient Discussions ({comments.length})
+            <MessageSquare className="size-5 text-primary" /> {BLOG_DETAIL_META.commentsHeading} ({comments.length})
           </h3>
           <div className="space-y-4 mb-8">
             {comments.map((c, i) => (
@@ -137,7 +133,7 @@ export function BlogDetailView() {
               <textarea
                 value={newComment}
                 onChange={e => setNewComment(e.target.value)}
-                placeholder="Share your thoughts or ask a question..."
+                placeholder={BLOG_DETAIL_META.commentPlaceholder}
                 className="w-full bg-transparent text-sm min-h-[80px] outline-none text-secondary resize-none placeholder:text-muted-foreground"
               />
             </div>
@@ -153,7 +149,7 @@ export function BlogDetailView() {
 
         {/* ── Related Articles ── */}
         <section className="border-t border-border pt-12">
-          <h3 className="font-display text-lg font-bold text-secondary mb-6">Related Articles</h3>
+          <h3 className="font-display text-lg font-bold text-secondary mb-6">{BLOG_DETAIL_META.relatedHeading}</h3>
           <div className="grid md:grid-cols-2 gap-6">
             {related.map(rPost => (
               <article key={rPost.slug} className="group rounded-2xl overflow-hidden bg-white border border-border soft-shadow flex flex-col justify-between">
@@ -165,7 +161,7 @@ export function BlogDetailView() {
                     {rPost.title}
                   </h4>
                   <Link to={`/blog/${rPost.slug}`} className="text-xs font-bold text-primary hover:underline mt-4 cursor-pointer block">
-                    Read article
+                    {BLOG_DETAIL_META.readArticleLink}
                   </Link>
                 </div>
               </article>

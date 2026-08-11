@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { getUsers, disableUser, enableUser, revokeInvite, resendInvite } from "@/services/user.service";
+import { getUsers } from "@/services/user.service";
 import { ROLE_LABELS, STATUS } from "@/constants/roles";
 import { UserStatusBadge } from "./UserStatusBadge";
 import { InviteUserModal } from "./InviteUserModal";
-import { toast } from "sonner";
 import { Button } from "@/shared/ui/Button";
 import { Search, Plus, MoreVertical, ShieldAlert } from "lucide-react";
+import { handleUserAction } from "@/utils/userUtils";
 
 export default function UsersTable() {
   const [users, setUsers] = useState([]);
@@ -25,36 +25,10 @@ export default function UsersTable() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
-  const handleAction = async (action, user) => {
-    if (!window.confirm(`Are you sure you want to ${action} ${user.fullName || user.email}?`)) {
-      return;
-    }
-    
-    let error;
-    switch (action) {
-      case "disable":
-        ({ error } = await disableUser(user.id));
-        break;
-      case "enable":
-        ({ error } = await enableUser(user.id));
-        break;
-      case "revoke":
-        ({ error } = await revokeInvite(user.id));
-        break;
-      case "resend":
-        ({ error } = await resendInvite(user.id));
-        break;
-      default:
-        return;
-    }
-
-    if (error) {
-      toast.error(error);
-    } else {
-      toast.success(`Action '${action}' completed successfully.`);
-      fetchUsers();
-    }
+  const handleAction = (action, user) => {
+    handleUserAction(action, user, { onSuccess: fetchUsers });
   };
+
 
   return (
     <div className="p-6">

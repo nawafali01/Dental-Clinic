@@ -3,33 +3,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { MessageCircle, X, Send, Mic, Bot, Sparkles } from "lucide-react";
 import { axiosInstance } from "@/services/api/axiosInstance";
 
-const suggestions = [
-  "Book Appointment",
-  "Dental Services",
-  "Clinic Information",
-  "Dental Care Tips",
-  "Contact Clinic",
-];
-
-function reply(t) {
-  const s = t.toLowerCase();
-  if (s.includes("book") || s.includes("appointment")) {
-    return "Sure! You can book an appointment instantly via our booking wizard here: /book-appointment. Choose your service, doctor, and slot in under 2 minutes.";
-  }
-  if (s.includes("service") || s.includes("whitening") || s.includes("implant")) {
-    return "We offer premium Cosmetic fillings, Invisalign aligners, Dental Implant surgery, and Teeth Whitening treatments. Check out our /services catalog.";
-  }
-  if (s.includes("info") || s.includes("about") || s.includes("hours") || s.includes("time")) {
-    return "Aurea Dental is open Mon–Thu 08:00 AM - 07:00 PM, Fri 08:00 AM - 05:00 PM, and Sat 09:00 AM - 04:00 PM. Learn about our physicians on our /about page.";
-  }
-  if (s.includes("tip") || s.includes("care") || s.includes("floss")) {
-    return "Dental tip: Floss BEFORE you brush. This dislodges plaque so toothpaste fluoride reaches right between your teeth! Learn more on our /blog.";
-  }
-  if (s.includes("contact") || s.includes("phone") || s.includes("email") || s.includes("map")) {
-    return "Reach our front desk at +1 (555) 123-4567, email care@aureadental.com, or leave a message at our /contact page.";
-  }
-  return "Happy to help — could you tell me a bit more about what you're looking for, or select one of the quick actions below?";
-}
+// Same folder se import:
+import { CHAT_SUGGESTIONS, getFallbackReply } from "./chatConstants";
 
 export function ChatWidget() {
   const [open, setOpen] = useState(false);
@@ -38,6 +13,7 @@ export function ChatWidget() {
   ]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const listRef = useRef(null);
 
   useEffect(() => {
@@ -61,14 +37,33 @@ export function ChatWidget() {
       setMsgs((m) => [...m, { role: "ai", text: response.data.text }]);
     } catch (error) {
       console.warn("Could not query backend AI, using client fallback", error);
-      // Wait for a simulated typing pause for better UX fallback UX
       await new Promise((resolve) => setTimeout(resolve, 800));
-      setMsgs((m) => [...m, { role: "ai", text: reply(text) }]);
+      setMsgs((m) => [...m, { role: "ai", text: getFallbackReply(text) }]);
     } finally {
       setTyping(false);
     }
   };
 
+  const handleVoiceInput = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.lang = "en-US";
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(transcript);
+    };
+
+    recognition.start();
+  };
 
   return (
     <>
@@ -93,9 +88,10 @@ export function ChatWidget() {
             transition={{ type: "spring", stiffness: 240, damping: 24 }}
             className="fixed bottom-6 right-4 md:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[380px] h-[560px] max-h-[80vh] rounded-3xl bg-white border border-border soft-shadow flex flex-col overflow-hidden"
           >
+            {/* Header */}
             <div className="relative p-4 flex items-center justify-between bg-gradient-to-br from-secondary to-secondary/90 text-white">
               <div className="flex items-center gap-3">
-                <span className="relative grid place-items-center size-10 rounded-xl bg-white/10 select-none animate-none">
+                <span className="relative grid place-items-center size-10 rounded-xl bg-white/10 select-none">
                   <Bot className="size-5" />
                   <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-green-500 ring-2 ring-secondary" />
                 </span>
@@ -115,6 +111,7 @@ export function ChatWidget() {
               </button>
             </div>
 
+            {/* Chat List */}
             <div
               ref={listRef}
               className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/30 scrollbar-thin"
@@ -124,16 +121,14 @@ export function ChatWidget() {
                   key={i}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`flex ${
-                    m.role === "ai" ? "justify-start" : "justify-end"
-                  }`}
+                  className={`flex ${m.role === "ai" ? "justify-start" : "justify-end"
+                    }`}
                 >
                   <div
-                    className={`max-w-[80%] text-sm px-3.5 py-2.5 rounded-2xl leading-relaxed ${
-                      m.role === "ai"
-                        ? "bg-white border border-border text-foreground rounded-tl-sm text-secondary"
-                        : "bg-primary text-primary-foreground rounded-tr-sm"
-                    }`}
+                    className={`max-w-[80%] text-sm px-3.5 py-2.5 rounded-2xl leading-relaxed ${m.role === "ai"
+                      ? "bg-white border border-border text-foreground rounded-tl-sm text-secondary"
+                      : "bg-primary text-primary-foreground rounded-tr-sm"
+                      }`}
                   >
                     {m.text}
                   </div>
@@ -163,9 +158,10 @@ export function ChatWidget() {
               )}
             </div>
 
+            {/* Input Controls & Suggestions */}
             <div className="p-3 border-t border-border bg-white">
               <div className="flex flex-wrap gap-1.5 mb-2">
-                {suggestions.map((s) => (
+                {CHAT_SUGGESTIONS.map((s) => (
                   <button
                     key={s}
                     onClick={() => send(s)}
@@ -191,8 +187,12 @@ export function ChatWidget() {
                 />
                 <button
                   type="button"
+                  onClick={handleVoiceInput}
                   aria-label="Voice"
-                  className="grid place-items-center size-8 rounded-lg text-muted-foreground hover:text-primary cursor-pointer hover:bg-neutral-100 transition-colors"
+                  className={`grid place-items-center size-8 rounded-lg cursor-pointer transition-colors ${isListening
+                    ? "bg-red-100 text-red-500 animate-pulse"
+                    : "text-muted-foreground hover:text-primary hover:bg-neutral-100"
+                    }`}
                 >
                   <Mic className="size-4" />
                 </button>

@@ -13,15 +13,12 @@ import {
 import { Reveal } from "@/shared/ui/Reveal";
 import { Button } from "@/shared/ui/Button";
 import { mockClinics } from "@/data/clinics";
-
-const treatmentFilterOptions = [
-  "All Treatments",
-  "Implants",
-  "Clear Aligners",
-  "Veneers",
-  "Emergency Care",
-  "Routine Checkup",
-];
+import { MapGridSVG } from "@/assets/svg/MapGridSVG";
+import {
+  TREATMENT_FILTER_OPTIONS,
+  MAP_PIN_POSITIONS,
+  CLINIC_LOCATOR_META,
+} from "./clinicLocatorConstants";
 
 export function ClinicLocator() {
   const [search, setSearch] = useState("");
@@ -48,18 +45,18 @@ export function ClinicLocator() {
           <div>
             <Reveal>
               <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                Atelier Directory
+                {CLINIC_LOCATOR_META.sectionLabel}
               </span>
             </Reveal>
             <Reveal delay={0.05}>
               <h2 className="mt-3 font-display text-3xl md:text-5xl font-semibold text-secondary leading-[1.08]">
-                Find an Aurea Clinic near you.
+                {CLINIC_LOCATOR_META.heading}
               </h2>
             </Reveal>
           </div>
           <Reveal delay={0.1}>
             <p className="text-muted-foreground max-w-md text-sm md:text-base">
-              Explore our state-of-the-art Scandinavian clinics, operating hours, and specialized treatment options.
+              {CLINIC_LOCATOR_META.subtext}
             </p>
           </Reveal>
         </div>
@@ -73,7 +70,7 @@ export function ClinicLocator() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by clinic name, address, or city..."
+                placeholder={CLINIC_LOCATOR_META.searchPlaceholder}
                 className="flex-1 bg-transparent text-sm outline-none text-secondary placeholder:text-muted-foreground"
               />
             </div>
@@ -104,7 +101,7 @@ export function ClinicLocator() {
 
           <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/60">
             <span className="text-xs text-muted-foreground mr-1 font-medium">Filter by service:</span>
-            {treatmentFilterOptions.map((t) => (
+            {TREATMENT_FILTER_OPTIONS.map((t) => (
               <button
                 key={t}
                 onClick={() => setActiveFilter(t)}
@@ -236,27 +233,15 @@ export function ClinicLocator() {
           <div className="rounded-3xl border border-border bg-white p-6 soft-shadow grid lg:grid-cols-12 gap-6 min-h-[460px]">
             <div className="lg:col-span-7 rounded-2xl overflow-hidden border border-border relative bg-muted/60 min-h-[320px] grid place-items-center">
               <div className="absolute inset-0 bg-[radial-gradient(500px_250px_at_50%_50%,rgba(31,138,112,0.15),transparent)]" />
-              <svg className="absolute inset-0 w-full h-full opacity-30" xmlns="http://www.w3.org/2000/svg">
-                <pattern id="mapGrid" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#94a3b8" strokeWidth="0.5" />
-                </pattern>
-                <rect width="100%" height="100%" fill="url(#mapGrid)" />
-              </svg>
+              <MapGridSVG />
 
               {mockClinics.map((c, idx) => {
-                const positions = [
-                  "top-1/4 left-1/3",
-                  "top-1/2 left-2/3",
-                  "bottom-1/3 left-1/4",
-                  "top-1/3 right-1/4",
-                ];
                 const isSel = selectedClinic.id === c.id;
-
                 return (
                   <button
                     key={c.id}
                     onClick={() => setSelectedClinic(c)}
-                    className={`absolute ${positions[idx]} -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 group cursor-pointer transition-transform ${
+                    className={`absolute ${MAP_PIN_POSITIONS[idx]} -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 group cursor-pointer transition-transform ${
                       isSel ? "scale-110 z-20" : "scale-100 z-10 hover:scale-105"
                     }`}
                   >
@@ -275,7 +260,7 @@ export function ClinicLocator() {
               })}
 
               <div className="absolute bottom-4 left-4 glass rounded-full px-4 py-1.5 text-xs font-medium text-secondary">
-                📍 Interactive Copenhagen Dental Network Map
+                {CLINIC_LOCATOR_META.mapLabel}
               </div>
             </div>
 

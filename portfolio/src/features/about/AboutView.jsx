@@ -1,26 +1,19 @@
 import { motion, useInView, useMotionValue, animate } from "framer-motion";
 import { useRef, useEffect } from "react";
 import {
-  Heart,
-  Eye,
-  Lightbulb,
-  Shield,
-  Users,
-  Award,
   ArrowRight,
   CheckCircle,
-  Star,
   Sparkles,
-  Calendar,
-  Microscope,
-  Leaf,
-  HeartHandshake,
-  FlaskConical,
-  Clock,
 } from "lucide-react";
 import clinic from "@/assets/images/clinic-interior.jpg";
 import { Reveal, stagger, staggerItem } from "@/shared/ui/Reveal";
 import { Button } from "@/shared/ui/Button";
+import {
+  timeline,
+  ABOUT_VALUES,
+  CLINIC_GUARANTEES,
+  ABOUT_META,
+} from "./data";
 
 function Stat({ to, suffix = "", label }) {
   const ref = useRef(null);
@@ -48,62 +41,6 @@ function Stat({ to, suffix = "", label }) {
   );
 }
 
-const values = [
-  {
-    icon: HeartHandshake,
-    title: "Empathy First",
-    desc: "We listen before we examine. Your comfort and peace of mind drive every clinical decision we make.",
-  },
-  {
-    icon: FlaskConical,
-    title: "AI Precision",
-    desc: "Advanced machine-learning diagnostics catch microscopic issues early, keeping treatments minimal.",
-  },
-  {
-    icon: Leaf,
-    title: "Scandinavian Calm",
-    desc: "Designed like a quiet Nordic atelier — natural oak, gentle scents, ambient soundscapes, and no medical clutter.",
-  },
-  {
-    icon: Microscope,
-    title: "Bespoke Materials",
-    desc: "We work exclusively with high-grade biocompatible porcelain and titanium for long-lasting, natural beauty.",
-  },
-  {
-    icon: Shield,
-    title: "100% Transparency",
-    desc: "Clear treatment plans, fixed prices upfront, zero hidden costs, and plain-language medical guidance.",
-  },
-  {
-    icon: Clock,
-    title: "Zero Wait Time",
-    desc: "Respecting your schedule. Digital check-in ensures you step directly into your suite on time.",
-  },
-];
-
-const timeline = [
-  {
-    year: "2012",
-    title: "Copenhagen Atelier Founded",
-    desc: "Dr. Elena Marsh opened the first 2-chair practice with a vision of calm, human-centred dentistry.",
-  },
-  {
-    year: "2016",
-    title: "Pioneered Digital Scans",
-    desc: "Eliminated gooey physical impressions entirely, adopting 3D intraoral optical scanning.",
-  },
-  {
-    year: "2020",
-    title: "Aurea AI Diagnostic Integration",
-    desc: "Launched custom neural net assistant to help clinicians detect early enamel micro-fractures.",
-  },
-  {
-    year: "2024",
-    title: "12,000 Patient Milestone",
-    desc: "Expanded to 4 Nordic locations while maintaining our signature 4.9-star patient satisfaction rating.",
-  },
-];
-
 export function AboutView() {
   return (
     <div className="bg-background">
@@ -114,21 +51,18 @@ export function AboutView() {
         <div className="max-w-7xl mx-auto px-5 md:px-8 text-center">
           <Reveal>
             <span className="inline-flex items-center gap-2 rounded-full glass mt-6 px-4 py-2 text-xs font-semibold text-secondary border border-primary/15">
-              <Sparkles className="size-3.5 text-primary" /> Our Philosophy &
-              Practice
+              <Sparkles className="size-3.5 text-primary" /> {ABOUT_META.heroTag}
             </span>
           </Reveal>
           <Reveal delay={0.05}>
             <h1 className="mt-3 font-display font-semibold text-4xl sm:text-6xl lg:text-7xl tracking-tight text-secondary max-w-4xl mx-auto leading-[1.05]">
-              Dentistry reimagined as an{" "}
-              <span className="text-gradient-primary">art of care</span>.
+              {ABOUT_META.heroTitleLeading}{" "}
+              <span className="text-gradient-primary">{ABOUT_META.heroTitleHighlight}</span>.
             </h1>
           </Reveal>
           <Reveal delay={0.1}>
             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Founded in Copenhagen, Aurea combines Nordic design principles,
-              gentle clinical hands, and state-of-the-art AI diagnostics to
-              transform oral healthcare into a peaceful experience.
+              {ABOUT_META.heroDescription}
             </p>
           </Reveal>
           <motion.div
@@ -163,34 +97,26 @@ export function AboutView() {
           <div>
             <Reveal>
               <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                Our Story
+                {ABOUT_META.storyTag}
               </span>
             </Reveal>
             <Reveal delay={0.05}>
               <h2 className="mt-3 font-display text-3xl md:text-5xl font-semibold text-secondary leading-[1.08]">
-                We set out to remove fear from dental visits.
+                {ABOUT_META.storyTitle}
               </h2>
             </Reveal>
             <Reveal delay={0.1}>
               <p className="mt-5 text-muted-foreground leading-relaxed">
-                For decades, dental care meant sterile white tiles, harsh
-                fluorescent lights, and anxiety-inducing sounds. Aurea was
-                created to challenge every piece of that stereotype.
+                {ABOUT_META.storyPara1}
               </p>
             </Reveal>
             <Reveal delay={0.15}>
               <p className="mt-4 text-muted-foreground leading-relaxed">
-                By designing minimalist, acoustic-softened suites and combining
-                them with AI tools that explain diagnoses visually in real-time,
-                we give patients total clarity and control over their health.
+                {ABOUT_META.storyPara2}
               </p>
             </Reveal>
             <div className="mt-8 space-y-3">
-              {[
-                "ADA & Nordic Board Certified Clinicians",
-                "100% Mercury-Free & Biocompatible Materials",
-                "Same-Day Emergency Triage Guarantee",
-              ].map((item) => (
+              {CLINIC_GUARANTEES.map((item) => (
                 <div
                   key={item}
                   className="flex items-center gap-3 text-sm font-medium text-secondary"
@@ -214,10 +140,10 @@ export function AboutView() {
                 Patient Satisfaction
               </p>
               <p className="font-display text-3xl font-semibold text-secondary mt-1">
-                98.4%
+                {ABOUT_META.satisfactionPct}
               </p>
               <p className="text-xs text-primary font-medium mt-1">
-                Based on 2,300+ verified reviews
+                {ABOUT_META.satisfactionNote}
               </p>
             </div>
           </div>
@@ -230,12 +156,12 @@ export function AboutView() {
           <div className="text-center max-w-2xl mx-auto mb-16">
             <Reveal>
               <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                Core Values
+                {ABOUT_META.valuesTag}
               </span>
             </Reveal>
             <Reveal delay={0.05}>
               <h2 className="mt-3 font-display text-3xl md:text-5xl font-semibold text-secondary">
-                The principles that guide every smile we treat.
+                {ABOUT_META.valuesTitle}
               </h2>
             </Reveal>
           </div>
@@ -246,7 +172,7 @@ export function AboutView() {
             viewport={{ once: true, amount: 0.1 }}
             className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
           >
-            {values.map((v) => (
+            {ABOUT_VALUES.map((v) => (
               <motion.div
                 variants={staggerItem}
                 key={v.title}
@@ -273,12 +199,12 @@ export function AboutView() {
           <div className="text-center max-w-xl mx-auto mb-16">
             <Reveal>
               <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                Our Journey
+                {ABOUT_META.journeyTag}
               </span>
             </Reveal>
             <Reveal delay={0.05}>
               <h2 className="mt-3 font-display text-3xl md:text-5xl font-semibold text-secondary">
-                Over a decade of clinical innovation.
+                {ABOUT_META.journeyTitle}
               </h2>
             </Reveal>
           </div>
