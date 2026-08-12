@@ -81,9 +81,9 @@ const router = createBrowserRouter([
     ],
   },
 
-  // Protected Unified Dashboard Area
-  {
-    path: "/admin",
+  // Protected Unified Dashboard Area (Role-based Base Paths)
+  ...["/admin", "/manager", "/agent", "/receptionist"].map((basePath) => ({
+    path: basePath,
     element: (
       <AuthGuard>
         <UnifiedDashboardLayout />
@@ -95,7 +95,7 @@ const router = createBrowserRouter([
       ...orgAdminRoutes,
       ...clinicManagerRoutes,
     ],
-  },
+  })),
 ]);
 
 export function AppRouter() {

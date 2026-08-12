@@ -12,6 +12,8 @@ import {
   X,
 } from 'lucide-react';
 
+import { buildRoleUrl } from '@/utils/getRoleBaseUrl';
+
 export const Sidebar = () => {
   const { isSidebarCollapsed, toggleSidebar, isMobileSidebarOpen, setIsMobileSidebarOpen } = useAdmin();
   const { hasPermission, currentRole } = useRole();
@@ -87,7 +89,7 @@ export const Sidebar = () => {
                   return (
                     <NavLink
                       key={item.path}
-                      to={item.path}
+                      to={buildRoleUrl(item.path, currentRole?.id)}
                       onClick={() => setIsMobileSidebarOpen(false)}
                       className={({ isActive }) =>
                         `flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all group ${

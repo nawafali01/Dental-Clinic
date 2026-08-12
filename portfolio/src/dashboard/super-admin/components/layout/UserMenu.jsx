@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useRole } from '@/dashboard/shared/context/RoleContext';
+import { buildRoleUrl } from '@/utils/getRoleBaseUrl';
 import { User, Settings, ShieldAlert, LogOut, ChevronDown, Sparkles } from 'lucide-react';
 
 export const UserMenu = () => {
@@ -82,7 +83,7 @@ export const UserMenu = () => {
           <button
             onClick={() => {
               setIsOpen(false);
-              navigate('/admin/profile');
+              navigate(buildRoleUrl('/profile', currentRole?.id));
             }}
             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-100:bg-slate-800 transition-colors"
           >
@@ -94,7 +95,7 @@ export const UserMenu = () => {
             <button
               onClick={() => {
                 setIsOpen(false);
-                navigate('/admin/settings');
+                navigate(buildRoleUrl('/settings', currentRole?.id));
               }}
               className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-100:bg-slate-800 transition-colors"
             >

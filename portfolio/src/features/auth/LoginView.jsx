@@ -6,6 +6,8 @@ import { loginSchema } from '../../schemas/auth.schema';
 import { useAuth } from '../../context/AuthContext';
 import { Sparkles, Loader2, AlertCircle } from 'lucide-react';
 
+import { buildRoleUrl } from '../../utils/getRoleBaseUrl';
+
 export default function LoginView() {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -21,7 +23,8 @@ export default function LoginView() {
     const res = await login(data.email, data.password);
     
     if (res.success) {
-      navigate('/admin/dashboard');
+      const role = res.user?.role;
+      navigate(buildRoleUrl('/dashboard', role));
     } else {
       setAuthError(res.message);
     }

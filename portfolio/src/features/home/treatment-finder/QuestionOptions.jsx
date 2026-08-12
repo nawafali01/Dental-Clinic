@@ -1,5 +1,12 @@
 import { CheckCircle2 } from "lucide-react";
 
+/**
+ * @param {Object} props
+ * @param {any} props.config
+ * @param {string} props.selectedOption
+ * @param {Record<string, any>} props.iconMap
+ * @param {(questionId: string, optionId: string) => void} props.onSelectOption
+ */
 export function QuestionOptions({
   config,
   selectedOption,
@@ -21,7 +28,7 @@ export function QuestionOptions({
             <button
               key={opt.id}
               type="button"
-              onClick={() => onSelectOption(config.id, opt.id)}
+              onClick={() => onSelectOption?.(config?.id, opt.id)}
               className={`relative text-left p-5 rounded-2xl border transition-all cursor-pointer group ${
                 isSelected
                   ? "bg-accent/40 border-primary shadow-[0_4px_20px_-4px_rgba(31,138,112,0.25)]"

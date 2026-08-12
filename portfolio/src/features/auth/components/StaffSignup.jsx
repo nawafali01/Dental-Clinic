@@ -22,6 +22,7 @@ import {
   getMockInvite,
   mockInviteActivation,
 } from "@/features/auth/services/mockAuthService";
+import { SpinnerSvg } from "@/assets/svg/SpinnerSvg";
 
 /* ─── validation ─── */
 function validateActivation(values) {
@@ -73,7 +74,10 @@ function SignupPanel() {
       <div className="relative z-10 flex items-center gap-2">
         <span
           className="grid size-9 place-items-center rounded-xl shadow-lg"
-          style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.3)" }}
+          style={{
+            background: "rgba(255,255,255,0.18)",
+            border: "1px solid rgba(255,255,255,0.3)",
+          }}
         >
           <DentalLogo />
         </span>
@@ -93,7 +97,9 @@ function SignupPanel() {
           ].map((perk) => (
             <div key={perk} className="flex items-start gap-3">
               <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
-              <span className="text-sm leading-relaxed text-white/75">{perk}</span>
+              <span className="text-sm leading-relaxed text-white/75">
+                {perk}
+              </span>
             </div>
           ))}
         </div>
@@ -114,9 +120,7 @@ function SignupPanel() {
           <h2 className="font-display text-4xl font-bold leading-tight text-white">
             Join the team.
             <br />
-            <span className="text-white">
-              Start managing today.
-            </span>
+            <span className="text-white">Start managing today.</span>
           </h2>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/55">
             Complete your account setup to access the Aurea Dental internal
@@ -198,13 +202,18 @@ function FormField({
           readOnly={readOnly}
           disabled={disabled}
           className="w-full rounded-2xl border border-border bg-muted px-4 py-3 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-55"
-          style={error ? { borderColor: "oklch(0.62 0.23 27)", background: "oklch(0.99 0.005 27)" } : {}}
+          style={
+            error
+              ? {
+                  borderColor: "oklch(0.62 0.23 27)",
+                  background: "oklch(0.99 0.005 27)",
+                }
+              : {}
+          }
         />
         {children}
       </div>
-      {error && (
-        <p className="mt-1.5 text-xs text-destructive">{error}</p>
-      )}
+      {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
     </div>
   );
 }
@@ -290,7 +299,9 @@ export default function StaffSignup() {
           </div>
 
           <h1 className="font-display text-4xl font-bold leading-tight text-secondary">
-            Activate your<br />account
+            Activate your
+            <br />
+            account
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             You've been invited to join the internal CRM. Complete your profile
@@ -310,7 +321,9 @@ export default function StaffSignup() {
               ].map(({ label, value }) => (
                 <div key={label} className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{label}</span>
-                  <span className="text-xs font-medium text-secondary">{value}</span>
+                  <span className="text-xs font-medium text-secondary">
+                    {value}
+                  </span>
                 </div>
               ))}
             </div>
@@ -345,7 +358,11 @@ export default function StaffSignup() {
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 tabIndex={-1}
               >
-                {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                {showPass ? (
+                  <EyeOff className="size-4" />
+                ) : (
+                  <Eye className="size-4" />
+                )}
               </button>
             </FormField>
 
@@ -366,7 +383,11 @@ export default function StaffSignup() {
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 tabIndex={-1}
               >
-                {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                {showConfirm ? (
+                  <EyeOff className="size-4" />
+                ) : (
+                  <Eye className="size-4" />
+                )}
               </button>
             </FormField>
 
@@ -378,10 +399,7 @@ export default function StaffSignup() {
             >
               {isSubmitting ? (
                 <>
-                  <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                  </svg>
+                  <SpinnerSvg className="size-4 animate-spin" />
                   Activating account...
                 </>
               ) : (

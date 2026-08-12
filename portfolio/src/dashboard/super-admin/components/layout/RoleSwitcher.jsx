@@ -1,11 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useRole } from '@/dashboard/shared/context/RoleContext';
+import { buildRoleUrl } from '@/utils/getRoleBaseUrl';
 import { Shield, ChevronDown, Check, Building } from 'lucide-react';
 
 export const RoleSwitcher = () => {
   const { currentRole, setCurrentRole, roles, activeClinic, setActiveClinic, clinicsScope } = useRole();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -16,6 +20,13 @@ export const RoleSwitcher = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleRoleSelect = (role) => {
+    setCurrentRole(role);
+    const targetUrl = buildRoleUrl(location.pathname, role.id);
+    navigate(targetUrl);
+    setIsOpen(false);
+  };
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -43,9 +54,7 @@ export const RoleSwitcher = () => {
               {roles.map((role) => (
                 <button
                   key={role.id}
-                  onClick={() => {
-                    setCurrentRole(role);
-                  }}
+                  onClick={() => handleRoleSelect(role)}
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors ${
                     currentRole.id === role.id
                       ? 'bg-primary/10 text-primary font-semibold'

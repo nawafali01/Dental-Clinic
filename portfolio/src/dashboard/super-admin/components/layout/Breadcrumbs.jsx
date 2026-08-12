@@ -4,16 +4,19 @@ import { ChevronRight, Home } from 'lucide-react';
 import { ROUTE_NAME_MAP } from '@/dashboard/shared/constants/adminConstants';
 import { useRole } from '@/dashboard/shared/context/RoleContext';
 
+import { buildRoleUrl } from '@/utils/getRoleBaseUrl';
+
 export const Breadcrumbs = () => {
   const location = useLocation();
   const pathnames = location.pathname.split('/').filter((x) => x);
   const { currentRole } = useRole();
   const rootRoleName = currentRole?.label || 'Dashboard';
+  const dashboardRootUrl = buildRoleUrl('/dashboard', currentRole?.id);
 
   return (
     <nav className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
       <Link
-        to="/admin/dashboard"
+        to={dashboardRootUrl}
         className="flex items-center gap-1 hover:text-slate-900:text-slate-100 transition-colors"
       >
         <Home className="w-3.5 h-3.5" />
@@ -21,7 +24,7 @@ export const Breadcrumbs = () => {
       </Link>
 
       {pathnames.map((value, index) => {
-        if (value === 'admin') return null;
+        if (['admin', 'manager', 'agent', 'receptionist'].includes(value)) return null;
         const to = `/${pathnames.slice(0, index + 1).join('/')}`;
         const isLast = index === pathnames.length - 1;
         const displayName = ROUTE_NAME_MAP[value] || value.charAt(0).toUpperCase() + value.slice(1);

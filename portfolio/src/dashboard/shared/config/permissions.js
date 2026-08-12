@@ -124,6 +124,7 @@ export const ROLE_PERMISSIONS = {
 
   // ── Receptionist — front-desk operations only ────────────────
   receptionist: [
+    PERMISSIONS.VIEW_LEADS,
     PERMISSIONS.VIEW_APPOINTMENTS,
     PERMISSIONS.MANAGE_APPOINTMENTS,
     PERMISSIONS.VIEW_PATIENTS,
@@ -243,7 +244,7 @@ export const RESOURCE_PERMISSIONS = {
     org_admin:      RESOURCE_ACCESS.ALL_ORG,
     clinic_manager: RESOURCE_ACCESS.OWN_CLINIC,
     agent:          RESOURCE_ACCESS.ASSIGNED_ONLY,
-    receptionist:   RESOURCE_ACCESS.NONE,
+    receptionist:   RESOURCE_ACCESS.VIEW,
     finance:        RESOURCE_ACCESS.NONE,
     auditor:        RESOURCE_ACCESS.VIEW,
   },
@@ -357,7 +358,7 @@ export const getResourceAccess = (roleId, resource) => {
 // ─────────────────────────────────────────────────────────────
 export const ACTION_PERMISSIONS = {
   leads: {
-    view:    ['org_admin', 'clinic_manager', 'agent', 'auditor'],
+    view:    ['org_admin', 'clinic_manager', 'agent', 'receptionist', 'auditor'],
     create:  ['org_admin', 'clinic_manager', 'agent'],
     edit:    ['org_admin', 'clinic_manager', 'agent'],
     delete:  ['org_admin', 'clinic_manager'],
@@ -492,7 +493,7 @@ export const RESOURCE_SCOPES = {
     org_admin:      SCOPE_TYPES.ORGANIZATION,
     clinic_manager: SCOPE_TYPES.CLINIC,
     agent:          SCOPE_TYPES.ASSIGNEE,
-    receptionist:   SCOPE_TYPES.NONE,
+    receptionist:   SCOPE_TYPES.CLINIC,
     finance:        SCOPE_TYPES.NONE,
     auditor:        SCOPE_TYPES.APPROVED,
   },

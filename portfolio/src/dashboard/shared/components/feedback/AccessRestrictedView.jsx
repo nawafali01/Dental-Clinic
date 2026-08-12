@@ -4,6 +4,7 @@ import { ShieldAlert, ArrowLeft, Lock } from 'lucide-react';
 import { Button } from '@/dashboard/shared/components/ui/Button';
 import { Badge } from '@/dashboard/shared/components/ui/Badge';
 import { useRole } from '@/dashboard/shared/context/RoleContext';
+import { buildRoleUrl } from '@/utils/getRoleBaseUrl';
 
 export default function AccessRestrictedView({ requiredPermission = 'Super Admin Level' }) {
   const navigate = useNavigate();
@@ -45,7 +46,7 @@ export default function AccessRestrictedView({ requiredPermission = 'Super Admin
             variant="primary"
             size="md"
             icon={ArrowLeft}
-            onClick={() => navigate('/admin/dashboard')}
+            onClick={() => navigate(buildRoleUrl('/dashboard', currentRole?.id))}
             className="w-full"
           >
             Return to Dashboard

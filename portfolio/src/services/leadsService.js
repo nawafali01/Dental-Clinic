@@ -7,6 +7,7 @@
  */
 
 import { storageService } from './storage.service';
+import { scopeData } from '../utils/scopeData';
 
 const LEADS_KEY = storageService.KEYS.LEADS;
 
@@ -135,5 +136,42 @@ export function updateLeadStatus(leadId, newStatus) {
   return updated.find((l) => l.id === leadId);
 }
 
+
+
+/**
+ * Sanitizes lead object for receptionist basic contact view only.
+ */
+export function sanitizeLeadForReceptionist(lead) {
+  if (!lead) return null;
+  return {
+    id: lead.id,
+    patientName: lead.patientName || lead.name || 'Anonymous Patient',
+    phone: lead.phone || lead.phoneNumber || '(555) 123-4567',
+    email: lead.email || 'N/A',
+    clinicId: lead.clinicId || lead.clinic || 'Downtown Dental',
+    createdAt: lead.createdAt || lead.date || new Date().toISOString(),
+    preferredBranch: lead.preferredBranch || lead.clinicId || 'Main Clinic',
+    isBasicView: true,
+  };
+}
+
+/**
+ * Returns a lead by ID after validating user scope and role access level.
+ */
+export function getLeadByIdScoped(id, currentUser, selectedClinicId) {
+  const allLeads = storageService.get(LEADS_KEY) || [];
+  const scopedLeads = scopeData({ resource: 'leads', data: allLeads, currentUser, selectedClinicId });
+  const lead = scopedLeads.find((l) => String(l.id) === String(id));
+
+  if (!lead) return null;
+
+  if (currentUser?.role === 'receptionist') {
+    return sanitizeLeadForReceptionist(lead);
+  }
+
+  return lead;
+}
+
 export const LEAD_STATUSES   = ['new', 'contacted', 'qualified', 'proposal', 'converted', 'lost'];
 export const LEAD_PRIORITIES = ['high', 'medium', 'low'];
+
