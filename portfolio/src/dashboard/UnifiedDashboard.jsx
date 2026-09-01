@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import CanView from '../components/auth/CanView';
 import { getGreeting } from '../utils/dashboardUtils';
 

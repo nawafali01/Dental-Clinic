@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { loginSchema } from '../../schemas/auth.schema';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { Sparkles, Loader2, AlertCircle } from 'lucide-react';
 
 import { buildRoleUrl } from '../../utils/getRoleBaseUrl';

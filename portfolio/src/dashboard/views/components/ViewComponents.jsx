@@ -26,16 +26,23 @@ export const DevBanner = ({ text }) => (
   </div>
 );
 
-export const PageHeader = ({ title, description, action }) => (
+export const PageHeader = ({ title, description, action, onAction }) => (
   <div className="flex items-center justify-between">
     <div>
       <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
       <p className="text-sm text-slate-500 mt-0.5">{description}</p>
     </div>
     {action && (
-      <button className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity cursor-pointer">
-        {action}
-      </button>
+      typeof action === 'string' ? (
+        <button
+          onClick={onAction}
+          className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1.5 shadow-xs"
+        >
+          {action}
+        </button>
+      ) : (
+        action
+      )
     )}
   </div>
 );

@@ -1,0 +1,243 @@
+/**
+ * APPOINTMENTS CONSTANTS & MOCK DATA
+ */
+
+export const APPOINTMENT_STATUSES = [
+  { id: 'all', label: 'All Statuses' },
+  { id: 'pending', label: 'Pending', color: 'amber', variant: 'warning' },
+  { id: 'booked', label: 'Booked', color: 'blue', variant: 'info' },
+  { id: 'confirmed', label: 'Confirmed', color: 'blue', variant: 'info' },
+  { id: 'checked-in', label: 'Checked In', color: 'purple', variant: 'purple' },
+  { id: 'attended', label: 'Attended', color: 'purple', variant: 'purple' },
+  { id: 'completed', label: 'Completed', color: 'green', variant: 'success' },
+  { id: 'rescheduled', label: 'Rescheduled', color: 'amber', variant: 'warning' },
+  { id: 'no-show', label: 'No-show', color: 'red', variant: 'error' },
+  { id: 'cancelled', label: 'Cancelled', color: 'red', variant: 'error' },
+];
+
+export const VIEW_MODES = [
+  { id: 'list', label: 'List / Table' },
+  { id: 'day', label: 'Day View' },
+  { id: 'week', label: 'Week View' },
+  { id: 'month', label: 'Month View' },
+];
+
+export const CALENDAR_HOURS = [
+  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'
+];
+
+export const WEEK_DAYS = [
+  { id: 'mon', label: 'Monday', dateOffset: 0 },
+  { id: 'tue', label: 'Tuesday', dateOffset: 1 },
+  { id: 'wed', label: 'Wednesday', dateOffset: 2 },
+  { id: 'thu', label: 'Thursday', dateOffset: 3 },
+  { id: 'fri', label: 'Friday', dateOffset: 4 },
+  { id: 'sat', label: 'Saturday', dateOffset: 5 },
+  { id: 'sun', label: 'Sunday', dateOffset: 6 },
+];
+
+export const DAYS = WEEK_DAYS;
+export const HOURS = CALENDAR_HOURS;
+
+export const DOCTORS_LIST = [
+  { id: 'all', name: 'All Providers / Doctors' },
+  { id: 'doc-1', name: 'Dr. Catherine Reyes (Cosmetic & Restorative)', shortName: 'Dr. Reyes' },
+  { id: 'doc-2', name: 'Dr. Marcus Vance (Oral & Implant Surgeon)', shortName: 'Dr. Vance' },
+  { id: 'doc-3', name: 'Dr. Sarah Kim (Pediatric Specialist)', shortName: 'Dr. Kim' },
+  { id: 'doc-4', name: 'Dr. Soren Lindqvist (Implant Specialist)', shortName: 'Dr. Lindqvist' },
+  { id: 'doc-5', name: 'Dr. Freja Møller (Orthodontist)', shortName: 'Dr. Møller' },
+];
+
+export const TREATMENTS_FILTER_LIST = [
+  { id: 'all', label: 'All Treatments' },
+  { id: 'Dental Implant', label: 'Dental Implant' },
+  { id: 'Teeth Whitening', label: 'Teeth Whitening' },
+  { id: 'Invisalign', label: 'Invisalign' },
+  { id: 'Root Canal', label: 'Root Canal' },
+  { id: 'Porcelain Veneers', label: 'Porcelain Veneers' },
+  { id: 'Comprehensive Hygiene Scan', label: 'Comprehensive Hygiene Scan' },
+  { id: 'Pediatric Checkup', label: 'Pediatric Checkup' },
+  { id: 'Wisdom Teeth Extraction', label: 'Wisdom Teeth Extraction' },
+];
+
+const now = new Date();
+const todayDateStr = now.toISOString().split('T')[0];
+
+const formatFutureDate = (offsetDays, hhmm) => {
+  const d = new Date(now);
+  d.setDate(d.getDate() + offsetDays);
+  const [h, m] = hhmm.split(':').map(Number);
+  d.setHours(h, m, 0, 0);
+  return d.toISOString();
+};
+
+export const INITIAL_DEMO_APPOINTMENTS = [
+  {
+    id: 'apt-001',
+    patientName: 'Sarah Mitchell',
+    phone: '+1-555-0142',
+    email: 'sarah.m@example.com',
+    clinicId: 'clinic-001',
+    clinicName: 'Downtown Dental Excellence',
+    orgId: 'org-001',
+    orgName: 'Smile Care Group',
+    doctorId: 'doc-1',
+    doctorName: 'Dr. Catherine Reyes',
+    treatment: 'Teeth Whitening',
+    date: formatFutureDate(0, '09:00'),
+    timeSlot: '09:00 AM – 10:00 AM',
+    status: 'checked-in',
+    aiRiskLevel: 'low',
+    aiRiskScore: 12,
+    aiRiskReason: 'Consistent attendance history, confirmed SMS 2 hours ago.',
+    notes: 'Patient requested shade guide assessment before laser whitening session.',
+    isConvertedPatient: true,
+  },
+  {
+    id: 'apt-002',
+    patientName: 'James Thornton',
+    phone: '+1-555-0188',
+    email: 'james.t@example.com',
+    clinicId: 'clinic-002',
+    clinicName: 'Westside Dental Clinic',
+    orgId: 'org-001',
+    orgName: 'Smile Care Group',
+    doctorId: 'doc-2',
+    doctorName: 'Dr. Marcus Vance',
+    treatment: 'Dental Implant',
+    date: formatFutureDate(0, '10:30'),
+    timeSlot: '10:30 AM – 11:30 AM',
+    status: 'confirmed',
+    aiRiskLevel: 'high',
+    aiRiskScore: 84,
+    aiRiskReason: 'Previous no-show recorded last month, live weather advisory in location.',
+    notes: 'Pre-op CBCT scan ready for review. Sedation prep confirmed.',
+    isConvertedPatient: false,
+  },
+  {
+    id: 'apt-003',
+    patientName: 'Priya Kapoor',
+    phone: '+971-50-8877665',
+    email: 'priya.k@example.com',
+    clinicId: 'clinic-005',
+    clinicName: 'Marina Branch',
+    orgId: 'org-002',
+    orgName: 'Dental Plus',
+    doctorId: 'doc-5',
+    doctorName: 'Dr. Freja Møller',
+    treatment: 'Invisalign',
+    date: formatFutureDate(0, '13:00'),
+    timeSlot: '01:00 PM – 02:00 PM',
+    status: 'booked',
+    aiRiskLevel: 'medium',
+    aiRiskScore: 48,
+    aiRiskReason: 'First-time patient, distance > 15km from clinic branch.',
+    notes: '3D digital scan planned for aligner staging approval.',
+    isConvertedPatient: false,
+  },
+  {
+    id: 'apt-004',
+    patientName: 'Marcus Lee',
+    phone: '+966-55-4433221',
+    email: 'marcus.l@example.com',
+    clinicId: 'clinic-010',
+    clinicName: 'Manhattan Smile Hub',
+    orgId: 'org-004',
+    orgName: 'Apex Dental Group',
+    doctorId: 'doc-1',
+    doctorName: 'Dr. Catherine Reyes',
+    treatment: 'Porcelain Veneers',
+    date: formatFutureDate(0, '15:30'),
+    timeSlot: '03:30 PM – 04:30 PM',
+    status: 'confirmed',
+    aiRiskLevel: 'low',
+    aiRiskScore: 18,
+    aiRiskReason: 'Deposit payment received ($500), WhatsApp reminder acknowledged.',
+    notes: 'Final shade fitting for 6 anterior veneers.',
+    isConvertedPatient: true,
+  },
+  {
+    id: 'apt-005',
+    patientName: 'Elena Vasquez',
+    phone: '+20-10-9988776',
+    email: 'elena.v@example.com',
+    clinicId: 'clinic-013',
+    clinicName: 'Olaya Dental Center',
+    orgId: 'org-005',
+    orgName: 'Saudi Smiles',
+    doctorId: 'doc-3',
+    doctorName: 'Dr. Sarah Kim',
+    treatment: 'Pediatric Checkup',
+    date: formatFutureDate(1, '11:00'),
+    timeSlot: '11:00 AM – 11:45 AM',
+    status: 'booked',
+    aiRiskLevel: 'low',
+    aiRiskScore: 10,
+    aiRiskReason: 'Parent confirmed via mobile app with pre-filled child questionnaire.',
+    notes: 'Routine cleaning + preventative fissure sealants.',
+    isConvertedPatient: false,
+  },
+  {
+    id: 'apt-006',
+    patientName: 'Omar Tariq',
+    phone: '+92-300-1234567',
+    email: 'omar@example.com',
+    clinicId: 'clinic-006',
+    clinicName: 'Jumeirah Care',
+    orgId: 'org-002',
+    orgName: 'Dental Plus',
+    doctorId: 'doc-4',
+    doctorName: 'Dr. Soren Lindqvist',
+    treatment: 'Root Canal',
+    date: formatFutureDate(1, '14:00'),
+    timeSlot: '02:00 PM – 03:00 PM',
+    status: 'rescheduled',
+    aiRiskLevel: 'high',
+    aiRiskScore: 78,
+    aiRiskReason: 'Rescheduled twice in the last 48 hours.',
+    notes: 'Patient requested afternoon slot due to travel schedule.',
+    isConvertedPatient: false,
+  },
+  {
+    id: 'apt-007',
+    patientName: 'Lina Khalil',
+    phone: '+961-71-5432109',
+    email: 'lina@example.com',
+    clinicId: 'clinic-001',
+    clinicName: 'Downtown Dental Excellence',
+    orgId: 'org-001',
+    orgName: 'Smile Care Group',
+    doctorId: 'doc-1',
+    doctorName: 'Dr. Catherine Reyes',
+    treatment: 'Comprehensive Hygiene Scan',
+    date: formatFutureDate(2, '10:00'),
+    timeSlot: '10:00 AM – 11:00 AM',
+    status: 'pending',
+    aiRiskLevel: 'medium',
+    aiRiskScore: 52,
+    aiRiskReason: 'Awaiting phone confirmation from receptionist.',
+    notes: 'AI caries detection & ultrasonic stain removal.',
+    isConvertedPatient: false,
+  },
+  {
+    id: 'apt-008',
+    patientName: 'Tariq Al-Fahad',
+    phone: '+966-54-3210987',
+    email: 'tariq@example.com',
+    clinicId: 'clinic-011',
+    clinicName: 'Brooklyn Orthodontics',
+    orgId: 'org-004',
+    orgName: 'Apex Dental Group',
+    doctorId: 'doc-2',
+    doctorName: 'Dr. Marcus Vance',
+    treatment: 'Wisdom Teeth Extraction',
+    date: formatFutureDate(3, '16:00'),
+    timeSlot: '04:00 PM – 05:00 PM',
+    status: 'cancelled',
+    aiRiskLevel: 'high',
+    aiRiskScore: 92,
+    aiRiskReason: 'Patient cancelled citing acute schedule conflict.',
+    notes: 'Follow-up task created for rebooking next week.',
+    isConvertedPatient: false,
+  },
+];

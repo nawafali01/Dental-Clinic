@@ -3,7 +3,7 @@ import { ChevronRight } from 'lucide-react';
 import { getUserResourceAccess } from '../../utils/hasPermission';
 import { SETTING_ICON_COLORS } from '../../constants/dashboardWidgetConstants';
 import { getScopeLabel, getVisibleSettings } from '../../utils/dashboardUtils';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 const SettingsWidget = () => {
   const { currentUser } = useAuth();

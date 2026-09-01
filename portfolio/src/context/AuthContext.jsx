@@ -81,7 +81,18 @@ export const AuthProvider = ({ children }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    const rawUser = typeof window !== 'undefined'
+      ? JSON.parse(window.localStorage.getItem('dental_crm_current_user') || 'null')
+      : null;
+    return {
+      currentUser: rawUser,
+      isAuthenticated: Boolean(rawUser),
+      loading: false,
+      login: async () => ({ success: false }),
+      logout: async () => ({ success: true }),
+      updateProfile: async () => ({ success: false }),
+      refreshSession: async () => {},
+    };
   }
   return context;
 };
