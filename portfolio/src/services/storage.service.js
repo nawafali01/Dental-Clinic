@@ -29,6 +29,10 @@ const STORAGE_KEYS = {
   TASKS:           'dental_crm_tasks',
   CALLS:           'dental_crm_calls',
   REVENUE:         'dental_crm_revenue',
+  REPORTS:         'dental_crm_reports',
+  TREATMENTS_CONFIG: 'dental_crm_treatments_config',
+  LEAD_SOURCES:     'dental_crm_lead_sources',
+  LEAD_STATUSES:    'dental_crm_lead_statuses',
   SELECTED_BRANCH: 'selectedBranch',          // persisted clinic switcher selection
   DB_VERSION:      'dental_crm_db_version',   // schema version check
 };

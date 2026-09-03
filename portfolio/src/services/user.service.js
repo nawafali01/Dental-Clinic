@@ -220,6 +220,26 @@ class UserService {
       return createError("Failed to revoke invite.", error);
     }
   }
+
+  /**
+   * Deletes a user account completely.
+   */
+  async deleteUser(id) {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const users = storageService.get(storageService.KEYS.USERS) || [];
+      const index = users.findIndex(u => u.id === id);
+
+      if (index === -1) return createError("User not found.");
+
+      users.splice(index, 1);
+      storageService.set(storageService.KEYS.USERS, users);
+
+      return createSuccess(null, "User deleted successfully.");
+    } catch (error) {
+      return createError("Failed to delete user.", error);
+    }
+  }
 }
 
 export const userService = new UserService();
@@ -233,3 +253,5 @@ export const disableUser = (...args) => userService.disableUser(...args);
 export const enableUser = (...args) => userService.enableUser(...args);
 export const resendInvite = (...args) => userService.resendInvite(...args);
 export const revokeInvite = (...args) => userService.revokeInvite(...args);
+export const deleteUser = (...args) => userService.deleteUser(...args);
+
