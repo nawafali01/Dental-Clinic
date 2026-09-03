@@ -93,18 +93,13 @@ export const SUPER_ADMIN_NAVIGATION = [
   {
     title: 'AI & Automation',
     items: [
-      { name: 'AI Copilot',    path: '/admin/ai-copilot',    icon: Sparkles },
-      { name: 'AI Runs',       path: '/admin/ai-runs',       icon: Play },
-      { name: 'AI Automations',path: '/admin/ai-automations',icon: GitBranch },
-      { name: 'AI Ops',        path: '/admin/ai-ops',        icon: Cpu, badge: 'Active', badgeColor: 'bg-emerald-500/10 text-emerald-600' },
+      { name: 'AI Copilot', path: '/admin/ai-copilot', icon: Sparkles },
     ],
   },
   {
-    title: 'Content & Integrations',
+    title: 'Integrations',
     items: [
-      { name: 'Website Content', path: '/admin/website-content', icon: Globe },
-      { name: 'Lead Forms',      path: '/admin/lead-forms',      icon: FileInput },
-      { name: 'Integrations',    path: '/admin/integrations',    icon: Link },
+      { name: 'Integrations', path: '/admin/integrations', icon: Link },
     ],
   },
   {
@@ -159,17 +154,13 @@ export const ORG_ADMIN_NAVIGATION = [
   {
     title: 'AI & Automation',
     items: [
-      { name: 'AI Copilot',    path: '/admin/ai-copilot',     icon: Sparkles },
-      { name: 'AI Runs',       path: '/admin/ai-runs',        icon: Play },
-      { name: 'AI Automations',path: '/admin/ai-automations', icon: GitBranch },
+      { name: 'AI Copilot', path: '/admin/ai-copilot', icon: Sparkles },
     ],
   },
   {
-    title: 'Content & Integrations',
+    title: 'Integrations',
     items: [
-      { name: 'Website Content', path: '/admin/website-content', icon: Globe },
-      { name: 'Lead Forms',      path: '/admin/lead-forms',      icon: FileInput },
-      { name: 'Integrations',    path: '/admin/integrations',    icon: Link },
+      { name: 'Integrations', path: '/admin/integrations', icon: Link },
     ],
   },
   {
@@ -342,12 +333,9 @@ export const COMMAND_NAVIGATION_ITEMS = [
   { title: 'Clinics',            path: '/admin/clinics',           icon: Building2,       category: 'Navigation' },
   { title: 'Users',              path: '/admin/users',             icon: UserCheck,       category: 'Navigation' },
   { title: 'Treatments Config',  path: '/admin/treatments-config', icon: Activity,        category: 'Navigation' },
+  { title: 'Lead Sources',       path: '/admin/lead-sources',      icon: Target,          category: 'Navigation' },
+  { title: 'Lead Statuses',      path: '/admin/lead-statuses',     icon: Tag,             category: 'Navigation' },
   { title: 'AI Copilot',         path: '/admin/ai-copilot',        icon: Sparkles,        category: 'Navigation' },
-  { title: 'AI Runs',            path: '/admin/ai-runs',           icon: Play,            category: 'Navigation' },
-  { title: 'AI Automations',     path: '/admin/ai-automations',    icon: GitBranch,       category: 'Navigation' },
-  { title: 'AI Ops',             path: '/admin/ai-ops',            icon: Cpu,             category: 'Navigation' },
-  { title: 'Website Content',    path: '/admin/website-content',   icon: Globe,           category: 'Navigation' },
-  { title: 'Lead Forms',         path: '/admin/lead-forms',        icon: FileInput,       category: 'Navigation' },
   { title: 'Integrations',       path: '/admin/integrations',      icon: Link,            category: 'Navigation' },
   { title: 'Analytics',          path: '/admin/analytics',         icon: BarChart3,       category: 'Navigation' },
   { title: 'Audit Logs',         path: '/admin/audit-logs',        icon: ShieldCheck,     category: 'Navigation' },
@@ -356,7 +344,7 @@ export const COMMAND_NAVIGATION_ITEMS = [
 ];
 
 export const COMMAND_QUICK_ACTIONS = [
-  { title: 'Trigger AI Emergency Kill Switch', action: 'kill_switch', icon: Zap,       category: 'Quick Action', path: '/admin/ai-ops' },
+  { title: 'Trigger AI Emergency Kill Switch', action: 'kill_switch', icon: Zap,       category: 'Quick Action', path: '/admin/ai-copilot' },
   { title: 'Export Lead Conversion Report',    action: 'export',      icon: BarChart3, category: 'Quick Action', path: '/admin/analytics' },
   { title: 'Add New Dental Clinic Branch',     action: 'add_clinic',  icon: Building2, category: 'Quick Action', path: '/admin/clinics' },
   { title: 'Create Super Admin User',          action: 'add_user',    icon: UserCheck, category: 'Quick Action', path: '/admin/users' },
