@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
-  Zap,
   X,
 } from 'lucide-react';
 
@@ -72,7 +71,7 @@ export const Sidebar = () => {
         </div>
 
         {/* Navigation List */}
-        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6 scrollbar-thin">
+        <div className="flex-1 overflow-y-auto px-3 pt-4 pb-6 space-y-6 scrollbar-thin">
           {roleGroups.map((group, gIdx) => {
             const visibleItems = group.items.filter(item => isItemVisible(item.path));
             if (visibleItems.length === 0) return null;
@@ -131,19 +130,6 @@ export const Sidebar = () => {
             );
           })}
         </div>
-
-        {/* Footer Widget */}
-        {!isSidebarCollapsed && (
-          <div className="p-3 m-3 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 text-white border border-slate-800">
-            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
-              <Zap className="w-3.5 h-3.5 fill-emerald-400" />
-              <span>AI Engine Operational</span>
-            </div>
-            <p className="mt-1 text-[11px] text-slate-400 leading-tight">
-              99.98% System Uptime • 4 Active Clinics
-            </p>
-          </div>
-        )}
       </aside>
     </>
   );

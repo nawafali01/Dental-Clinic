@@ -33,6 +33,8 @@ const STORAGE_KEYS = {
   TREATMENTS_CONFIG: 'dental_crm_treatments_config',
   LEAD_SOURCES:     'dental_crm_lead_sources',
   LEAD_STATUSES:    'dental_crm_lead_statuses',
+  SETTINGS:         'dental_crm_settings',
+  CATALOGS:         'dental_crm_catalogs',
   SELECTED_BRANCH: 'selectedBranch',          // persisted clinic switcher selection
   DB_VERSION:      'dental_crm_db_version',   // schema version check
 };
