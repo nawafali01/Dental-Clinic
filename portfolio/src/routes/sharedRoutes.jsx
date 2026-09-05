@@ -17,6 +17,7 @@ const ReportsView          = lazy(() => import("@/dashboard/views/reports/Report
 const ClinicsView          = lazy(() => import("@/dashboard/views/clinics/ClinicsView"));
 const UsersView            = lazy(() => import("@/features/users/UsersView"));
 const ProfileView          = lazy(() => import("@/features/profile/ProfileView"));
+const SettingsWorkspace    = lazy(() => import("@/features/settings/SettingsWorkspace"));
 
 // Operations & Config Views
 const PatientCheckInView   = lazy(() => import("@/dashboard/views/operations/PatientCheckInView"));
@@ -65,6 +66,7 @@ export const sharedRoutes = [
   { path: "notifications", element: <RoleGuard permission={PERMISSIONS.VIEW_NOTIFICATIONS}><Suspense fallback={fallback("Loading Notifications...")}><NotificationsView /></Suspense></RoleGuard> },
   { path: "ai-copilot", element: <RoleGuard permission={PERMISSIONS.VIEW_AI_COPILOT}><Suspense fallback={fallback("Loading AI Copilot...")}><AiCopilotView /></Suspense></RoleGuard> },
   { path: "profile", element: <Suspense fallback={fallback("Loading Profile...")}><ProfileView /></Suspense> },
+  { path: "settings", element: <Suspense fallback={fallback("Loading Settings...")}><SettingsWorkspace /></Suspense> },
 
   { path: "treatments-config", element: <RoleGuard permission={PERMISSIONS.MANAGE_TREATMENTS}><Suspense fallback={fallback("Loading Treatments...")}><TreatmentsConfigView /></Suspense></RoleGuard> },
   { path: "lead-sources", element: <RoleGuard permission={PERMISSIONS.MANAGE_LEAD_SOURCES}><Suspense fallback={fallback("Loading Sources...")}><LeadSourcesView /></Suspense></RoleGuard> },

@@ -55,12 +55,13 @@ export function scopeData({ resource, data = [], currentUser, selectedClinicId }
 
       case SCOPE_TYPES.ORGANIZATION: {
         // Respect selected clinic filter if selected
-        if (selectedClinicId && selectedClinicId !== 'all' && item.clinicId) {
-          if (item.clinicId !== selectedClinicId) return false;
+        const itemClinicId = item.clinicId || item.clinic_id;
+        if (selectedClinicId && selectedClinicId !== 'all' && itemClinicId) {
+          if (itemClinicId !== selectedClinicId) return false;
         }
         // Match organizationId if present on record
-        if (currentUser.organizationId && (item.orgId || item.organizationId)) {
-          const itemOrgId = item.orgId || item.organizationId;
+        if (currentUser.organizationId && (item.orgId || item.organizationId || item.organization_id)) {
+          const itemOrgId = item.orgId || item.organizationId || item.organization_id;
           return itemOrgId === currentUser.organizationId;
         }
         return true;
@@ -68,7 +69,8 @@ export function scopeData({ resource, data = [], currentUser, selectedClinicId }
 
       case SCOPE_TYPES.CLINIC: {
         if (!activeClinicId) return true;
-        if (item.clinicId) return item.clinicId === activeClinicId;
+        const itemClinicId = item.clinicId || item.clinic_id;
+        if (itemClinicId) return itemClinicId === activeClinicId;
         if (item.clinic) return item.clinic === activeClinicId || item.clinic.includes(activeClinicId);
         return true;
       }
@@ -77,6 +79,7 @@ export function scopeData({ resource, data = [], currentUser, selectedClinicId }
         // Agent MUST NEVER see another staff member's work.
         const userId = currentUser.id;
         const matchesAssignee = (
+          item.assignee_id === userId ||
           item.assigneeId === userId ||
           item.assignedAgentId === userId ||
           item.agentId === userId ||
@@ -86,8 +89,9 @@ export function scopeData({ resource, data = [], currentUser, selectedClinicId }
         );
 
         // Also respect clinic boundary if item has clinicId
-        if (activeClinicId && item.clinicId) {
-          return matchesAssignee && item.clinicId === activeClinicId;
+        const itemClinicId = item.clinicId || item.clinic_id;
+        if (activeClinicId && itemClinicId) {
+          return matchesAssignee && itemClinicId === activeClinicId;
         }
 
         return matchesAssignee;
@@ -95,8 +99,9 @@ export function scopeData({ resource, data = [], currentUser, selectedClinicId }
 
       case SCOPE_TYPES.APPROVED: {
         // Auditor read-only scope
-        if (activeClinicId && item.clinicId) {
-          return item.clinicId === activeClinicId && item.status !== 'draft';
+        const itemClinicId = item.clinicId || item.clinic_id;
+        if (activeClinicId && itemClinicId) {
+          return itemClinicId === activeClinicId && item.status !== 'draft';
         }
         return item.status !== 'draft';
       }

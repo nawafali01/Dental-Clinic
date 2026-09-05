@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useClinic } from '@/context/ClinicContext';
@@ -7,11 +7,14 @@ import { scopeData } from '@/utils/scopeData';
 import { PermissionGuard } from '@/guards/PermissionGuard';
 import { buildRoleUrl } from '@/utils/getRoleBaseUrl';
 import { Badge, StatCard, Table } from '../components/ViewComponents';
+import { NewLeadModal } from './components/NewLeadModal';
 
 export const LeadsView = () => {
   const { currentUser } = useAuth();
   const { selectedClinicId } = useClinic();
   const navigate = useNavigate();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const rawLeads = storageService.get(storageService.KEYS.LEADS) || [];
   const leads = scopeData({ resource: 'leads', data: rawLeads, currentUser, selectedClinicId });
@@ -39,7 +42,10 @@ export const LeadsView = () => {
           </p>
         </div>
         <PermissionGuard resource="leads" action="create">
-          <button className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity cursor-pointer">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+          >
             + New Lead
           </button>
         </PermissionGuard>
@@ -114,6 +120,14 @@ export const LeadsView = () => {
           ])}
         />
       )}
+
+      <NewLeadModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={() => setRefreshTrigger((prev) => prev + 1)}
+        currentUser={currentUser}
+        selectedClinicId={selectedClinicId}
+      />
     </div>
   );
 };

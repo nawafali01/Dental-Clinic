@@ -172,6 +172,42 @@ export function getLeadByIdScoped(id, currentUser, selectedClinicId) {
   return lead;
 }
 
+/**
+ * Creates a new lead and persists it in storageService
+ */
+export function createLead(leadData, currentUser = null) {
+  const leads = storageService.get(LEADS_KEY) || [];
+  const newLead = {
+    id: crypto.randomUUID(),
+    patientName: leadData.patientName || leadData.name || 'Anonymous Patient',
+    phone: leadData.phone || '(555) 123-4567',
+    email: leadData.email || '',
+    treatment: leadData.treatment || 'General Dentistry',
+    source: leadData.source || 'Direct',
+    status: leadData.status || 'new',
+    priority: leadData.priority || 'medium',
+    clinicId: leadData.clinicId || leadData.clinic_id || 'clinic-downtown',
+    assignedAgentId: leadData.assignedAgentId || leadData.assignedAgent || currentUser?.id || null,
+    assignedAgentName: leadData.assignedAgentName || '',
+    lastActivity: 'Lead Created',
+    lastActivityDate: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+  };
+
+  storageService.set(LEADS_KEY, [newLead, ...leads]);
+  return newLead;
+}
+
+/**
+ * Deletes a lead by ID
+ */
+export function deleteLead(leadId) {
+  const leads = storageService.get(LEADS_KEY) || [];
+  const updated = leads.filter((l) => l.id !== leadId);
+  storageService.set(LEADS_KEY, updated);
+  return true;
+}
+
 export const LEAD_STATUSES   = ['new', 'contacted', 'qualified', 'proposal', 'converted', 'lost'];
 export const LEAD_PRIORITIES = ['high', 'medium', 'low'];
 

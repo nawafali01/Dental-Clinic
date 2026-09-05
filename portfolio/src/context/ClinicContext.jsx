@@ -102,7 +102,17 @@ export const ClinicProvider = ({ children }) => {
 export const useClinic = () => {
   const context = useContext(ClinicContext);
   if (!context) {
-    throw new Error('useClinic must be used within a ClinicProvider');
+    const saved = typeof window !== 'undefined' ? localStorage.getItem(SELECTED_BRANCH_KEY) : null;
+    const initialClinicId = saved || DEFAULT_CLINIC_ID;
+    const selectedClinic = CLINICS.find((c) => c.id === initialClinicId) || CLINICS[0];
+    return {
+      selectedClinicId: initialClinicId,
+      selectedClinic,
+      setSelectedClinicId: () => {},
+      availableClinics: CLINICS,
+      allClinics: CLINICS,
+      canSwitch: true,
+    };
   }
   return context;
 };

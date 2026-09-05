@@ -2,7 +2,7 @@ import React from 'react';
 import { UserPlus, ArrowRight } from 'lucide-react';
 import { getUserResourceAccess } from '../../utils/hasPermission';
 import { getScopeLabel, getVisibleUsers } from '../../utils/dashboardUtils';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { USER_ROLE_BADGES, USER_STATUS_DOTS } from '../../constants/dashboardWidgetConstants';
 
 const UsersWidget = () => {
