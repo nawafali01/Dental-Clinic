@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { userService } from '../../services/user.service';
 import { storageService } from '@/services/storage.service';
@@ -23,6 +23,7 @@ import { inviteSchema } from '@/schemas/user.schema';
 import { filterUsers, formatRole, getStatusBadgeStyle, formatDate } from '@/utils/userUtils';
 import { EditUserModal } from './components/EditUserModal';
 import { toast } from 'sonner';
+import { isSameClinic } from '@/constants/clinics';
 
 export default function UsersView() {
   const { currentUser } = useAuth();
@@ -82,12 +83,27 @@ export default function UsersView() {
     setUserToDelete(null);
   };
 
-  const filteredUsers = filterUsers(users, searchTerm).filter((u) => {
+  const isClinicManager = currentUser?.role === 'clinic_manager';
+  const managerClinicId = currentUser?.clinicId || (currentUser?.clinicIds && currentUser?.clinicIds[0]) || 'clinic-downtown';
+
+  // For Clinic Manager, scope strictly to their own clinic's team members
+  const scopedUsers = useMemo(() => {
+    if (!isClinicManager) return users;
+    return users.filter((u) => {
+      // Exclude platform Super Admin & Org Admin from clinic manager's team view
+      if (u.role === 'super_admin' || u.role === 'org_admin') return false;
+      const userClinic = u.clinicId || (u.clinicIds && u.clinicIds[0]);
+      return isSameClinic(userClinic, managerClinicId) || (Array.isArray(u.clinicIds) && u.clinicIds.some((c) => isSameClinic(c, managerClinicId)));
+    });
+  }, [users, isClinicManager, managerClinicId]);
+
+  const filteredUsers = filterUsers(scopedUsers, searchTerm).filter((u) => {
     if (roleFilter === 'ALL') return true;
     return u.role === roleFilter;
   });
 
   const getClinicName = (user) => {
+    if (!user) return 'All Branches';
     if (!user.clinicId && (!user.clinicIds || user.clinicIds.length === 0)) {
       return 'All Branches (Enterprise)';
     }
@@ -96,18 +112,48 @@ export default function UsersView() {
     return clinic ? clinic.name : 'All Branches';
   };
 
+  const availableRoleFilters = useMemo(() => {
+    if (isClinicManager) {
+      return [
+        { label: 'All Team', value: 'ALL' },
+        { label: 'Clinic Manager', value: 'clinic_manager' },
+        { label: 'Agent', value: 'agent' },
+        { label: 'Receptionist', value: 'receptionist' },
+      ];
+    }
+    return [
+      { label: 'All Roles', value: 'ALL' },
+      { label: 'Super Admin', value: 'super_admin' },
+      { label: 'Clinic Manager', value: 'clinic_manager' },
+      { label: 'Agent', value: 'agent' },
+      { label: 'Receptionist', value: 'receptionist' },
+      { label: 'Finance', value: 'finance' },
+    ];
+  }, [isClinicManager]);
+
   return (
     <div className="space-y-6">
       {/* Header & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Team & User Management</h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-bold text-slate-900">
+              {isClinicManager ? 'Clinic Team Members' : 'Team & User Management'}
+            </h1>
+            {isClinicManager && (
+              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/70 text-[11px] font-semibold px-2.5 py-0.5 rounded-full">
+                {getClinicName(currentUser)}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-slate-500 mt-1">
-            Manage staff members, roles, branch assignments, and access permissions.
+            {isClinicManager
+              ? 'View staff and front-desk team members assigned to your clinic.'
+              : 'Manage staff members, roles, branch assignments, and access permissions.'}
           </p>
         </div>
 
-        <RoleGuard permission={PERMISSIONS.INVITE_USER}>
+        <RoleGuard permission={PERMISSIONS.INVITE_USER} fallback={null}>
           <button
             onClick={() => setIsInviteModalOpen(true)}
             className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-md shadow-primary/20 transition-all cursor-pointer"
@@ -132,14 +178,7 @@ export default function UsersView() {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-          {[
-            { label: 'All Roles', value: 'ALL' },
-            { label: 'Super Admin', value: 'super_admin' },
-            { label: 'Clinic Manager', value: 'clinic_manager' },
-            { label: 'Agent', value: 'agent' },
-            { label: 'Receptionist', value: 'receptionist' },
-            { label: 'Finance', value: 'finance' },
-          ].map((pill) => (
+          {availableRoleFilters.map((pill) => (
             <button
               key={pill.value}
               onClick={() => setRoleFilter(pill.value)}

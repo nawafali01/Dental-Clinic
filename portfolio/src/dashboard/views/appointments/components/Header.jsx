@@ -1,7 +1,9 @@
 import React from 'react';
-import { Search, Plus, Calendar, LayoutList, CalendarDays, CalendarRange } from 'lucide-react';
+import { Search, Plus, Calendar, LayoutList, CalendarDays, CalendarRange, Building2 } from 'lucide-react';
 import { Badge } from '@/dashboard/shared/components/ui/Badge';
 import { Button } from '@/dashboard/shared/components/ui/Button';
+import { useRole } from '@/dashboard/shared/context/RoleContext';
+import { useOrg } from '@/dashboard/shared/context/OrgContext';
 import {
   VIEW_MODES,
   APPOINTMENT_STATUSES,
@@ -27,7 +29,13 @@ export const Header = ({
   organizations,
   availableClinics,
   onOpenBookingModal,
+  isClinicManager = false,
+  assignedClinicName = 'Downtown Dental Excellence',
 }) => {
+  const { userRole } = useRole();
+  const { currentOrg } = useOrg();
+  const isSuperAdmin = userRole === 'super_admin';
+
   const getViewIcon = (id) => {
     switch (id) {
       case 'day':
@@ -48,13 +56,27 @@ export const Header = ({
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white border border-slate-200 p-5 rounded-2xl shadow-2xs">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Appointment Operations & Scheduling</h1>
-            <Badge variant="purple" dot>
-              Live Clinical Feed
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+              {userRole === 'agent'
+                ? 'My Appointments & Schedule'
+                : isClinicManager
+                ? 'Clinic Appointments & Scheduling'
+                : isSuperAdmin
+                ? 'Appointment Operations & Scheduling'
+                : 'Organization Appointments & Scheduling'}
+            </h1>
+            <Badge variant={isClinicManager ? 'green' : isSuperAdmin ? 'purple' : 'blue'} dot>
+              {isClinicManager ? assignedClinicName : isSuperAdmin ? 'Live Clinical Feed' : 'Organization Feed'}
             </Badge>
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            Multi-clinic calendar scheduling, real-time status transitions, and AI no-show risk mitigation.
+            {userRole === 'agent'
+              ? `Personal appointments and patient schedule for ${assignedClinicName}.`
+              : isClinicManager
+              ? `Patient appointment calendar, bookings, and treatment schedules for ${assignedClinicName}.`
+              : isSuperAdmin
+              ? 'Multi-clinic calendar scheduling, real-time status transitions, and AI no-show risk mitigation.'
+              : `Multi-clinic calendar scheduling and appointment operations for ${currentOrg?.name || 'your organization'}.`}
           </p>
         </div>
 
@@ -109,35 +131,53 @@ export const Header = ({
 
         {/* Filter Dropdowns */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Organization Filter */}
-          <select
-            aria-label="Filter by Organization"
-            value={selectedOrgId}
-            onChange={(e) => onSelectOrgId(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-2xs"
-          >
-            <option value="all">All Organizations</option>
-            {organizations.map((org) => (
-              <option key={org.id} value={org.id}>
-                {org.name}
-              </option>
-            ))}
-          </select>
+          {/* Organization Filter: Super Admin has dropdown, Org Admin has fixed organization badge */}
+          {!isClinicManager && (
+            isSuperAdmin ? (
+              <select
+                aria-label="Filter by Organization"
+                value={selectedOrgId}
+                onChange={(e) => onSelectOrgId(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-2xs"
+              >
+                <option value="all">All Organizations</option>
+                {organizations.map((org) => (
+                  <option key={org.id} value={org.id}>
+                    {org.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 shadow-2xs">
+                <Building2 className="w-3.5 h-3.5 text-primary" />
+                <span>{currentOrg?.name || 'Smile Care Group'}</span>
+              </div>
+            )
+          )}
 
-          {/* Clinic Filter */}
-          <select
-            aria-label="Filter by Clinic"
-            value={selectedClinicId}
-            onChange={(e) => onSelectClinicId(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-2xs max-w-[170px] truncate"
-          >
-            <option value="all">All Clinics ({availableClinics.length})</option>
-            {availableClinics.map((clinic) => (
-              <option key={clinic.id} value={clinic.id}>
-                {clinic.name}
+          {/* Clinic Filter: If Clinic Manager, show assigned clinic badge; otherwise show dropdown */}
+          {isClinicManager ? (
+            <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 shadow-2xs">
+              <Building2 className="w-3.5 h-3.5 text-primary" />
+              <span>{assignedClinicName}</span>
+            </div>
+          ) : (
+            <select
+              aria-label="Filter by Clinic"
+              value={selectedClinicId}
+              onChange={(e) => onSelectClinicId(e.target.value)}
+              className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-2xs max-w-[170px] truncate"
+            >
+              <option value="all">
+                {isSuperAdmin ? `All Clinics (${availableClinics.length})` : `All Org Clinics (${availableClinics.length})`}
               </option>
-            ))}
-          </select>
+              {availableClinics.map((clinic) => (
+                <option key={clinic.id} value={clinic.id}>
+                  {clinic.name}
+                </option>
+              ))}
+            </select>
+          )}
 
           {/* Doctor / Provider Filter */}
           <select

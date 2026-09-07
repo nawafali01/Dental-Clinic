@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 
 import { useAuth } from '@/context/AuthContext';
 import { useClinic } from '@/context/ClinicContext';
+import { useRole } from '@/dashboard/shared/context/RoleContext';
 import { storageService } from '@/services/storage.service';
 import {
   listTasks,
@@ -35,8 +36,19 @@ import { TaskCompleteModal } from './components/TaskCompleteModal';
 
 export const TasksView = () => {
   const { currentUser } = useAuth();
+  const { userRole } = useRole();
   const { selectedClinicId } = useClinic();
-  const role = currentUser?.role || 'agent';
+  const role = userRole || currentUser?.role || 'org_admin';
+  const isSuperAdmin = role === 'super_admin';
+  const isOrgAdmin = role === 'org_admin';
+
+  const scopedUser = useMemo(() => ({
+    ...currentUser,
+    role,
+    organizationId: currentUser?.organizationId || (isOrgAdmin ? 'org-001' : null),
+  }), [currentUser, role, isOrgAdmin]);
+
+  const effectiveClinicId = (isSuperAdmin || isOrgAdmin) ? 'all' : selectedClinicId;
 
   // Check permissions
   const canView = hasRolePermission(role, PERMISSIONS.VIEW_TASKS);
@@ -83,8 +95,8 @@ export const TasksView = () => {
 
   // ── Load all scoped tasks for Stat Cards & Queues ────────────
   const allScopedTasks = useMemo(() => {
-    return listTasks({ queue: TASK_QUEUES.ALL }, currentUser, selectedClinicId);
-  }, [currentUser, selectedClinicId, refreshTrigger]);
+    return listTasks({ queue: TASK_QUEUES.ALL }, scopedUser, effectiveClinicId);
+  }, [scopedUser, effectiveClinicId, refreshTrigger]);
 
   // ── Stat Cards calculations ─────────────────────────────────
   const total = allScopedTasks.length;
@@ -139,10 +151,10 @@ export const TasksView = () => {
         priority: selectedPriority,
         type: selectedType,
       },
-      currentUser,
-      selectedClinicId
+      scopedUser,
+      effectiveClinicId
     );
-  }, [activeQueue, searchQuery, selectedPriority, selectedType, currentUser, selectedClinicId, refreshTrigger]);
+  }, [activeQueue, searchQuery, selectedPriority, selectedType, scopedUser, effectiveClinicId, refreshTrigger]);
 
   // ── Handlers ────────────────────────────────────────────────
   const handleDelete = (taskId) => {

@@ -100,7 +100,7 @@ export const TableView = ({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/70 text-slate-500">
-                  <th className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider">Patient Name & Contact</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider min-w-[210px]">Patient Name & Contact</th>
                   <th className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider">Clinic & Org</th>
                   <th className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider">Treatment</th>
                   <th className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider">Provider / Doctor</th>
@@ -132,19 +132,20 @@ export const TableView = ({
                       className="hover:bg-slate-50/70 transition-colors cursor-pointer group"
                     >
                       {/* Patient Details */}
-                      <td className="py-3.5 px-4 font-semibold text-slate-900">
+                      <td className="py-3.5 px-4 font-semibold text-slate-900 min-w-[210px]">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0 border border-primary/20">
                             {initials}
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <div className="text-sm font-semibold text-slate-900 group-hover:text-primary transition-colors">
                               {appt.patientName}
                             </div>
-                            <div className="text-[11px] text-slate-400 font-normal flex items-center gap-2 mt-0.5">
-                              <span>{appt.phone || '+1-555-0100'}</span>
-                              <span>•</span>
-                              <span className="truncate max-w-[130px]">{appt.email || 'N/A'}</span>
+                            <div className="text-[11px] text-slate-600 font-medium whitespace-nowrap mt-0.5">
+                              {appt.phone || '+1-555-0100'}
+                            </div>
+                            <div className="text-[11px] text-slate-400 font-normal truncate max-w-[170px] mt-0.5">
+                              {appt.email || 'N/A'}
                             </div>
                           </div>
                         </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronRight, Save, RotateCcw, AlertCircle, CheckCircle2, Shield } from 'lucide-react';
+import { ChevronRight, Save, RotateCcw, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useRole } from '@/dashboard/shared/context/RoleContext';
 
 export const SettingsHeader = ({
@@ -35,18 +35,14 @@ export const SettingsHeader = ({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          {isDirty && (
+        {isDirty && (
+          <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
               Unsaved changes
             </span>
-          )}
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
-            <Shield className="w-3 h-3 text-slate-500" />
-            Workspace v3.2
-          </span>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Title & Action Buttons */}
@@ -56,7 +52,7 @@ export const SettingsHeader = ({
             Settings & Operations
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Manage organization branding, operational catalogs, alerts, and platform security policies.
+            Manage operational catalogs, notification gateways, and platform security policies.
           </p>
         </div>
 

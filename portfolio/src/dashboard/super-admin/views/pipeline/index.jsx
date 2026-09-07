@@ -11,11 +11,14 @@ import { PipelineTableView } from './components/PipelineTableView';
 import { PipelineKanbanView } from './components/PipelineKanbanView';
 import { LeadDetailDrawer } from './components/LeadDetailDrawer';
 
+import { useOrg } from '@/dashboard/shared/context/OrgContext';
+import { useClinic } from '@/context/ClinicContext';
+
 export default function LeadPipelineView() {
-  // ── Global Filter State ──────────────────────────────────────────
+  // ── Global Filter State (Connected to shared layout Contexts) ────
+  const { selectedOrgId, setSelectedOrgId } = useOrg();
+  const { selectedClinicId, setSelectedClinicId } = useClinic();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedOrgId, setSelectedOrgId] = useState('all');
-  const [selectedClinicId, setSelectedClinicId] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedSource, setSelectedSource] = useState('all');
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'kanban'

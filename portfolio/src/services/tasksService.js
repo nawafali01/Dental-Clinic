@@ -426,3 +426,5 @@ export function addTask(taskData) {
     priority: taskData.priority || 'Normal',
   });
 }
+
+export const getTasks = listTasks;

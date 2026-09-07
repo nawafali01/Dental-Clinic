@@ -8,10 +8,10 @@ export const OrgProvider = ({ children }) => {
   const { userRole } = useRole();
   const [selectedOrgId, setSelectedOrgId] = useState('all'); // 'all' | 'apex' | 'smilecare'
 
-  // If user switches role to org_admin, restrict scope automatically to Apex Dental Group
+  // If user switches role to org_admin, restrict scope automatically to Smile Care Group (org-001)
   useEffect(() => {
     if (userRole === 'org_admin' && selectedOrgId === 'all') {
-      setSelectedOrgId('apex');
+      setSelectedOrgId('org-001');
     }
   }, [userRole, selectedOrgId]);
 

@@ -52,11 +52,11 @@ export const Header = () => {
           {currentRole?.label || 'Dashboard'}
         </span>
 
-        {/* Multi-Clinic Branch Switcher (Interactive dropdown for super_admin and org_admin only) */}
+        {/* Organization and Clinic Scope Switchers */}
         {isMultiAdmin ? (
           <>
-            <ClinicSwitcher />
             {userRole === 'super_admin' && <OrgSwitcher />}
+            <ClinicSwitcher />
           </>
         ) : (
           /* Read-Only Clinic Badge for non-admin roles (clinic_manager, agent, receptionist, finance, auditor) */

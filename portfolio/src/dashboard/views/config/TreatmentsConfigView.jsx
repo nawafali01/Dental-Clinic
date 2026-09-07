@@ -11,11 +11,15 @@ import {
   DollarSign,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
 import { treatmentsService } from '@/services/configService';
 import { Badge, PageHeader, StatCard } from '../components/ViewComponents';
 import { AddTreatmentModal } from './components/AddTreatmentModal';
 
 export const TreatmentsConfigView = () => {
+  const { currentUser } = useAuth();
+  const isClinicManager = currentUser?.role === 'clinic_manager';
+
   const [treatments, setTreatments] = useState(() => treatmentsService.getTreatments());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [treatmentToEdit, setTreatmentToEdit] = useState(null);
@@ -49,6 +53,11 @@ export const TreatmentsConfigView = () => {
 
   const handleDeleteTreatment = () => {
     if (!treatmentToDelete) return;
+    if (isClinicManager) {
+      toast.error('Master catalog procedures can only be deleted by System Administrators');
+      setTreatmentToDelete(null);
+      return;
+    }
     try {
       treatmentsService.deleteTreatment(treatmentToDelete.id || treatmentToDelete.treatment);
       refreshTreatments();
@@ -75,13 +84,29 @@ export const TreatmentsConfigView = () => {
     <div className="space-y-6">
       <PageHeader
         title="Treatments Catalog"
-        description="Configure standard dental procedures, durations, base prices, and online bookability."
-        action="+ Add Treatment"
+        description={
+          isClinicManager
+            ? "View procedure catalog, toggle booking availability, and adjust local clinic pricing & durations."
+            : "Configure standard dental procedures, durations, base prices, and online bookability."
+        }
+        action={isClinicManager ? undefined : "+ Add Treatment"}
         onAction={() => {
           setTreatmentToEdit(null);
           setIsModalOpen(true);
         }}
       />
+
+      {isClinicManager && (
+        <div className="bg-emerald-50/80 border border-emerald-200/80 text-emerald-800 text-xs px-4 py-3 rounded-2xl flex items-center justify-between shadow-2xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span><strong>Clinic Manager Access:</strong> You can view all procedures, toggle booking availability, and edit pricing & durations for your clinic branch.</span>
+          </div>
+          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-300/40 px-2 py-0.5 rounded-md uppercase tracking-wider">
+            Limited Edit Mode
+          </span>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -209,14 +234,16 @@ export const TreatmentsConfigView = () => {
                           <Pencil className="w-4 h-4" />
                         </button>
 
-                        {/* Delete */}
-                        <button
-                          onClick={() => setTreatmentToDelete(t)}
-                          title="Delete Procedure"
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {/* Delete - only for Admin */}
+                        {!isClinicManager && (
+                          <button
+                            onClick={() => setTreatmentToDelete(t)}
+                            title="Delete Procedure"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

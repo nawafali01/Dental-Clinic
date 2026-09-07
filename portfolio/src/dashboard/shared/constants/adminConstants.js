@@ -78,7 +78,8 @@ export const SUPER_ADMIN_NAVIGATION = [
   {
     title: 'Management',
     items: [
-      { name: 'Clinics', path: '/admin/clinics', icon: Building2 },
+      { name: 'Organizations', path: '/admin/organizations', icon: Building2 },
+      { name: 'Clinics', path: '/admin/clinics', icon: GitBranch },
       { name: 'Users',   path: '/admin/users',   icon: UserCheck },
     ],
   },
@@ -86,8 +87,6 @@ export const SUPER_ADMIN_NAVIGATION = [
     title: 'Configuration',
     items: [
       { name: 'Treatments',    path: '/admin/treatments-config', icon: Activity },
-      { name: 'Lead Sources',  path: '/admin/lead-sources',      icon: Target },
-      { name: 'Lead Statuses', path: '/admin/lead-statuses',     icon: Tag },
     ],
   },
   {
@@ -147,20 +146,12 @@ export const ORG_ADMIN_NAVIGATION = [
     title: 'Configuration',
     items: [
       { name: 'Treatments',    path: '/admin/treatments-config', icon: Activity },
-      { name: 'Lead Sources',  path: '/admin/lead-sources',      icon: Target },
-      { name: 'Lead Statuses', path: '/admin/lead-statuses',     icon: Tag },
     ],
   },
   {
     title: 'AI & Automation',
     items: [
       { name: 'AI Copilot', path: '/admin/ai-copilot', icon: Sparkles },
-    ],
-  },
-  {
-    title: 'Integrations',
-    items: [
-      { name: 'Integrations', path: '/admin/integrations', icon: Link },
     ],
   },
   {
@@ -172,6 +163,7 @@ export const ORG_ADMIN_NAVIGATION = [
   },
 ];
 
+// ─────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────
 // Clinic Manager Navigation (Clinic Scope)
 // ─────────────────────────────────────────────────────────────
@@ -190,22 +182,22 @@ export const CLINIC_MANAGER_NAVIGATION = [
   {
     title: 'Finance',
     items: [
-      { name: 'Revenue', path: '/admin/revenue', icon: DollarSign },
-      { name: 'Reports', path: '/admin/reports', icon: FileText },
+      { name: 'Revenue',  path: '/admin/revenue',  icon: DollarSign },
+      { name: 'Payments', path: '/admin/payments', icon: CreditCard },
+      { name: 'Reports',  path: '/admin/reports',  icon: FileText },
     ],
   },
   {
-    title: 'Clinic',
+    title: 'Clinic & Team',
     items: [
-      { name: 'Clinics', path: '/admin/clinics', icon: Building2 },
-      { name: 'Users',   path: '/admin/users',   icon: UserCheck },
+      { name: 'Users',      path: '/admin/users',             icon: UserCheck },
+      { name: 'Treatments', path: '/admin/treatments-config', icon: Activity },
     ],
   },
   {
-    title: 'Tools',
+    title: 'Platform',
     items: [
-      { name: 'AI Copilot',   path: '/admin/ai-copilot',   icon: Sparkles },
-      { name: 'Notifications',path: '/admin/notifications', icon: Bell },
+      { name: 'Notifications', path: '/admin/notifications', icon: Bell },
     ],
   },
 ];
@@ -220,6 +212,7 @@ export const AGENT_NAVIGATION = [
       { name: 'Dashboard',    path: '/admin/dashboard',    icon: LayoutDashboard },
       { name: 'Leads',        path: '/admin/leads',        icon: Users },
       { name: 'Appointments', path: '/admin/appointments', icon: Calendar },
+      { name: 'Patients',     path: '/admin/patients',     icon: UserCircle },
       { name: 'Calls',        path: '/admin/calls',        icon: Phone },
       { name: 'Tasks',        path: '/admin/tasks',        icon: CheckSquare },
     ],

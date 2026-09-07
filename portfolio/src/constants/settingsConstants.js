@@ -43,6 +43,8 @@ export const BADGE_COLOR_OPTIONS = [
   { label: 'Green', value: 'green', bg: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
   { label: 'Cyan', value: 'cyan', bg: 'bg-cyan-100 text-cyan-700 border-cyan-200' },
   { label: 'Rose', value: 'rose', bg: 'bg-rose-100 text-rose-700 border-rose-200' },
+  { label: 'Red', value: 'red', bg: 'bg-rose-100 text-rose-700 border-rose-200' },
+  { label: 'Emerald', value: 'emerald', bg: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
   { label: 'Slate', value: 'slate', bg: 'bg-slate-100 text-slate-700 border-slate-200' },
 ];
 

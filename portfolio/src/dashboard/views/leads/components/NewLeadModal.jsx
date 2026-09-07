@@ -1,17 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { X, Plus, User, Phone, Mail, Building2, Activity, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { createLead, LEAD_STATUSES, LEAD_PRIORITIES } from '@/services/leadsService';
 import { storageService } from '@/services/storage.service';
+import { CLINICS, getClinicsByOrgId } from '@/constants/clinics';
 
 export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selectedClinicId }) {
   const users = storageService.get(storageService.KEYS.USERS) || [];
-  const clinics = storageService.get(storageService.KEYS.CLINICS) || [
-    { id: 'clinic-downtown', name: 'Downtown Dental Excellence' },
-    { id: 'clinic-central', name: 'Apex Orthodontics & Smiles' },
-    { id: 'clinic-west', name: 'Westside Pediatric & Family' },
-    { id: 'clinic-east', name: 'Metro Cosmetic Care' },
-  ];
+
+  const userRole = currentUser?.role;
+  const userOrgId = currentUser?.organizationId || (userRole === 'org_admin' ? 'org-001' : null);
+
+  const clinics = useMemo(() => {
+    if (userRole === 'org_admin' && userOrgId) {
+      const orgClinics = getClinicsByOrgId(userOrgId);
+      if (orgClinics.length > 0) return orgClinics;
+    }
+    return CLINICS.filter((c) => !c.isAlias);
+  }, [userRole, userOrgId]);
+
+  const defaultClinicId =
+    selectedClinicId && selectedClinicId !== 'all' && clinics.some((c) => c.id === selectedClinicId)
+      ? selectedClinicId
+      : (clinics[0]?.id || 'clinic-downtown');
 
   const [formData, setFormData] = useState({
     patientName: '',
@@ -21,7 +32,7 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
     source: 'Website',
     status: 'new',
     priority: 'medium',
-    clinicId: selectedClinicId && selectedClinicId !== 'all' ? selectedClinicId : 'clinic-downtown',
+    clinicId: defaultClinicId,
     assignedAgentId: currentUser?.id || users[0]?.id || '',
   });
 

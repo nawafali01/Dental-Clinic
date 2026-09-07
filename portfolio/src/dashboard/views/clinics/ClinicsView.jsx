@@ -11,10 +11,13 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  Filter,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useClinic } from '@/context/ClinicContext';
+import { useRole } from '@/dashboard/shared/context/RoleContext';
+import { useOrg } from '@/dashboard/shared/context/OrgContext';
 import { clinicsService } from '@/services/clinicsService';
 import { scopeData } from '@/utils/scopeData';
 import { Badge, StatCard, PageHeader } from '../components/ViewComponents';
@@ -22,7 +25,19 @@ import { ClinicModal } from './components/ClinicModal';
 
 export const ClinicsView = () => {
   const { currentUser } = useAuth();
+  const { userRole } = useRole();
   const { selectedClinicId } = useClinic();
+  const { selectedOrgId, setSelectedOrgId, organizations, currentOrg } = useOrg();
+  const role = userRole || currentUser?.role || 'org_admin';
+  const isSuperAdmin = role === 'super_admin';
+  const isOrgAdmin = role === 'org_admin';
+  const userOrgId = currentUser?.organizationId || (isOrgAdmin ? 'org-001' : null);
+
+  const scopedUser = useMemo(() => ({
+    ...currentUser,
+    role,
+    organizationId: userOrgId,
+  }), [currentUser, role, userOrgId]);
 
   const [clinicsList, setClinicsList] = useState(() => clinicsService.getClinics());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,25 +55,36 @@ export const ClinicsView = () => {
     return scopeData({
       resource: 'clinics',
       data: clinicsList,
-      currentUser,
-      selectedClinicId,
+      currentUser: scopedUser,
+      selectedClinicId: (isSuperAdmin || isOrgAdmin) ? 'all' : selectedClinicId,
     });
-  }, [clinicsList, currentUser, selectedClinicId]);
+  }, [clinicsList, scopedUser, isSuperAdmin, isOrgAdmin, selectedClinicId]);
 
-  // Filtered clinics
+  // Filtered clinics by Organization, Search, and Status
   const filteredClinics = useMemo(() => {
     return scopedClinics.filter((c) => {
+      // Organization filter
+      const effectiveOrg = isOrgAdmin ? 'org-001' : selectedOrgId;
+      if (effectiveOrg && effectiveOrg !== 'all') {
+        if (c.orgId !== effectiveOrg) return false;
+      }
+
+      const orgName = organizations.find((o) => o.id === c.orgId)?.name || '';
+
       const matchesSearch =
         c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (c.city || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (c.address || '').toLowerCase().includes(searchQuery.toLowerCase());
+        (c.address || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        orgName.toLowerCase().includes(searchQuery.toLowerCase());
+
       const matchesStatus =
         statusFilter === 'ALL' ||
         (statusFilter === 'ACTIVE' && c.status !== 'inactive') ||
         (statusFilter === 'INACTIVE' && c.status === 'inactive');
+
       return matchesSearch && matchesStatus;
     });
-  }, [scopedClinics, searchQuery, statusFilter]);
+  }, [scopedClinics, selectedOrgId, searchQuery, statusFilter, organizations]);
 
   // Actions
   const handleOpenAdd = () => {
@@ -95,8 +121,8 @@ export const ClinicsView = () => {
     }
   };
 
-  const activeCount = scopedClinics.filter((c) => c.status !== 'inactive').length;
-  const inactiveCount = scopedClinics.filter((c) => c.status === 'inactive').length;
+  const activeCount = filteredClinics.filter((c) => c.status !== 'inactive').length;
+  const inactiveCount = filteredClinics.filter((c) => c.status === 'inactive').length;
 
   return (
     <div className="space-y-6">
@@ -107,30 +133,67 @@ export const ClinicsView = () => {
         onAction={handleOpenAdd}
       />
 
-      {/* KPI Cards */}
+      {/* KPI Cards (Recalculated per filtered scope) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="Total Branches" value={scopedClinics.length} sub="Registered in system" />
+        <StatCard
+          label="Total Branches"
+          value={filteredClinics.length}
+          sub={selectedOrgId === 'all' ? 'All organizations' : 'Selected organization'}
+        />
         <StatCard label="Active Locations" value={activeCount} sub="Operational & accepting leads" />
         <StatCard label="Maintenance / Inactive" value={inactiveCount} sub="Temporarily paused" />
         <StatCard label="Avg Branch Rating" value="4.9 ★" sub="Patient feedback score" />
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search branch name, city, address..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium text-slate-800 placeholder-slate-400"
-          />
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+          {/* Search input */}
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search branch name, city, organization..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-medium text-slate-800 placeholder-slate-400"
+            />
+          </div>
+
+          {/* Organization Filter or Locked Badge for Org Admin */}
+          {isOrgAdmin ? (
+            <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs self-stretch sm:self-auto">
+              <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span className="truncate">{currentOrg?.name || 'Smile Care Group'}</span>
+            </div>
+          ) : (
+            <div className="relative sm:w-64">
+              <select
+                aria-label="Filter by Organization"
+                value={selectedOrgId}
+                onChange={(e) => setSelectedOrgId(e.target.value)}
+                className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 rounded-xl border border-slate-200 text-slate-800 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-2xs"
+              >
+                <option value="all">All Organizations ({organizations.filter((o) => !o.isGlobal).length})</option>
+                {organizations
+                  .filter((org) => !org.isGlobal)
+                  .map((org) => {
+                    const branchCount = clinicsList.filter((c) => c.orgId === org.id).length;
+                    return (
+                      <option key={org.id} value={org.id}>
+                        {org.name} ({branchCount} branches)
+                      </option>
+                    );
+                  })}
+              </select>
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        {/* Status Filter Tabs */}
+        <div className="flex items-center gap-1.5 self-start sm:self-auto">
           {[
-            { label: 'All Branches', value: 'ALL' },
+            { label: 'All', value: 'ALL' },
             { label: 'Active', value: 'ACTIVE' },
             { label: 'Inactive', value: 'INACTIVE' },
           ].map((tab) => (
@@ -155,6 +218,7 @@ export const ClinicsView = () => {
           <thead className="bg-slate-50 border-b border-slate-200 text-slate-700">
             <tr>
               <th className="px-5 py-3 font-bold uppercase tracking-wider text-[10px]">Clinic Branch</th>
+              <th className="px-5 py-3 font-bold uppercase tracking-wider text-[10px]">Organization</th>
               <th className="px-5 py-3 font-bold uppercase tracking-wider text-[10px]">Location & City</th>
               <th className="px-5 py-3 font-bold uppercase tracking-wider text-[10px]">Contact Phone</th>
               <th className="px-5 py-3 font-bold uppercase tracking-wider text-[10px]">Operating Hours</th>
@@ -165,15 +229,17 @@ export const ClinicsView = () => {
           <tbody className="divide-y divide-slate-100">
             {filteredClinics.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-12 text-slate-400">
+                <td colSpan={7} className="text-center py-12 text-slate-400">
                   <Building2 className="w-8 h-8 mx-auto mb-2 text-slate-300 stroke-1" />
                   <p className="font-semibold text-slate-600">No clinic branches found</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Try adjusting your search or add a new branch</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Try adjusting your filters or add a new branch</p>
                 </td>
               </tr>
             ) : (
               filteredClinics.map((c) => {
                 const isActive = c.status !== 'inactive';
+                const parentOrg = organizations.find((o) => o.id === c.orgId);
+
                 return (
                   <tr key={c.id} className="hover:bg-slate-50/60 transition-colors">
                     {/* Branch Info */}
@@ -184,9 +250,25 @@ export const ClinicsView = () => {
                         </div>
                         <div>
                           <p className="font-bold text-slate-900">{c.name}</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5 font-mono">{c.id}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] text-slate-400 font-mono">{c.id}</span>
+                            <span className="text-[10px] text-slate-300">•</span>
+                            <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                              Mgr: {c.manager || 'Unassigned'}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                    </td>
+
+                    {/* Parent Organization */}
+                    <td className="px-5 py-3.5">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                        <Building2 className="w-3 h-3 text-primary shrink-0" />
+                        <span className="truncate max-w-[130px]">
+                          {parentOrg?.shortName || parentOrg?.name || c.orgId || 'Smile Care Group'}
+                        </span>
+                      </span>
                     </td>
 
                     {/* City & Address */}
@@ -281,7 +363,7 @@ export const ClinicsView = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={refreshClinics}
-        currentUser={currentUser}
+        currentUser={scopedUser}
         clinicToEdit={clinicToEdit}
       />
 

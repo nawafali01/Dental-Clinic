@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Navigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 import { RoleGuard } from "@/components/guards/RoleGuard";
 import { PERMISSIONS } from "@/dashboard/shared/config/permissions";
 
@@ -15,9 +16,21 @@ const RevenueView          = lazy(() => import("@/dashboard/views/revenue/Revenu
 const PaymentsView         = lazy(() => import("@/dashboard/views/config/PaymentsView"));
 const ReportsView          = lazy(() => import("@/dashboard/views/reports/ReportsView"));
 const ClinicsView          = lazy(() => import("@/dashboard/views/clinics/ClinicsView"));
+const OrganizationsView    = lazy(() => import("@/dashboard/super-admin/views/organizations/OrganizationsView"));
+const OrganizationDetailView = lazy(() => import("@/dashboard/super-admin/views/organizations/OrganizationDetailView"));
 const UsersView            = lazy(() => import("@/features/users/UsersView"));
+const UserManagementView   = lazy(() => import("@/dashboard/super-admin/views/UserManagementView"));
+const UserDetailView       = lazy(() => import("@/dashboard/super-admin/views/users/UserDetailView"));
 const ProfileView          = lazy(() => import("@/features/profile/ProfileView"));
 const SettingsWorkspace    = lazy(() => import("@/features/settings/SettingsWorkspace"));
+
+const UsersDispatcher = () => {
+  const { currentUser } = useAuth();
+  if (currentUser?.role === 'super_admin' || currentUser?.role === 'org_admin') {
+    return <UserManagementView />;
+  }
+  return <UsersView />;
+};
 
 // Operations & Config Views
 const PatientCheckInView   = lazy(() => import("@/dashboard/views/operations/PatientCheckInView"));
@@ -26,8 +39,6 @@ const MyScheduleView       = lazy(() => import("@/dashboard/views/operations/MyS
 const NotificationsView    = lazy(() => import("@/dashboard/views/operations/NotificationsView"));
 const AiCopilotView        = lazy(() => import("@/dashboard/views/operations/AiCopilotView"));
 const TreatmentsConfigView = lazy(() => import("@/dashboard/views/config/TreatmentsConfigView"));
-const LeadSourcesView      = lazy(() => import("@/dashboard/views/config/LeadSourcesView"));
-const LeadStatusesView     = lazy(() => import("@/dashboard/views/config/LeadStatusesView"));
 const AiRunsView           = lazy(() => import("@/dashboard/views/config/AiRunsView"));
 const AiAutomationsView    = lazy(() => import("@/dashboard/views/config/AiAutomationsView"));
 const WebsiteContentView   = lazy(() => import("@/dashboard/views/config/WebsiteContentView"));
@@ -59,7 +70,10 @@ export const sharedRoutes = [
   { path: "payments", element: <RoleGuard permission={PERMISSIONS.VIEW_PAYMENTS}><Suspense fallback={fallback("Loading Payments...")}><PaymentsView /></Suspense></RoleGuard> },
   { path: "reports", element: <RoleGuard permission={PERMISSIONS.VIEW_REPORTS}><Suspense fallback={fallback("Loading Reports...")}><ReportsView /></Suspense></RoleGuard> },
   { path: "clinics", element: <RoleGuard permission={PERMISSIONS.VIEW_CLINICS}><Suspense fallback={fallback("Loading Clinics...")}><ClinicsView /></Suspense></RoleGuard> },
-  { path: "users", element: <RoleGuard permission={PERMISSIONS.VIEW_USERS}><Suspense fallback={fallback("Loading Users...")}><UsersView /></Suspense></RoleGuard> },
+  { path: "organizations", element: <RoleGuard permission={PERMISSIONS.MANAGE_ORGS}><Suspense fallback={fallback("Loading Organizations...")}><OrganizationsView /></Suspense></RoleGuard> },
+  { path: "organizations/:id", element: <RoleGuard permission={PERMISSIONS.MANAGE_ORGS}><Suspense fallback={fallback("Loading Organization Details...")}><OrganizationDetailView /></Suspense></RoleGuard> },
+  { path: "users", element: <RoleGuard permission={PERMISSIONS.VIEW_USERS}><Suspense fallback={fallback("Loading Users...")}><UsersDispatcher /></Suspense></RoleGuard> },
+  { path: "users/:id", element: <RoleGuard permission={PERMISSIONS.MANAGE_USERS}><Suspense fallback={fallback("Loading User Details...")}><UserDetailView /></Suspense></RoleGuard> },
   { path: "patient-checkin", element: <RoleGuard permission={PERMISSIONS.VIEW_APPOINTMENTS}><Suspense fallback={fallback("Loading Check-In...")}><PatientCheckInView /></Suspense></RoleGuard> },
   { path: "reschedule", element: <RoleGuard permission={PERMISSIONS.VIEW_APPOINTMENTS}><Suspense fallback={fallback("Loading Reschedule...")}><RescheduleView /></Suspense></RoleGuard> },
   { path: "my-schedule", element: <RoleGuard permission={PERMISSIONS.VIEW_APPOINTMENTS}><Suspense fallback={fallback("Loading My Schedule...")}><MyScheduleView /></Suspense></RoleGuard> },
@@ -69,8 +83,8 @@ export const sharedRoutes = [
   { path: "settings", element: <Suspense fallback={fallback("Loading Settings...")}><SettingsWorkspace /></Suspense> },
 
   { path: "treatments-config", element: <RoleGuard permission={PERMISSIONS.MANAGE_TREATMENTS}><Suspense fallback={fallback("Loading Treatments...")}><TreatmentsConfigView /></Suspense></RoleGuard> },
-  { path: "lead-sources", element: <RoleGuard permission={PERMISSIONS.MANAGE_LEAD_SOURCES}><Suspense fallback={fallback("Loading Sources...")}><LeadSourcesView /></Suspense></RoleGuard> },
-  { path: "lead-statuses", element: <RoleGuard permission={PERMISSIONS.MANAGE_LEAD_STATUSES}><Suspense fallback={fallback("Loading Statuses...")}><LeadStatusesView /></Suspense></RoleGuard> },
+  { path: "lead-sources", element: <Navigate to="/admin/settings?tab=catalogs" replace /> },
+  { path: "lead-statuses", element: <Navigate to="/admin/settings?tab=catalogs" replace /> },
   { path: "ai-runs", element: <RoleGuard permission={PERMISSIONS.MANAGE_AI_RUNS}><Suspense fallback={fallback("Loading AI Runs...")}><AiRunsView /></Suspense></RoleGuard> },
   { path: "ai-automations", element: <RoleGuard permission={PERMISSIONS.MANAGE_AI_AUTOMATIONS}><Suspense fallback={fallback("Loading AI Automations...")}><AiAutomationsView /></Suspense></RoleGuard> },
   { path: "website-content", element: <RoleGuard permission={PERMISSIONS.MANAGE_WEBSITE_CONTENT}><Suspense fallback={fallback("Loading Website Content...")}><WebsiteContentView /></Suspense></RoleGuard> },

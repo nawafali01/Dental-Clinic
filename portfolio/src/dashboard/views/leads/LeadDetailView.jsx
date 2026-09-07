@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Sparkles, Send, Check, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useClinic } from '@/context/ClinicContext';
 import { getLeadByIdScoped, updateLeadStatus } from '@/services/leadsService';
@@ -13,6 +15,8 @@ export const LeadDetailView = () => {
 
   const [lead, setLead] = useState(null);
   const [status, setStatus] = useState('');
+  const [copilotDraft, setCopilotDraft] = useState('');
+  const [copilotApproved, setCopilotApproved] = useState(false);
 
   const role = currentUser?.role;
   const listUrl = buildRoleUrl('/leads', role);
@@ -22,6 +26,9 @@ export const LeadDetailView = () => {
     setLead(data);
     if (data) {
       setStatus(data.status || 'new');
+      setCopilotDraft(
+        `Hi ${data.patientName}, this is ${currentUser?.fullName || currentUser?.name || 'Alex'} from Downtown Dental Excellence. I'm reaching out regarding your ${data.treatment || 'dental'} inquiry. We have consultation slots open this week—would you like me to reserve a time for you?`
+      );
     }
   }, [id, currentUser, selectedClinicId]);
 
@@ -161,6 +168,78 @@ export const LeadDetailView = () => {
                 <p className="text-sm text-amber-900 mt-1">{lead.notes}</p>
               </div>
             )}
+
+            {/* Embedded AI Copilot Panel (Human-Gated) */}
+            <div className="p-5 rounded-2xl bg-linear-to-r from-blue-50/60 via-cyan-50/60 to-purple-50/60 border border-blue-200/80 space-y-3.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-lg bg-primary text-white flex items-center justify-center">
+                    <Sparkles className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">AI Copilot Recommendation</h3>
+                    <p className="text-[11px] text-slate-500">Human Approval Gated</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/90 border border-slate-200 text-[10px] font-bold text-slate-700 self-start sm:self-auto shadow-2xs">
+                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                  <span>Manual Approval Required</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-white/90 rounded-xl border border-slate-200/80 text-xs text-slate-700 space-y-1">
+                <p className="font-bold text-slate-900">
+                  Next-Best-Action: Outreach for {lead.treatment || 'Consultation'}
+                </p>
+                <p className="text-slate-500 text-[11px]">
+                  {lead.status === 'new'
+                    ? 'New inquiry received. High conversion probability when contacted within the current window.'
+                    : 'Pipeline inquiry awaiting patient decision. Send gentle slot availability reminder.'}
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                  Draft Message (Review & Edit Before Sending)
+                </label>
+                <textarea
+                  rows={3}
+                  value={copilotDraft}
+                  onChange={(e) => setCopilotDraft(e.target.value)}
+                  disabled={copilotApproved}
+                  className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-60 transition-all"
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 border-t border-blue-100/60">
+                <p className="text-[11px] text-slate-500">
+                  {copilotApproved ? '✓ Suggestion approved and message dispatched' : '💡 Nothing is sent without clicking Approve & Send.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCopilotApproved(true);
+                    toast.success(`Action approved! Message dispatched to ${lead.patientName}.`);
+                  }}
+                  disabled={copilotApproved}
+                  className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer ${
+                    copilotApproved ? 'bg-emerald-600 text-white cursor-default' : 'bg-primary text-white hover:opacity-90'
+                  }`}
+                >
+                  {copilotApproved ? (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      Approved & Sent
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      Approve & Send
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -5,5 +5,7 @@ export const orgSchema = z.object({
   timezone: z.string().min(1, 'Please select a timezone'),
   currency: z.string().min(1, 'Please select a currency'),
   brandingColor: z.string().optional(),
+  brandColor: z.string().optional(),
+  logoUrl: z.string().nullable().optional(),
   status: z.enum(['active', 'inactive']),
 });

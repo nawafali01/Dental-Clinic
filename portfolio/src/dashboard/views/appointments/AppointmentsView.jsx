@@ -10,6 +10,7 @@ import {
   APPOINTMENT_STATUSES,
   INITIAL_DEMO_APPOINTMENTS,
 } from './constants';
+import { CLINICS, getClinicById, isSameClinic } from '@/constants/clinics';
 
 import {
   Header,
@@ -19,15 +20,23 @@ import {
   DetailDrawer,
 } from './components';
 
+import { useOrg } from '@/dashboard/shared/context/OrgContext';
+
 export const AppointmentsView = () => {
   const { currentUser } = useAuth();
-  const { selectedClinicId: contextClinicId } = useClinic();
+  const { selectedOrgId, setSelectedOrgId } = useOrg();
+  const { selectedClinicId, setSelectedClinicId } = useClinic();
+
+  const isClinicManager = currentUser?.role === 'clinic_manager';
+  const isAgent = currentUser?.role === 'agent';
+  const isScopedClinic = isClinicManager || isAgent;
+  const managerClinicId = currentUser?.clinicId || (currentUser?.clinicIds && currentUser?.clinicIds[0]) || 'clinic-downtown';
+  const assignedClinicObj = getClinicById(managerClinicId);
+  const assignedClinicName = assignedClinicObj?.name || 'Downtown Dental Excellence';
 
   // ── Global Filter State ──────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'day' | 'week' | 'month'
-  const [selectedOrgId, setSelectedOrgId] = useState('all');
-  const [selectedClinicId, setSelectedClinicId] = useState('all');
   const [selectedDoctorId, setSelectedDoctorId] = useState('all');
   const [selectedTreatment, setSelectedTreatment] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -77,12 +86,6 @@ export const AppointmentsView = () => {
     }));
   }, [organizations, selectedOrgId]);
 
-  // Context clinic syncer
-  useEffect(() => {
-    if (contextClinicId && contextClinicId !== 'all') {
-      setSelectedClinicId(contextClinicId);
-    }
-  }, [contextClinicId]);
 
   // Reset clinic if invalid when switching org
   useEffect(() => {
@@ -98,7 +101,20 @@ export const AppointmentsView = () => {
   const [rawAppointments, setRawAppointments] = useState(() => {
     const saved = storageService.get(storageService.KEYS.APPOINTMENTS);
     if (saved && Array.isArray(saved) && saved.length > 0 && saved[0].doctorName) {
-      return saved;
+      // Check if saved has downtown appointments
+      const hasDowntown = saved.some((a) => isSameClinic(a.clinicId, 'clinic-downtown'));
+      if (hasDowntown && saved.length >= INITIAL_DEMO_APPOINTMENTS.length) {
+        return saved;
+      }
+      // Merge initial demo appointments so newly added demo appointments are present
+      const savedIds = new Set(saved.map((a) => a.id));
+      const missing = INITIAL_DEMO_APPOINTMENTS.filter((a) => !savedIds.has(a.id));
+      const merged = [
+        ...saved.map((a) => (isSameClinic(a.clinicId, 'clinic-downtown') ? { ...a, clinicId: 'clinic-downtown' } : a)),
+        ...missing,
+      ];
+      storageService.set(storageService.KEYS.APPOINTMENTS, merged);
+      return merged;
     }
     storageService.set(storageService.KEYS.APPOINTMENTS, INITIAL_DEMO_APPOINTMENTS);
     return INITIAL_DEMO_APPOINTMENTS;
@@ -134,14 +150,24 @@ export const AppointmentsView = () => {
         }
       }
 
-      // Organization filter
-      if (selectedOrgId !== 'all' && appt.orgId !== selectedOrgId) {
-        return false;
-      }
+      // Clinic scoping: Clinic Manager strictly views their assigned clinic, Agent views Downtown assigned/clinic
+      if (isScopedClinic) {
+        if (!isSameClinic(appt.clinicId, managerClinicId)) {
+          return false;
+        }
+        if (isAgent && appt.assignedAgentId && appt.assignedAgentId !== currentUser?.id) {
+          return false;
+        }
+      } else {
+        // Organization filter
+        if (selectedOrgId !== 'all' && appt.orgId && appt.orgId !== selectedOrgId) {
+          return false;
+        }
 
-      // Clinic filter
-      if (selectedClinicId !== 'all' && appt.clinicId !== selectedClinicId) {
-        return false;
+        // Clinic filter
+        if (selectedClinicId !== 'all' && !isSameClinic(appt.clinicId, selectedClinicId)) {
+          return false;
+        }
       }
 
       // Doctor filter
@@ -164,6 +190,10 @@ export const AppointmentsView = () => {
   }, [
     rawAppointments,
     searchQuery,
+    isScopedClinic,
+    isAgent,
+    currentUser?.id,
+    managerClinicId,
     selectedOrgId,
     selectedClinicId,
     selectedDoctorId,
@@ -282,6 +312,8 @@ export const AppointmentsView = () => {
         organizations={organizations}
         availableClinics={availableClinics}
         onOpenBookingModal={handleOpenBooking}
+        isClinicManager={isScopedClinic}
+        assignedClinicName={assignedClinicName}
       />
 
       {/* 2. Live Appointment KPI Strip */}

@@ -218,6 +218,52 @@ export const TabSecurityAccess = ({
           </table>
         </div>
       </div>
+
+      {/* 4. Network & IP Whitelisting */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-slate-900">Network & IP Whitelisting</h3>
+              <p className="text-xs text-slate-500">Restrict Super Admin and clinical staff access to verified clinic static IP addresses.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={!isAdmin}
+            onClick={() => onChange('ipWhitelistEnabled', !formData?.ipWhitelistEnabled)}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+              formData?.ipWhitelistEnabled ? 'bg-primary' : 'bg-slate-300'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                formData?.ipWhitelistEnabled ? 'translate-x-4' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {formData?.ipWhitelistEnabled && (
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-slate-700">
+              Allowed IP Addresses or CIDR Ranges (comma-separated)
+            </label>
+            <input
+              type="text"
+              disabled={!isAdmin}
+              value={formData?.ipAddresses || ''}
+              onChange={(e) => onChange('ipAddresses', e.target.value)}
+              placeholder="e.g. 192.168.1.1, 10.0.0.0/24, 203.0.113.50"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+            <p className="text-[11px] text-slate-400">Requests originating from outside these IP subnets will be challenged with 2FA or denied.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

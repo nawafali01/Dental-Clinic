@@ -2,12 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { X, Building2, MapPin, Phone, Mail, Clock, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { clinicsService } from '@/services/clinicsService';
+import { useOrg } from '@/dashboard/shared/context/OrgContext';
 
 export function ClinicModal({ isOpen, onClose, onSuccess, currentUser, clinicToEdit = null }) {
   const isEdit = Boolean(clinicToEdit);
+  const { selectedOrgId, organizations } = useOrg();
+
+  const validOrgs = organizations.filter((o) => !o.isGlobal);
+  const defaultOrgId = selectedOrgId !== 'all' ? selectedOrgId : (validOrgs[0]?.id || 'org-001');
 
   const [formData, setFormData] = useState({
     name: '',
+    orgId: defaultOrgId,
     city: 'Riyadh',
     address: '',
     phone: '+1 (555) 020-0000',
@@ -23,6 +29,7 @@ export function ClinicModal({ isOpen, onClose, onSuccess, currentUser, clinicToE
     if (clinicToEdit) {
       setFormData({
         name: clinicToEdit.name || '',
+        orgId: clinicToEdit.orgId || defaultOrgId,
         city: clinicToEdit.city || 'Riyadh',
         address: clinicToEdit.address || '',
         phone: clinicToEdit.phone || '',
@@ -34,6 +41,7 @@ export function ClinicModal({ isOpen, onClose, onSuccess, currentUser, clinicToE
     } else {
       setFormData({
         name: '',
+        orgId: defaultOrgId,
         city: 'Riyadh',
         address: '',
         phone: '+1 (555) 020-0000',
@@ -43,7 +51,7 @@ export function ClinicModal({ isOpen, onClose, onSuccess, currentUser, clinicToE
         status: 'active',
       });
     }
-  }, [clinicToEdit, isOpen]);
+  }, [clinicToEdit, isOpen, defaultOrgId]);
 
   if (!isOpen) return null;
 
@@ -59,6 +67,7 @@ export function ClinicModal({ isOpen, onClose, onSuccess, currentUser, clinicToE
       if (isEdit) {
         const updated = clinicsService.updateClinic(clinicToEdit.id, {
           name: formData.name.trim(),
+          orgId: formData.orgId,
           city: formData.city,
           address: formData.address || `${formData.city} Central District`,
           phone: formData.phone,
@@ -72,13 +81,13 @@ export function ClinicModal({ isOpen, onClose, onSuccess, currentUser, clinicToE
       } else {
         const newClinic = clinicsService.addClinic({
           name: formData.name.trim(),
+          orgId: formData.orgId,
           city: formData.city,
           address: formData.address || `${formData.city} Central District`,
           phone: formData.phone,
           email: formData.email,
           operatingHours: formData.operatingHours,
           chairsCount: Number(formData.chairsCount) || 4,
-          orgId: currentUser?.organizationId || null,
           status: formData.status,
         });
         toast.success(`Clinic branch "${newClinic.name}" added successfully!`);
@@ -136,6 +145,24 @@ export function ClinicModal({ isOpen, onClose, onSuccess, currentUser, clinicToE
             />
           </div>
 
+          {/* Parent Organization Selector */}
+          <div>
+            <label className="block font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+              Parent Organization <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={formData.orgId}
+              onChange={(e) => setFormData({ ...formData, orgId: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium cursor-pointer"
+            >
+              {validOrgs.map((org) => (
+                <option key={org.id} value={org.id}>
+                  {org.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-bold text-slate-700 mb-1.5 uppercase tracking-wider">City</label>
@@ -184,10 +211,10 @@ export function ClinicModal({ isOpen, onClose, onSuccess, currentUser, clinicToE
           </div>
 
           <div>
-            <label className="block font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Full Address</label>
+            <label className="block font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Street Address</label>
             <input
               type="text"
-              placeholder="e.g. King Fahd Road, Al Olaya District, Suite 400"
+              placeholder="e.g. King Fahd Road, Suite 402"
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
@@ -199,14 +226,14 @@ export function ClinicModal({ isOpen, onClose, onSuccess, currentUser, clinicToE
               <label className="block font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Operating Hours</label>
               <input
                 type="text"
-                placeholder="08:00 AM - 08:00 PM"
+                placeholder="e.g. 08:00 AM - 08:00 PM"
                 value={formData.operatingHours}
                 onChange={(e) => setFormData({ ...formData, operatingHours: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
               />
             </div>
             <div>
-              <label className="block font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Branch Status</label>
+              <label className="block font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Operational Status</label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
@@ -217,30 +244,26 @@ export function ClinicModal({ isOpen, onClose, onSuccess, currentUser, clinicToE
               </select>
             </div>
           </div>
-        </form>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/70">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-xs"
-          >
-            {isSubmitting ? (isEdit ? 'Saving...' : 'Adding...') : (isEdit ? 'Save Changes' : 'Add Clinic Branch')}
-          </button>
-        </div>
+          {/* Footer Buttons */}
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-5 py-2 text-xs font-bold bg-primary hover:bg-primary/90 text-white rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50"
+            >
+              {isSubmitting ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Clinic Branch'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
 }
-
-export default ClinicModal;

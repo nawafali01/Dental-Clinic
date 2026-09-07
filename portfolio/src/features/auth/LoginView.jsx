@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { loginSchema } from '../../schemas/auth.schema';
 import { useAuth } from '@/context/AuthContext';
-import { Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import { Sparkles, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 import { buildRoleUrl } from '../../utils/getRoleBaseUrl';
 
@@ -12,8 +12,9 @@ export default function LoginView() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [authError, setAuthError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' }
   });
@@ -23,11 +24,18 @@ export default function LoginView() {
     const res = await login(data.email, data.password);
     
     if (res.success) {
-      const role = res.user?.role;
-      navigate(buildRoleUrl('/dashboard', role));
+      const user = res.data || res.user;
+      const role = user?.role || 'clinic_manager';
+      navigate(buildRoleUrl('/dashboard', role), { replace: true });
     } else {
-      setAuthError(res.message);
+      setAuthError(res.message || 'Login failed');
     }
+  };
+
+  const handleQuickFill = (email, password = 'password123') => {
+    setValue('email', email, { shouldValidate: true });
+    setValue('password', password, { shouldValidate: true });
+    setAuthError('');
   };
 
   return (
@@ -67,12 +75,27 @@ export default function LoginView() {
               <label className="block text-sm font-semibold text-slate-700">Password</label>
               <a href="#" className="text-xs font-medium text-primary hover:underline">Forgot password?</a>
             </div>
-            <input 
-              {...register('password')}
-              type="password"
-              placeholder="••••••••"
-              className={`w-full px-4 py-2.5 rounded-xl border ${errors.password ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-primary focus:ring-primary'} bg-white text-slate-900 outline-none focus:ring-2 focus:ring-opacity-20 transition-all`}
-            />
+            <div className="relative">
+              <input 
+                {...register('password')}
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                className={`w-full px-4 py-2.5 pr-11 rounded-xl border ${errors.password ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-primary focus:ring-primary'} bg-white text-slate-900 outline-none focus:ring-2 focus:ring-opacity-20 transition-all`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none p-1 transition-colors"
+                tabIndex={-1}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4 text-slate-500" />
+                ) : (
+                  <Eye className="w-4 h-4 text-slate-400" />
+                )}
+              </button>
+            </div>
             {errors.password && <p className="text-xs text-red-500 font-medium">{errors.password.message}</p>}
           </div>
 
@@ -84,6 +107,36 @@ export default function LoginView() {
             {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Sign in"}
           </button>
         </form>
+
+        {/* Demo Quick Fill Helper */}
+        <div className="mt-6 pt-5 border-t border-slate-100">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center mb-2.5">
+            Quick Demo Fill
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => handleQuickFill('manager@test.com', 'password123')}
+              className="px-2 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60 transition-colors text-center"
+            >
+              Manager
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickFill('orgadmin@test.com', 'password123')}
+              className="px-2 py-1.5 text-xs font-semibold rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200/60 transition-colors text-center"
+            >
+              Org Admin
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickFill('agent@test.com', 'password123')}
+              className="px-2 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 transition-colors text-center"
+            >
+              Agent
+            </button>
+          </div>
+        </div>
 
       </div>
     </div>

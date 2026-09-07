@@ -48,7 +48,7 @@ export const PageHeader = ({ title, description, action, onAction }) => (
 );
 
 export const Table = ({ headers, rows }) => (
-  <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+  <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
     <table className="w-full text-sm">
       <thead className="bg-slate-50 border-b border-slate-200">
         <tr>
@@ -58,13 +58,24 @@ export const Table = ({ headers, rows }) => (
         </tr>
       </thead>
       <tbody className="divide-y divide-slate-100">
-        {rows.map((row, i) => (
-          <tr key={i} className="hover:bg-slate-50 transition-colors">
-            {row.map((cell, j) => (
-              <td key={j} className="px-4 py-3 text-slate-700">{cell}</td>
-            ))}
+        {rows.length === 0 ? (
+          <tr>
+            <td colSpan={headers.length} className="px-4 py-10 text-center text-slate-400">
+              <div className="flex flex-col items-center justify-center gap-1.5">
+                <span className="text-base font-medium text-slate-600">No records found</span>
+                <span className="text-xs text-slate-400">Try adjusting or clearing your filters</span>
+              </div>
+            </td>
           </tr>
-        ))}
+        ) : (
+          rows.map((row, i) => (
+            <tr key={i} className="hover:bg-slate-50 transition-colors">
+              {row.map((cell, j) => (
+                <td key={j} className="px-4 py-3 text-slate-700">{cell}</td>
+              ))}
+            </tr>
+          ))
+        )}
       </tbody>
     </table>
   </div>

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useOrg } from '@/dashboard/shared/context/OrgContext';
 import { CLINICS, DEFAULT_CLINIC_ID } from '@/constants/clinics';
 import { MULTI_CLINIC_ROLES } from '@/dashboard/shared/config/permissions';
 
@@ -7,15 +8,11 @@ import { MULTI_CLINIC_ROLES } from '@/dashboard/shared/config/permissions';
  * CLINIC CONTEXT
  *
  * Manages the currently selected clinic branch for the dashboard.
- *
- * Rules:
- *  - Roles in MULTI_CLINIC_ROLES (super_admin, org_admin) can freely switch
- *    branches; the selection is persisted in localStorage under 'selectedBranch'.
- *  - All other roles are locked to the first clinic in their clinicIds array.
- *  - No logout is triggered when switching clinics — only the data scope changes.
- *
- * Backend-ready: Replace localStorage reads/writes with an API call when
- * a real backend is available.
+ * Seamlessly synced with OrgContext:
+ *  - When an organization is selected, available clinics filter dynamically
+ *    to that organization's clinic branches.
+ *  - When switching organizations, invalid clinic selections reset cleanly to 'all'.
+ *  - Multi-clinic roles (super_admin, org_admin) can switch branches or view 'all'.
  */
 
 const ClinicContext = createContext(null);
@@ -24,6 +21,9 @@ const SELECTED_BRANCH_KEY = 'selectedBranch';
 
 export const ClinicProvider = ({ children }) => {
   const { currentUser } = useAuth();
+  const orgContext = useOrg();
+  const selectedOrgId = orgContext?.selectedOrgId || 'all';
+  const currentOrg = orgContext?.currentOrg;
 
   /** True if the current user's role allows multi-clinic switching. */
   const canSwitch = useMemo(
@@ -32,32 +32,39 @@ export const ClinicProvider = ({ children }) => {
   );
 
   /**
-   * The subset of clinics this user may access.
-   * - Multi-clinic roles: all clinics.
+   * The subset of clinics available to this user in current scope.
    * - Single-clinic roles: only their assigned clinic(s).
-   * - Auditors (no clinicIds): all clinics in read-only mode.
+   * - Multi-clinic roles with org selected: only clinics belonging to that organization.
+   * - Multi-clinic roles with global scope ('all'): all canonical clinics.
    */
   const availableClinics = useMemo(() => {
-    if (!currentUser) return CLINICS;
-    if (canSwitch) return CLINICS;
-    if (currentUser.clinicIds && currentUser.clinicIds.length > 0) {
-      const filtered = CLINICS.filter((c) => currentUser.clinicIds.includes(c.id));
-      return filtered.length > 0 ? filtered : CLINICS;
-    }
-    // Auditor or unconstrained — see all clinics in read-only
-    return CLINICS;
-  }, [currentUser, canSwitch]);
+    const primaryClinics = CLINICS.filter((c) => !c.isAlias);
 
-  /**
-   * Determine the initial clinic:
-   *  - Multi-clinic roles: last persisted selection or default.
-   *  - Everyone else: their first assigned clinic.
-   */
+    if (!currentUser) return primaryClinics;
+
+    // Single-clinic roles locked to assigned clinicIds
+    if (!canSwitch) {
+      if (currentUser.clinicIds && currentUser.clinicIds.length > 0) {
+        const filtered = primaryClinics.filter((c) => currentUser.clinicIds.includes(c.id));
+        return filtered.length > 0 ? filtered : primaryClinics;
+      }
+      return primaryClinics;
+    }
+
+    // Multi-clinic roles (super_admin, org_admin)
+    if (!selectedOrgId || selectedOrgId === 'all') {
+      return primaryClinics;
+    }
+
+    const orgClinics = primaryClinics.filter((c) => c.orgId === selectedOrgId);
+    return orgClinics.length > 0 ? orgClinics : primaryClinics;
+  }, [currentUser, canSwitch, selectedOrgId]);
+
   const getInitialClinicId = () => {
-    if (!currentUser) return DEFAULT_CLINIC_ID;
+    if (!currentUser) return 'all';
     if (canSwitch) {
-      const saved = localStorage.getItem(SELECTED_BRANCH_KEY);
-      return saved || DEFAULT_CLINIC_ID;
+      const saved = typeof window !== 'undefined' ? localStorage.getItem(SELECTED_BRANCH_KEY) : null;
+      return saved || 'all';
     }
     return (currentUser.clinicIds && currentUser.clinicIds[0]) || DEFAULT_CLINIC_ID;
   };
@@ -70,18 +77,41 @@ export const ClinicProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 
+  // When selected organization changes, reset clinic if current selection doesn't belong to it
+  useEffect(() => {
+    if (selectedClinicId !== 'all') {
+      const exists = availableClinics.some((c) => c.id === selectedClinicId);
+      if (!exists) {
+        setSelectedClinicIdState('all');
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(SELECTED_BRANCH_KEY, 'all');
+        }
+      }
+    }
+  }, [selectedOrgId, availableClinics, selectedClinicId]);
+
   /**
    * Public setter — only multi-clinic roles can actually change the selection.
-   * Silently no-ops for restricted roles so call-sites don't need to check.
    */
   const setSelectedClinicId = (clinicId) => {
     if (!canSwitch) return;
     setSelectedClinicIdState(clinicId);
-    localStorage.setItem(SELECTED_BRANCH_KEY, clinicId);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(SELECTED_BRANCH_KEY, clinicId);
+    }
   };
 
-  const selectedClinic =
-    CLINICS.find((c) => c.id === selectedClinicId) || CLINICS[0];
+  const selectedClinic = useMemo(() => {
+    if (selectedClinicId === 'all') {
+      return {
+        id: 'all',
+        name: selectedOrgId === 'all' ? 'All Clinics' : `All Clinics (${currentOrg?.shortName || currentOrg?.name || 'Org'})`,
+        city: 'All Locations',
+        isAll: true,
+      };
+    }
+    return CLINICS.find((c) => c.id === selectedClinicId) || availableClinics[0] || CLINICS[0];
+  }, [selectedClinicId, selectedOrgId, currentOrg, availableClinics]);
 
   return (
     <ClinicContext.Provider
@@ -90,8 +120,9 @@ export const ClinicProvider = ({ children }) => {
         selectedClinic,
         setSelectedClinicId,
         availableClinics,
-        allClinics: CLINICS,
+        allClinics: CLINICS.filter((c) => !c.isAlias),
         canSwitch,
+        selectedOrgId,
       }}
     >
       {children}
@@ -103,15 +134,21 @@ export const useClinic = () => {
   const context = useContext(ClinicContext);
   if (!context) {
     const saved = typeof window !== 'undefined' ? localStorage.getItem(SELECTED_BRANCH_KEY) : null;
-    const initialClinicId = saved || DEFAULT_CLINIC_ID;
-    const selectedClinic = CLINICS.find((c) => c.id === initialClinicId) || CLINICS[0];
+    const initialClinicId = saved || 'all';
+    const primaryClinics = CLINICS.filter((c) => !c.isAlias);
+    const selectedClinic =
+      initialClinicId === 'all'
+        ? { id: 'all', name: 'All Clinics', city: 'All Locations', isAll: true }
+        : CLINICS.find((c) => c.id === initialClinicId) || primaryClinics[0];
+
     return {
       selectedClinicId: initialClinicId,
       selectedClinic,
       setSelectedClinicId: () => {},
-      availableClinics: CLINICS,
-      allClinics: CLINICS,
+      availableClinics: primaryClinics,
+      allClinics: primaryClinics,
       canSwitch: true,
+      selectedOrgId: 'all',
     };
   }
   return context;

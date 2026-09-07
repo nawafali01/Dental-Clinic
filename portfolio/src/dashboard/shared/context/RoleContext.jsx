@@ -18,7 +18,7 @@ export const RoleProvider = ({ children }) => {
       const matched = ROLES.find((r) => r.id === currentUser.role);
       if (matched) setSelectedRole(matched);
     }
-  }, [currentUser?.role]);
+  }, [currentUser?.id, currentUser?.role]);
 
   const currentRole = useMemo(() => {
     if (selectedRole) return selectedRole;

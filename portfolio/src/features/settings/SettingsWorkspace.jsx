@@ -1,20 +1,17 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Building2, Layers, Bell, ShieldCheck, AlertCircle, Check } from 'lucide-react';
+import { Layers, Bell, ShieldCheck, AlertCircle, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { settingsService, DEFAULT_SETTINGS, DEFAULT_CATALOGS } from '@/services/settingsService';
-import { brandingSchema } from './schemas/settingsSchema';
 
 import { SettingsHeader } from './components/SettingsHeader';
 import { SettingsSkeleton } from './components/SettingsSkeleton';
-import { TabOrganizationBranding } from './components/TabOrganizationBranding';
 import { TabOperationalCatalogs } from './components/TabOperationalCatalogs';
 import { TabNotificationsPreferences } from './components/TabNotificationsPreferences';
 import { TabSecurityAccess } from './components/TabSecurityAccess';
 
 const TABS = [
-  { id: 'branding', label: 'Organization & Branding', icon: Building2 },
   { id: 'catalogs', label: 'Operational Catalogs', icon: Layers },
   { id: 'notifications', label: 'Notifications & Preferences', icon: Bell },
   { id: 'security', label: 'Security & Access', icon: ShieldCheck },
@@ -22,10 +19,10 @@ const TABS = [
 
 export default function SettingsWorkspace() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab') || 'branding';
+  const initialTab = searchParams.get('tab') || 'catalogs';
 
   const [activeTab, setActiveTab] = useState(
-    TABS.some((t) => t.id === initialTab) ? initialTab : 'branding'
+    TABS.some((t) => t.id === initialTab) ? initialTab : 'catalogs'
   );
 
   const [isLoading, setIsLoading] = useState(true);
@@ -81,27 +78,15 @@ export default function SettingsWorkspace() {
     return settingsChanged || catalogsChanged;
   }, [formData, savedSettings, catalogsData, savedCatalogs]);
 
-  // Form field updater for Branding
-  const handleBrandingChange = useCallback((field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      branding: {
-        ...(prev?.branding || {}),
-        [field]: value,
-      },
-    }));
-
-    // Clear field-specific error if present
-    setErrors((prev) => {
-      if (!prev[field]) return prev;
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  }, []);
-
-  // Form field updater for Notifications
+  // Form field updater for Notifications & Communications
   const handleNotificationChange = useCallback((section, val) => {
+    if (section === 'communications') {
+      setFormData((prev) => ({
+        ...prev,
+        communications: val,
+      }));
+      return;
+    }
     setFormData((prev) => ({
       ...prev,
       notifications: {
@@ -130,24 +115,9 @@ export default function SettingsWorkspace() {
     }));
   }, []);
 
-  // Save changes handler with Zod validation
+  // Save changes handler
   const handleSave = () => {
     if (!formData) return;
-
-    // Validate branding with Zod
-    const validationResult = brandingSchema.safeParse(formData.branding);
-    if (!validationResult.success) {
-      const fieldErrors = {};
-      validationResult.error.errors.forEach((err) => {
-        if (err.path[0]) {
-          fieldErrors[err.path[0]] = err.message;
-        }
-      });
-      setErrors(fieldErrors);
-      setActiveTab('branding');
-      toast.error('Please fix validation errors before saving.');
-      return;
-    }
 
     setErrors({});
     setIsSaving(true);
@@ -233,14 +203,6 @@ export default function SettingsWorkspace() {
 
       {/* Active Tab Content Panels */}
       <div className="transition-all duration-150">
-        {activeTab === 'branding' && (
-          <TabOrganizationBranding
-            formData={formData?.branding}
-            errors={errors}
-            onChange={handleBrandingChange}
-          />
-        )}
-
         {activeTab === 'catalogs' && (
           <TabOperationalCatalogs
             catalogs={catalogsData}
@@ -250,7 +212,7 @@ export default function SettingsWorkspace() {
 
         {activeTab === 'notifications' && (
           <TabNotificationsPreferences
-            formData={formData?.notifications}
+            formData={{ ...formData?.notifications, communications: formData?.communications }}
             onChange={handleNotificationChange}
           />
         )}

@@ -111,3 +111,38 @@ export const addLostReasonItem = (reasons = [], reason) => {
 export const deleteLostReasonItem = (reasons = [], id) => {
   return reasons.filter((lr) => lr.id !== id);
 };
+
+/**
+ * Generic Ordered Status / Catalog Item Operations
+ * (Appointment Statuses, Task Statuses, Payment Statuses, Priority Levels)
+ */
+export const addOrderedCatalogItem = (items = [], prefix = 'item', name, color = 'blue') => {
+  const newItem = {
+    id: `${prefix}-${Date.now()}`,
+    name: name.trim(),
+    color,
+    order: items.length + 1,
+    active: true,
+  };
+  return [...items, newItem];
+};
+
+export const updateOrderedCatalogItem = (items = [], id, name, color) => {
+  return items.map((item) =>
+    item.id === id
+      ? { ...item, name: name.trim(), color: color || item.color }
+      : item
+  );
+};
+
+export const toggleOrderedCatalogItem = (items = [], id) => {
+  return items.map((item) =>
+    item.id === id ? { ...item, active: item.active !== false ? false : true } : item
+  );
+};
+
+export const deleteOrderedCatalogItem = (items = [], id) => {
+  return items
+    .filter((item) => item.id !== id)
+    .map((item, idx) => ({ ...item, order: idx + 1 }));
+};

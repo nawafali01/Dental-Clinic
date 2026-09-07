@@ -10,12 +10,22 @@ export function OrganizationsTable({
   onSelectOrg,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const filteredOrgs = useMemo(() => {
-    if (!searchQuery.trim()) return organizations;
-    const q = searchQuery.toLowerCase();
-    return organizations.filter((org) => org.name.toLowerCase().includes(q));
-  }, [organizations, searchQuery]);
+    return organizations.filter((org) => {
+      // Status filter
+      if (statusFilter !== 'all' && (org.status || 'active').toLowerCase() !== statusFilter.toLowerCase()) {
+        return false;
+      }
+      // Search query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        return org.name.toLowerCase().includes(q);
+      }
+      return true;
+    });
+  }, [organizations, searchQuery, statusFilter]);
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden space-y-0">
@@ -24,13 +34,13 @@ export function OrganizationsTable({
         <div>
           <h2 className="text-lg font-bold text-slate-900 tracking-tight">Organizations</h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Manage all organizations on the platform
+            Manage all organizations, clinics, and multi-tenant branding
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center flex-wrap gap-3">
           {/* Search Input */}
-          <div className="relative flex-1 md:w-64">
+          <div className="relative flex-1 md:w-56">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -39,6 +49,19 @@ export function OrganizationsTable({
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
             />
+          </div>
+
+          {/* Status Filter */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-transparent text-xs font-medium text-slate-700 focus:outline-none py-1 cursor-pointer"
+            >
+              <option value="all">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
           </div>
 
           <Button
@@ -69,6 +92,7 @@ export function OrganizationsTable({
             {filteredOrgs.map((org) => {
               const clinicsCount = org.clinics ? org.clinics.length : 0;
               const usersCount = org.users ? org.users.length : 0;
+              const orgColor = org.brandColor || org.brandingColor || '#0F766E';
 
               return (
                 <tr
@@ -76,15 +100,23 @@ export function OrganizationsTable({
                   onClick={() => onSelectOrg && onSelectOrg(org)}
                   className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
                 >
-                  {/* Organization Name + Color */}
+                  {/* Organization Name + Logo/Color */}
                   <td className="px-5 py-4 font-semibold text-slate-900">
                     <div className="flex items-center gap-3">
-                      <div
-                        className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-2xs"
-                        style={{ backgroundColor: org.brandingColor || '#0F766E' }}
-                      >
-                        {org.name ? org.name.substring(0, 2).toUpperCase() : 'OG'}
-                      </div>
+                      {org.logoUrl ? (
+                        <img
+                          src={org.logoUrl}
+                          alt={org.name}
+                          className="w-8 h-8 rounded-xl object-contain border border-slate-200 bg-white p-0.5 shrink-0 shadow-2xs"
+                        />
+                      ) : (
+                        <div
+                          className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-2xs"
+                          style={{ backgroundColor: orgColor }}
+                        >
+                          {org.name ? org.name.substring(0, 2).toUpperCase() : 'OG'}
+                        </div>
+                      )}
                       <div>
                         <div className="font-bold text-slate-900 group-hover:text-primary transition-colors flex items-center gap-1.5">
                           {org.name}

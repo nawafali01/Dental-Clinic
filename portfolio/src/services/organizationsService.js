@@ -11,10 +11,10 @@ export const INITIAL_ORGANIZATIONS = [
     brandingColor: '#0F766E',
     createdAt: '2026-01-12',
     clinics: [
-      { id: 'clinic-001', name: 'Downtown Dental Excellence', status: 'active' },
-      { id: 'clinic-002', name: 'Westside Dental Clinic', status: 'active' },
-      { id: 'clinic-003', name: 'Gulberg Dental Studio', status: 'active' },
-      { id: 'clinic-004', name: 'Clifton Oral Care', status: 'active' },
+      { id: 'clinic-downtown', name: 'Downtown Dental Excellence', city: 'Riyadh', status: 'active' },
+      { id: 'clinic-west', name: 'Westside Pediatric & Family', city: 'Riyadh', status: 'active' },
+      { id: 'clinic-003', name: 'Gulberg Dental Studio', city: 'Lahore', status: 'active' },
+      { id: 'clinic-004', name: 'Clifton Oral Care', city: 'Karachi', status: 'active' },
     ],
     users: [
       { id: 'user-001', name: 'Dr. John Doe', role: 'org_admin' },
@@ -33,9 +33,9 @@ export const INITIAL_ORGANIZATIONS = [
     brandingColor: '#2563EB',
     createdAt: '2026-02-04',
     clinics: [
-      { id: 'clinic-005', name: 'Marina Branch', status: 'active' },
-      { id: 'clinic-006', name: 'Jumeirah Care', status: 'active' },
-      { id: 'clinic-007', name: 'Downtown Dubai Clinic', status: 'active' },
+      { id: 'clinic-005', name: 'Marina Branch', city: 'Dubai', status: 'active' },
+      { id: 'clinic-006', name: 'Jumeirah Care', city: 'Dubai', status: 'active' },
+      { id: 'clinic-007', name: 'Downtown Dubai Clinic', city: 'Dubai', status: 'active' },
     ],
     users: [
       { id: 'user-004', name: 'Tariq Mansoor', role: 'org_admin' },
@@ -53,8 +53,8 @@ export const INITIAL_ORGANIZATIONS = [
     brandingColor: '#D97706',
     createdAt: '2026-03-18',
     clinics: [
-      { id: 'clinic-008', name: 'Kensington Clinic', status: 'inactive' },
-      { id: 'clinic-009', name: 'Westminster Dental', status: 'inactive' },
+      { id: 'clinic-008', name: 'Kensington Clinic', city: 'London', status: 'inactive' },
+      { id: 'clinic-009', name: 'Westminster Dental', city: 'London', status: 'inactive' },
     ],
     users: [
       { id: 'user-006', name: 'Edward Smith', role: 'org_admin' },
@@ -72,9 +72,9 @@ export const INITIAL_ORGANIZATIONS = [
     brandingColor: '#7C3AED',
     createdAt: '2026-01-05',
     clinics: [
-      { id: 'clinic-010', name: 'Manhattan Smile Hub', status: 'active' },
-      { id: 'clinic-011', name: 'Brooklyn Orthodontics', status: 'active' },
-      { id: 'clinic-012', name: 'Queens Family Dental', status: 'active' },
+      { id: 'clinic-central', name: 'Apex Orthodontics & Smiles', city: 'Jeddah', status: 'active' },
+      { id: 'clinic-011', name: 'Brooklyn Orthodontics', city: 'New York', status: 'active' },
+      { id: 'clinic-east', name: 'Metro Cosmetic Care', city: 'Dammam', status: 'active' },
     ],
     users: [
       { id: 'user-008', name: 'Michael Chang', role: 'org_admin' },
@@ -92,8 +92,8 @@ export const INITIAL_ORGANIZATIONS = [
     brandingColor: '#059669',
     createdAt: '2026-02-20',
     clinics: [
-      { id: 'clinic-013', name: 'Olaya Dental Center', status: 'active' },
-      { id: 'clinic-014', name: 'Corniche Jeddah Clinic', status: 'active' },
+      { id: 'clinic-013', name: 'Olaya Dental Center', city: 'Riyadh', status: 'active' },
+      { id: 'clinic-014', name: 'Corniche Jeddah Clinic', city: 'Jeddah', status: 'active' },
     ],
     users: [
       { id: 'user-010', name: 'Abdullah Al-Ghamdi', role: 'org_admin' },
@@ -111,7 +111,7 @@ export const INITIAL_ORGANIZATIONS = [
     brandingColor: '#E11D48',
     createdAt: '2026-03-01',
     clinics: [
-      { id: 'clinic-015', name: 'Business Bay Branch', status: 'active' },
+      { id: 'clinic-015', name: 'Business Bay Branch', city: 'Dubai', status: 'active' },
     ],
     users: [
       { id: 'user-012', name: 'Zaid Al-Harbi', role: 'org_admin' },
@@ -169,13 +169,16 @@ class OrganizationsService {
       const orgs = this.getOrganizationsSync();
 
       const newOrg = {
-        id: `org-${Date.now().toString(36)}`,
+        id: orgData.id || `org-${Date.now().toString(36)}`,
         name: orgData.name,
+        logoUrl: orgData.logoUrl || null,
+        brandColor: orgData.brandColor || orgData.brandingColor || '#0F766E',
+        brandingColor: orgData.brandColor || orgData.brandingColor || '#0F766E',
         status: orgData.status || 'active',
         timezone: orgData.timezone || 'Asia/Karachi',
-        currency: orgData.currency || 'PKR',
-        brandingColor: orgData.brandingColor || '#0F766E',
+        currency: orgData.currency || 'USD',
         createdAt: new Date().toISOString().split('T')[0],
+        updatedAt: new Date().toISOString(),
         clinics: [],
         users: [],
         newLeadsCount: 0,
@@ -205,9 +208,14 @@ class OrganizationsService {
         return createError('Organization not found.');
       }
 
+      const brandColor = updates.brandColor || updates.brandingColor || orgs[index].brandColor || orgs[index].brandingColor;
+
       const updatedOrg = {
         ...orgs[index],
         ...updates,
+        brandColor,
+        brandingColor: brandColor,
+        updatedAt: new Date().toISOString(),
       };
 
       const updatedOrgs = [...orgs];
@@ -218,6 +226,25 @@ class OrganizationsService {
     } catch (error) {
       return createError('Failed to update organization.', error);
     }
+  }
+
+  /**
+   * Delete an organization by ID.
+   */
+  async deleteOrganization(id) {
+    try {
+      const orgs = this.getOrganizationsSync();
+      const filtered = orgs.filter((o) => o.id !== id);
+      storageService.set(this.getStorageKey(), filtered);
+      return createSuccess({ id }, 'Organization deleted successfully.');
+    } catch (error) {
+      return createError('Failed to delete organization.', error);
+    }
+  }
+
+  getOrganizationById(id) {
+    const orgs = this.getOrganizationsSync();
+    return orgs.find((o) => o.id === id) || null;
   }
 }
 

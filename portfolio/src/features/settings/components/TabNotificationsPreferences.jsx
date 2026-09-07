@@ -351,6 +351,72 @@ export const TabNotificationsPreferences = ({
           </div>
         )}
       </div>
+
+      {/* 4. Email & SMS Delivery Gateways */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-5">
+        <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+          <div className="w-8 h-8 rounded-xl bg-cyan-50 text-cyan-700 flex items-center justify-center">
+            <Mail className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">Email & SMS Delivery Gateways</h3>
+            <p className="text-xs text-slate-500">Platform-wide transmission providers for appointment reminders and patient notifications.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* SMTP Provider */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">SMTP Provider</label>
+            <select
+              value={formData?.communications?.smtpProvider || 'SendGrid'}
+              onChange={(e) => onChange('communications', { ...(formData?.communications || {}), smtpProvider: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            >
+              <option value="SendGrid">SendGrid (Transactional)</option>
+              <option value="Postmark">Postmark</option>
+              <option value="AWS SES">Amazon SES</option>
+              <option value="Custom SMTP">Custom SMTP Relay</option>
+            </select>
+          </div>
+
+          {/* Sender Email */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">Sender Email Address</label>
+            <input
+              type="email"
+              value={formData?.communications?.senderEmail || 'notifications@dentalcrm.com'}
+              onChange={(e) => onChange('communications', { ...(formData?.communications || {}), senderEmail: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+          </div>
+
+          {/* SMS Gateway */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">SMS Gateway Provider</label>
+            <select
+              value={formData?.communications?.smsGateway || 'Twilio'}
+              onChange={(e) => onChange('communications', { ...(formData?.communications || {}), smsGateway: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            >
+              <option value="Twilio">Twilio Global SMS</option>
+              <option value="Infobip">Infobip Enterprise</option>
+              <option value="MessageBird">MessageBird</option>
+            </select>
+          </div>
+
+          {/* SMS Sender ID */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">SMS Sender ID (Alphanumeric)</label>
+            <input
+              type="text"
+              value={formData?.communications?.smsSenderId || 'DENTAL-CARE'}
+              onChange={(e) => onChange('communications', { ...(formData?.communications || {}), smsSenderId: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

@@ -18,11 +18,14 @@ import { AiOperationsCard } from './components/AiOperationsCard';
 import { RevenueTrendsCard } from './components/RevenueTrendsCard';
 import { MultiClinicPerformanceTable } from './components/MultiClinicPerformanceTable';
 
+import { useOrg } from '@/dashboard/shared/context/OrgContext';
+import { useClinic } from '@/context/ClinicContext';
+
 export default function DashboardOverviewView() {
-  // ── Global Filter State ──────────────────────────────────────────
+  // ── Global Filter State (Connected to shared layout Contexts) ────
+  const { selectedOrgId, setSelectedOrgId } = useOrg();
+  const { selectedClinicId, setSelectedClinicId } = useClinic();
   const [selectedDateRange, setSelectedDateRange] = useState('Last 30 Days');
-  const [selectedOrgId, setSelectedOrgId] = useState('all');
-  const [selectedClinicId, setSelectedClinicId] = useState('all');
   const [activeChartTab, setActiveChartTab] = useState('timeline'); // 'timeline' | 'treatment'
 
   // ── Simulated Loading State ──────────────────────────────────────

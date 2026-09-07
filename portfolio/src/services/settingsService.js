@@ -35,12 +35,21 @@ export const DEFAULT_SETTINGS = {
       emergencyBypass: true,
     },
   },
+  communications: {
+    smtpProvider: 'SendGrid',
+    smtpHost: 'smtp.sendgrid.net',
+    smtpPort: '587',
+    senderEmail: 'notifications@dentalcrm.com',
+    smsGateway: 'Twilio',
+    smsSenderId: 'DENTAL-CARE',
+    templateOverridesEnabled: true,
+  },
   security: {
     sessionTimeoutMinutes: '30',
     mfaPolicy: 'enforce_admin', // 'enforce_all' | 'enforce_admin' | 'optional'
     passwordExpirationDays: '90',
     ipWhitelistEnabled: false,
-    ipAddresses: '',
+    ipAddresses: '192.168.1.1, 10.0.0.1',
   },
 };
 
@@ -70,13 +79,36 @@ export const DEFAULT_CATALOGS = {
     { id: 'co-6', name: 'Wrong Number / Not Interested', type: 'negative', description: 'Opted out or wrong contact' },
   ],
   appointmentStatuses: [
-    { id: 'as-1', name: 'Scheduled', color: 'blue' },
-    { id: 'as-2', name: 'Confirmed', color: 'green' },
-    { id: 'as-3', name: 'Arrived / Checked In', color: 'purple' },
-    { id: 'as-4', name: 'In Chair', color: 'amber' },
-    { id: 'as-5', name: 'Completed', color: 'emerald' },
-    { id: 'as-6', name: 'Cancelled', color: 'red' },
-    { id: 'as-7', name: 'No Show', color: 'slate' },
+    { id: 'as-1', name: 'Pending', color: 'amber', order: 1, active: true },
+    { id: 'as-2', name: 'Booked', color: 'blue', order: 2, active: true },
+    { id: 'as-3', name: 'Confirmed', color: 'green', order: 3, active: true },
+    { id: 'as-4', name: 'Rescheduled', color: 'purple', order: 4, active: true },
+    { id: 'as-5', name: 'Cancelled', color: 'red', order: 5, active: true },
+    { id: 'as-6', name: 'Checked In', color: 'cyan', order: 6, active: true },
+    { id: 'as-7', name: 'Attended', color: 'emerald', order: 7, active: true },
+    { id: 'as-8', name: 'No-show', color: 'slate', order: 8, active: true },
+    { id: 'as-9', name: 'Completed', color: 'green', order: 9, active: true },
+  ],
+  taskStatuses: [
+    { id: 'ts-1', name: 'Pending', color: 'amber', order: 1, active: true },
+    { id: 'ts-2', name: 'In Progress', color: 'blue', order: 2, active: true },
+    { id: 'ts-3', name: 'Completed', color: 'green', order: 3, active: true },
+    { id: 'ts-4', name: 'Overdue', color: 'red', order: 4, active: true },
+    { id: 'ts-5', name: 'Cancelled', color: 'slate', order: 5, active: true },
+  ],
+  paymentStatuses: [
+    { id: 'ps-1', name: 'Estimated', color: 'slate', order: 1, active: true },
+    { id: 'ps-2', name: 'Deposit Received', color: 'cyan', order: 2, active: true },
+    { id: 'ps-3', name: 'Partially Paid', color: 'amber', order: 3, active: true },
+    { id: 'ps-4', name: 'Fully Paid', color: 'green', order: 4, active: true },
+    { id: 'ps-5', name: 'Refunded', color: 'purple', order: 5, active: true },
+    { id: 'ps-6', name: 'Cancelled', color: 'red', order: 6, active: true },
+  ],
+  priorityLevels: [
+    { id: 'pl-1', name: 'Low', color: 'slate', order: 1, active: true },
+    { id: 'pl-2', name: 'Normal', color: 'blue', order: 2, active: true },
+    { id: 'pl-3', name: 'High', color: 'amber', order: 3, active: true },
+    { id: 'pl-4', name: 'Urgent', color: 'red', order: 4, active: true },
   ],
   lostReasons: [
     { id: 'lr-1', reason: 'Treatment Cost / Price Too High', active: true },
@@ -102,6 +134,7 @@ export const settingsService = {
         email: { ...DEFAULT_SETTINGS.notifications.email, ...(saved.notifications?.email || {}) },
         quietHours: { ...DEFAULT_SETTINGS.notifications.quietHours, ...(saved.notifications?.quietHours || {}) },
       },
+      communications: { ...DEFAULT_SETTINGS.communications, ...(saved.communications || {}) },
       security: { ...DEFAULT_SETTINGS.security, ...(saved.security || {}) },
     };
   },
@@ -115,6 +148,7 @@ export const settingsService = {
         email: { ...current.notifications.email, ...(partialSettings.notifications?.email || {}) },
         quietHours: { ...current.notifications.quietHours, ...(partialSettings.notifications?.quietHours || {}) },
       },
+      communications: { ...current.communications, ...(partialSettings.communications || {}) },
       security: { ...current.security, ...(partialSettings.security || {}) },
     };
     storageService.set(SETTINGS_KEY, updated);
@@ -137,6 +171,9 @@ export const settingsService = {
       leadSources: saved.leadSources?.length ? saved.leadSources : DEFAULT_CATALOGS.leadSources,
       callOutcomes: saved.callOutcomes?.length ? saved.callOutcomes : DEFAULT_CATALOGS.callOutcomes,
       appointmentStatuses: saved.appointmentStatuses?.length ? saved.appointmentStatuses : DEFAULT_CATALOGS.appointmentStatuses,
+      taskStatuses: saved.taskStatuses?.length ? saved.taskStatuses : DEFAULT_CATALOGS.taskStatuses,
+      paymentStatuses: saved.paymentStatuses?.length ? saved.paymentStatuses : DEFAULT_CATALOGS.paymentStatuses,
+      priorityLevels: saved.priorityLevels?.length ? saved.priorityLevels : DEFAULT_CATALOGS.priorityLevels,
       lostReasons: saved.lostReasons?.length ? saved.lostReasons : DEFAULT_CATALOGS.lostReasons,
     };
   },
