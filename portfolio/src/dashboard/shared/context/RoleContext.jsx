@@ -62,7 +62,18 @@ export const RoleProvider = ({ children }) => {
 export const useRole = () => {
   const context = useContext(RoleContext);
   if (!context) {
-    throw new Error('useRole must be used within a RoleProvider');
+    return {
+      currentRole: { id: null, label: 'Guest' },
+      setCurrentRole: () => {},
+      userRole: null,
+      roles: ROLES,
+      activeClinic: CLINICS_SCOPE[0],
+      setActiveClinic: () => {},
+      clinicsScope: CLINICS_SCOPE,
+      hasPermission: () => false,
+      hasActionPermission: () => false,
+      canSwitchClinic: () => false,
+    };
   }
   return context;
 };

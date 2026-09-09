@@ -47,7 +47,7 @@ export function DoctorsView() {
   return (
     <div className="bg-background">
       {/* ── Hero Banner ── */}
-      <section className="relative pt-32 pb-16 md:pt-40 md:pb-24 overflow-hidden">
+      <section className="relative pt-20 pb-8 md:pt-24 md:pb-12 overflow-hidden">
         <div className="absolute inset-0 -z-10">
           <div className="absolute inset-0 bg-gradient-to-b from-accent/60 via-background to-background" />
           <div className="absolute -top-24 -left-24 size-[480px] bg-primary/20 blur-3xl animate-blob" />
@@ -68,7 +68,7 @@ export function DoctorsView() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1 }}
-            className="mt-6 font-display font-semibold text-[2.6rem] sm:text-6xl lg:text-7xl leading-[1.02] tracking-tight text-secondary"
+            className="mt-4 font-display font-semibold text-[2.6rem] sm:text-6xl lg:text-7xl leading-[1.02] tracking-tight text-secondary"
           >
             Meet our elite<br />
             <span className="text-gradient-primary">clinical experts.</span>
@@ -77,7 +77,7 @@ export function DoctorsView() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.22 }}
-            className="mt-6 max-w-2xl mx-auto text-lg text-muted-foreground leading-relaxed"
+            className="mt-4 max-w-2xl mx-auto text-base md:text-lg text-muted-foreground leading-relaxed"
           >
             Aurea clinicians are recruited from top-tier institutions, bringing decades of combined experience, continuous scientific training, and a deep listening-first ethos.
           </motion.p>
@@ -93,11 +93,10 @@ export function DoctorsView() {
                 <button
                   key={cat}
                   onClick={() => setActiveCat(cat)}
-                  className={`px-5 py-2.5 text-sm font-medium rounded-full border cursor-pointer transition-all ${
-                    activeCat === cat
+                  className={`px-5 py-2.5 text-sm font-medium rounded-full border cursor-pointer transition-all ${activeCat === cat
                       ? "bg-secondary text-secondary-foreground border-secondary"
                       : "bg-white text-muted-foreground border-border hover:border-primary hover:text-primary"
-                  }`}
+                    }`}
                 >
                   {cat}
                 </button>

@@ -31,6 +31,7 @@ export const Header = ({
   onOpenBookingModal,
   isClinicManager = false,
   assignedClinicName = 'Downtown Dental Excellence',
+  readOnly = false,
 }) => {
   const { userRole } = useRole();
   const { currentOrg } = useOrg();
@@ -103,15 +104,17 @@ export const Header = ({
           </div>
 
           {/* Book Appointment CTA */}
-          <Button
-            variant="primary"
-            size="sm"
-            icon={Plus}
-            onClick={onOpenBookingModal}
-            className="cursor-pointer shadow-2xs"
-          >
-            Book Appointment
-          </Button>
+          {!readOnly && onOpenBookingModal && (
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Plus}
+              onClick={onOpenBookingModal}
+              className="cursor-pointer shadow-2xs"
+            >
+              Book Appointment
+            </Button>
+          )}
         </div>
       </div>
 

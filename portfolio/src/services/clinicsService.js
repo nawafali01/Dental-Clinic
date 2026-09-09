@@ -1,6 +1,7 @@
 import { storageService } from './storage.service';
 import { CLINICS } from '@/constants/clinics';
 import { usersService } from './usersService';
+import { assertCanMutate } from '@/dashboard/shared/config/permissions';
 
 /**
  * CLINICS SERVICE
@@ -90,6 +91,7 @@ export const clinicsService = {
   },
 
   addClinic(clinicData) {
+    assertCanMutate('clinics', 'create');
     const clinics = this.getClinics();
     const slugId =
       'clinic-' +
@@ -119,6 +121,7 @@ export const clinicsService = {
   },
 
   updateClinic(id, updates) {
+    assertCanMutate('clinics', 'edit');
     const clinics = this.getClinics();
     const index = clinics.findIndex((c) => c.id === id);
     if (index === -1) throw new Error('Clinic not found');
@@ -135,6 +138,7 @@ export const clinicsService = {
   },
 
   deleteClinic(id) {
+    assertCanMutate('clinics', 'delete');
     const clinics = this.getClinics();
     const updated = clinics.filter((c) => c.id !== id);
     storageService.set(storageService.KEYS.CLINICS, updated);
@@ -142,6 +146,7 @@ export const clinicsService = {
   },
 
   toggleClinicStatus(id) {
+    assertCanMutate('clinics', 'edit');
     const clinic = this.getClinicById(id);
     if (!clinic) throw new Error('Clinic not found');
     const newStatus = clinic.status === 'active' ? 'inactive' : 'active';

@@ -2,6 +2,8 @@ import gallery1 from "@/assets/images/gallery-1.jpg";
 import gallery2 from "@/assets/images/gallery-2.jpg";
 import gallery3 from "@/assets/images/gallery-3.jpg";
 import clinicInterior from "@/assets/images/clinic-interior.jpg";
+import beforeImg from "@/assets/images/before.jpg";
+import afterImg from "@/assets/images/after.jpg";
 
 export const galleryItems = [
   { img: clinicInterior, title: "Modern Reception Lounge", category: "Clinic" },
@@ -14,16 +16,10 @@ export const galleryItems = [
 
 export const compareItems = [
   {
-    title: "Smile Rejuvenation",
-    before: gallery1,
-    after: gallery3,
-    desc: "Treatment of stains and minor crowding using Invisalign & laser-whitening."
-  },
-  {
-    title: "Full Implant Recovery",
-    before: gallery2,
-    after: clinicInterior,
-    desc: "Single tooth restore overlayed with ceramic crown structure."
+    title: "Smile Rejuvenation & Alignment",
+    before: beforeImg,
+    after: afterImg,
+    desc: "Treatment of stains, minor crowding, and aesthetic restoration using modern cosmetic dentistry."
   }
 ];
 

@@ -4,6 +4,9 @@ import { Toaster } from "sonner";
 import { Agentation } from "agentation";
 import { storageService } from "@/services/storage.service";
 import { AuthProvider } from "@/context/AuthContext";
+import { RoleProvider } from "@/dashboard/shared/context/RoleContext";
+import { OrgProvider } from "@/dashboard/shared/context/OrgContext";
+import { ClinicProvider } from "@/context/ClinicContext";
 
 export default function App() {
   useEffect(() => {
@@ -12,9 +15,15 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <AppRouter />
-      <Toaster position="top-right" expand={false} richColors closeButton />
-      {import.meta.env.DEV && <Agentation />}
+      <RoleProvider>
+        <OrgProvider>
+          <ClinicProvider>
+            <AppRouter />
+            <Toaster position="top-right" expand={false} richColors closeButton />
+            {import.meta.env.DEV && <Agentation />}
+          </ClinicProvider>
+        </OrgProvider>
+      </RoleProvider>
     </AuthProvider>
   );
 }

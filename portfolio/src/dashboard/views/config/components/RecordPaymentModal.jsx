@@ -36,6 +36,7 @@ export function RecordPaymentModal({ isOpen, onClose, onSuccess, currentUser, se
         id: crypto.randomUUID(),
         month: currentMonthStr,
         revenue: Number(formData.amount),
+        amount: Number(formData.amount),
         clinicId: formData.clinicId,
         patientName: formData.patientName || 'Private Patient',
         method: formData.method,

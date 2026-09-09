@@ -19,7 +19,8 @@ export const PatientsView = () => {
   const isOrgAdmin = role === 'org_admin';
   const isClinicManager = role === 'clinic_manager';
   const isAgent = role === 'agent';
-  const isScopedClinic = isClinicManager || isAgent;
+  const isReceptionist = role === 'receptionist';
+  const isScopedClinic = isClinicManager || isAgent || isReceptionist;
 
   const managerClinicId = currentUser?.clinicId || (currentUser?.clinicIds && currentUser?.clinicIds[0]) || 'clinic-downtown';
   const assignedClinicObj = getClinicById(managerClinicId);

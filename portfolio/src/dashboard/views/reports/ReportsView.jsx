@@ -31,6 +31,7 @@ import { ReportPreviewModal } from './components/ReportPreviewModal';
 
 export const ReportsView = () => {
   const { currentUser } = useAuth();
+  const isAuditor = currentUser?.role === 'auditor';
   const { selectedClinicId } = useClinic();
 
   // State
@@ -68,6 +69,7 @@ export const ReportsView = () => {
   // Delete report
   const handleDeleteReport = (reportId, e) => {
     e.stopPropagation();
+    if (isAuditor) return;
     const updated = deleteReport(reportId);
     setReportsHistory(updated);
     toast.success('Report removed from history');
@@ -351,13 +353,15 @@ export const ReportsView = () => {
                           <FileSpreadsheet className="w-4 h-4" />
                         </button>
 
-                        <button
-                          onClick={(e) => handleDeleteReport(report.id, e)}
-                          title="Delete Report"
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {!isAuditor && (
+                          <button
+                            onClick={(e) => handleDeleteReport(report.id, e)}
+                            title="Delete Report"
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

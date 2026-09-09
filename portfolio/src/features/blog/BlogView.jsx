@@ -22,7 +22,7 @@ export function BlogView() {
   return (
     <div className="bg-background">
       {/* ── Hero section ── */}
-      <section className="relative pt-32 pb-16 md:pt-40 md:pb-24 overflow-hidden">
+      <section className="relative pt-20 pb-8 md:pt-24 md:pb-12 overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-accent/60 via-background to-background" />
         <div className="max-w-7xl mx-auto px-5 md:px-8 text-center">
           <Reveal>
@@ -31,7 +31,7 @@ export function BlogView() {
             </span>
           </Reveal>
           <Reveal delay={0.05}>
-            <h1 className="mt-6 font-display font-semibold text-4xl sm:text-6xl tracking-tight text-secondary">
+            <h1 className="mt-4 font-display font-semibold text-3xl sm:text-5xl md:text-6xl tracking-tight text-secondary">
               Scientific advice for<br />
               <span className="text-gradient-primary">healthy daily lifestyles.</span>
             </h1>
@@ -58,11 +58,10 @@ export function BlogView() {
                 <button
                   key={cat}
                   onClick={() => setActiveCat(cat)}
-                  className={`px-4 py-2 text-xs font-semibold rounded-full border cursor-pointer transition-all ${
-                    activeCat === cat
+                  className={`px-4 py-2 text-xs font-semibold rounded-full border cursor-pointer transition-all ${activeCat === cat
                       ? "bg-secondary text-secondary-foreground border-secondary"
                       : "bg-white text-muted-foreground border-border hover:border-primary hover:text-primary"
-                  }`}
+                    }`}
                 >
                   {cat}
                 </button>

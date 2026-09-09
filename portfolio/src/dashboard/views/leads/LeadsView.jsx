@@ -2,8 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Building2, RotateCcw, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useRole } from '@/dashboard/shared/context/RoleContext';
-import { useOrg } from '@/dashboard/shared/context/OrgContext';
 import { useClinic } from '@/context/ClinicContext';
 import { storageService } from '@/services/storage.service';
 import { scopeData } from '@/utils/scopeData';
@@ -37,6 +35,7 @@ const getStatusBadgeColor = (status) => {
     case 'lost':
       return 'red';
     case 'new':
+      return 'blue';
     default:
       return 'blue';
   }
@@ -44,8 +43,6 @@ const getStatusBadgeColor = (status) => {
 
 export const LeadsView = () => {
   const { currentUser } = useAuth();
-  const { userRole } = useRole();
-  const { currentOrg } = useOrg();
   const { selectedClinicId } = useClinic();
   const navigate = useNavigate();
 
@@ -53,34 +50,35 @@ export const LeadsView = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Active role detection
-  const role = userRole || currentUser?.role;
+  const role = currentUser?.role;
   const isSuperAdmin = role === 'super_admin';
   const isOrgAdmin = role === 'org_admin';
   const isClinicManager = role === 'clinic_manager';
   const isReceptionist = role === 'receptionist';
   const isAgent = role === 'agent';
+  const isAuditor = role === 'auditor';
 
   // Clinic Manager assigned clinic resolution
   const managerClinicId = currentUser?.clinicId || (currentUser?.clinicIds && currentUser?.clinicIds[0]) || 'clinic-downtown';
   const assignedClinicObj = getClinicById(managerClinicId);
   const assignedClinicName = assignedClinicObj?.name || 'Downtown Dental Excellence';
 
-  // Org ID resolution for Org Admin
-  const userOrgId = currentUser?.organizationId || (isOrgAdmin ? 'org-001' : null);
+  // Org ID resolution for Org Admin & Auditor
+  const userOrgId = currentUser?.organizationId || (isOrgAdmin || isAuditor ? 'org-001' : null);
 
-  // Scoped user payload ensuring org_admin is bound to their organization
+  // Scoped user payload ensuring org_admin & auditor are bound to their organization
   const scopedUser = useMemo(() => ({
     ...currentUser,
     role,
-    organizationId: currentUser?.organizationId || (isOrgAdmin ? 'org-001' : null),
-    clinicId: (isClinicManager || isAgent) ? managerClinicId : currentUser?.clinicId,
-  }), [currentUser, role, isOrgAdmin, isClinicManager, isAgent, managerClinicId]);
+    organizationId: currentUser?.organizationId || (isOrgAdmin || isAuditor ? 'org-001' : null),
+    clinicId: (isClinicManager || isAgent || isReceptionist) ? managerClinicId : currentUser?.clinicId,
+  }), [currentUser, role, isOrgAdmin, isAuditor, isClinicManager, isAgent, isReceptionist, managerClinicId]);
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrgFilter, setSelectedOrgFilter] = useState('all');
   const [selectedClinicFilter, setSelectedClinicFilter] = useState(
-    (isClinicManager || isAgent) ? managerClinicId : (selectedClinicId && selectedClinicId !== 'all' ? selectedClinicId : 'all')
+    (isClinicManager || isAgent || isReceptionist) ? managerClinicId : (selectedClinicId && selectedClinicId !== 'all' ? selectedClinicId : 'all')
   );
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -115,9 +113,9 @@ export const LeadsView = () => {
       resource: 'leads',
       data: rawLeads,
       currentUser: scopedUser,
-      selectedClinicId: isClinicManager ? managerClinicId : ((isSuperAdmin || isOrgAdmin) ? 'all' : selectedClinicId),
+      selectedClinicId: (isClinicManager || isReceptionist) ? managerClinicId : ((isSuperAdmin || isOrgAdmin) ? 'all' : selectedClinicId),
     });
-  }, [rawLeads, scopedUser, isSuperAdmin, isOrgAdmin, isClinicManager, managerClinicId, selectedClinicId, refreshTrigger]);
+  }, [rawLeads, scopedUser, isSuperAdmin, isOrgAdmin, isClinicManager, isReceptionist, managerClinicId, selectedClinicId, refreshTrigger]);
 
   // 2. Apply interactive page-level filters (Search, Org, Clinic, Status)
   const filteredLeads = useMemo(() => {
@@ -130,7 +128,7 @@ export const LeadsView = () => {
       }
 
       // Clinic filter
-      if (!isClinicManager && selectedClinicFilter !== 'all') {
+      if (!isClinicManager && !isReceptionist && selectedClinicFilter !== 'all') {
         if (!isSameClinic(lead.clinicId, selectedClinicFilter)) return false;
       }
 
@@ -237,6 +235,20 @@ export const LeadsView = () => {
         </div>
       )}
 
+      {isAuditor && (
+        <div className="p-4 bg-purple-50 border border-purple-200 rounded-2xl flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="p-2 bg-purple-600 text-white rounded-xl font-bold text-xs">AUDITOR</span>
+            <p className="text-sm text-purple-900 font-medium">
+              Read-Only Audit Mode — Reviewing organization-wide patient inquiries and pipeline history. Lead mutations are disabled.
+            </p>
+          </div>
+          <span className="text-xs font-semibold px-2.5 py-1 bg-white border border-purple-200 text-purple-700 rounded-full">
+            Zero Write Access
+          </span>
+        </div>
+      )}
+
       {/* KPI Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard label={isAgent ? 'Assigned Leads' : 'Total Leads'} value={total} sub="Scoped dataset" />
@@ -270,7 +282,7 @@ export const LeadsView = () => {
 
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Organization Selector (Super Admin) OR Org Badge (Org Admin) */}
-            {!isClinicManager && !isAgent && (
+            {!isClinicManager && !isAgent && !isReceptionist && (
               isSuperAdmin ? (
                 <div className="relative">
                   <select
@@ -299,7 +311,7 @@ export const LeadsView = () => {
             )}
 
             {/* Clinic Selector / Fixed Badge */}
-            {(isClinicManager || isAgent) ? (
+            {(isClinicManager || isAgent || isReceptionist) ? (
               <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 shadow-2xs">
                 <Building2 className="w-3.5 h-3.5 text-primary" />
                 <span>{assignedClinicName}</span>
@@ -391,7 +403,7 @@ export const LeadsView = () => {
       {/* Leads Table */}
       {isReceptionist ? (
         <Table
-          headers={['Patient Name', 'Phone', 'Email', 'Clinic Branch', 'Date Received', 'Action']}
+          headers={['Patient Name', 'Phone', 'Email', 'Status', 'Clinic Branch', 'Date Received', 'Action']}
           rows={filteredLeads.map((l) => {
             const clinic = getClinicById(l.clinicId);
             const clinicName = clinic?.name || l.clinicId || 'Downtown Dental Excellence';
@@ -401,6 +413,9 @@ export const LeadsView = () => {
               </span>,
               l.phone || l.phoneNumber || '(555) 123-4567',
               l.email || 'N/A',
+              <Badge key="badge" color={getStatusBadgeColor(l.status)}>
+                {l.status || 'new'}
+              </Badge>,
               <div key="clinic" className="flex flex-col">
                 <span className="font-medium text-slate-800">{clinicName}</span>
                 {clinic?.city && <span className="text-[11px] text-slate-400">{clinic.city}</span>}
@@ -448,7 +463,7 @@ export const LeadsView = () => {
                 onClick={() => navigate(buildRoleUrl(`/leads/${l.id}`, role))}
                 className="text-xs font-semibold text-primary hover:underline cursor-pointer"
               >
-                Manage Lead
+                {isAuditor ? 'View Record' : 'Manage Lead'}
               </button>,
             ];
           })}

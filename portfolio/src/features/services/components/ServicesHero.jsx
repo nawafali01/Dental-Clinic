@@ -6,7 +6,7 @@ import { ROUTES } from "@/constants/routes";
 
 export function ServicesHero() {
   return (
-    <section className="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden">
+    <section className="relative pt-16 pb-8 md:pt-20 md:pb-10 overflow-hidden">
       <div className="absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-gradient-to-b from-accent/60 via-background to-background" />
         <div className="absolute -top-24 -left-24 size-[480px] bg-primary/20 blur-3xl animate-blob" />
@@ -27,17 +27,16 @@ export function ServicesHero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1 }}
-          className="mt-6 font-display font-semibold text-[2.6rem] sm:text-6xl lg:text-7xl leading-[1.02] tracking-tight text-secondary"
+          className="mt-4 font-display font-semibold text-3xl sm:text-5xl lg:text-6xl tracking-wide text-secondary leading-snug sm:leading-[1.3] lg:leading-[1.35]"
         >
-          Every treatment,
-          <br />
-          <span className="text-gradient-primary">crafted for you.</span>
+          <span className="block mb-2 sm:mb-3">Every treatment,</span>
+          <span className="block text-gradient-primary">crafted for you.</span>
         </motion.h1>
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.22 }}
-          className="mt-6 max-w-2xl mx-auto text-lg text-muted-foreground leading-relaxed"
+          className="mt-4 max-w-2xl mx-auto text-base md:text-lg text-muted-foreground leading-relaxed"
         >
           From a routine scale-and-polish to full-smile reconstruction, every
           Aurea treatment is planned with AI-assisted diagnostics and

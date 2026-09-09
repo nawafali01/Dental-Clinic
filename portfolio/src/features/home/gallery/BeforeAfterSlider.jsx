@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Sparkles, MoveHorizontal } from "lucide-react";
-import beforeImg from "@/assets/images/gallery-1.jpg";
-import afterImg from "@/assets/images/gallery-2.jpg";
+import beforeImg from "@/assets/images/before.jpg";
+import afterImg from "@/assets/images/after.jpg";
 import { BEFORE_AFTER_CASE } from "./galleryConstants";
 
 export function BeforeAfterSlider() {

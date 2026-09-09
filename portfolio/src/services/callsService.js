@@ -81,12 +81,12 @@ export function getCallLog(agentId) {
  * Returns KPIs for today's calls.
  *
  * @param {string} agentId
- * @returns {{ todayCalls, bookedToday, missedToday, avgDuration }}
+ * @returns {{ todayCalls, bookedToday, missedToday, answeredToday, followUpsNeeded, avgDuration }}
  */
 export function getTodayCallKPIs(agentId) {
   const today = new Date().toISOString();
   const todayCalls = (storageService.get(CALLS_KEY) || []).filter(
-    (c) => c.agentId === agentId && isSameDay(c.date, today)
+    (c) => (c.agentId === agentId || c.created_by === agentId || c.userId === agentId || c.agent_id === agentId) && isSameDay(c.date, today)
   );
 
   const durations    = todayCalls.filter((c) => c.duration > 0).map((c) => c.duration);
@@ -94,10 +94,15 @@ export function getTodayCallKPIs(agentId) {
     ? Math.round(durations.reduce((s, d) => s + d, 0) / durations.length)
     : 0;
 
+  const answeredToday = todayCalls.filter((c) => c.outcome === 'contacted' || c.outcome === 'booked').length;
+  const followUpsNeeded = todayCalls.filter((c) => c.outcome === 'missed' || c.outcome === 'no-answer').length;
+
   return {
-    todayCalls:  todayCalls.length,
-    bookedToday: todayCalls.filter((c) => c.outcome === 'booked').length,
-    missedToday: todayCalls.filter((c) => c.outcome === 'missed' || c.outcome === 'no-answer').length,
+    todayCalls:      todayCalls.length,
+    bookedToday:     todayCalls.filter((c) => c.outcome === 'booked').length,
+    missedToday:     followUpsNeeded,
+    answeredToday,
+    followUpsNeeded,
     avgDuration,
   };
 }

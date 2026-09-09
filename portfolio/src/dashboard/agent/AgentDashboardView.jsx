@@ -14,6 +14,7 @@ import {
 
 import { useAuth }              from '@/context/AuthContext';
 import { getAssignedLeads,
+         getAllAssignedLeads,
          getLeadKPIs,
          LEAD_STATUSES,
          LEAD_PRIORITIES }      from '@/services/leadsService';
@@ -597,19 +598,19 @@ const LeadsFunnel = ({ agentId, refresh }) => {
 
   useEffect(() => {
     try {
-      const leads = getAssignedLeads(agentId) || [];
+      const leads = getAllAssignedLeads(agentId);
       const newL = leads.filter(l => l.status === 'new').length;
       const contactedL = leads.filter(l => l.status === 'contacted').length;
       const bookedL = leads.filter(l => l.status === 'proposal' || l.status === 'booked' || l.status === 'qualified').length;
-      const convertedL = leads.filter(l => l.status === 'converted').length;
+      const convertedL = leads.filter(l => l.status === 'converted' || l.status === 'won').length;
       const attendedL = Math.max(convertedL, Math.round(bookedL * 0.75)) || (leads.length > 0 ? 1 : 0);
 
       setFunnel({
-        new: newL || (leads.length > 0 ? 3 : 0),
-        contacted: contactedL || (leads.length > 0 ? 4 : 0),
-        booked: bookedL || (leads.length > 0 ? 3 : 0),
+        new: newL,
+        contacted: contactedL,
+        booked: bookedL,
         attended: attendedL,
-        converted: convertedL || (leads.length > 0 ? 2 : 0),
+        converted: convertedL,
       });
     } catch {
       // fallback
@@ -660,7 +661,7 @@ const FollowUpBacklog = ({ agentId, refresh, onLogCall }) => {
   useEffect(() => {
     try {
       const overdue = getTasks({ queue: 'overdue', assignee_id: agentId }) || [];
-      const assigned = getAssignedLeads(agentId) || [];
+      const assigned = getAllAssignedLeads(agentId);
       const staleLeads = assigned.filter(l => l.status === 'new' || l.status === 'contacted').slice(0, 3);
 
       const combined = [
@@ -748,11 +749,11 @@ export default function AgentDashboardView() {
       const allAppts = storageService.get(storageService.KEYS.APPOINTMENTS) || INITIAL_DEMO_APPOINTMENTS;
       const todayStr = new Date().toISOString().split('T')[0];
       const myToday = allAppts.filter(a => {
-        const isAssigned = !a.assignedAgentId || a.assignedAgentId === agentId || a.assignedUserId === agentId;
+        const isAssigned = a.assignedAgentId === agentId || a.assignedUserId === agentId || a.assigned_user_id === agentId;
         const isToday = a.date && a.date.startsWith(todayStr);
         return isAssigned && isToday;
       });
-      setTodayApptsCount(myToday.length || 3);
+      setTodayApptsCount(myToday.length);
 
       const overdue = getTasks({ queue: 'overdue', assignee_id: agentId }) || [];
       setOverdueTasksCount(overdue.length);
@@ -763,7 +764,7 @@ export default function AgentDashboardView() {
 
   if (!agentId) return null;
 
-  // STRICTLY 4 Personal KPI Cards (No team comparison, no clinic-wide revenue)
+  // 6 Scoped Personal KPI Cards (Assigned/Own only)
   const kpiCards = [
     {
       icon:   Users,
@@ -774,28 +775,44 @@ export default function AgentDashboardView() {
       trend:  'up',
     },
     {
-      icon:   Calendar,
-      label:  'My Appointments Today',
-      value:  todayApptsCount,
-      sub:    `${todayApptsCount > 0 ? todayApptsCount - 1 : 0} confirmed`,
-      iconBg: 'bg-purple-100 text-purple-600',
+      icon:   Phone,
+      label:  'Calls Today',
+      value:  callKPI?.todayCalls ?? '0',
+      sub:    (callKPI?.todayCalls ?? 0) > 0 ? `${callKPI?.answeredToday ?? 0} answered` : 'No calls logged today',
+      iconBg: 'bg-violet-100 text-violet-600',
       trend:  'up',
     },
     {
-      icon:   TrendingUp,
-      label:  'My Conversion Rate',
-      value:  revenue ? `${revenue.conversionRate}%` : '28%',
-      sub:    'Lead to booking',
-      iconBg: 'bg-cyan-100 text-cyan-600',
+      icon:   Calendar,
+      label:  'My Appointments Today',
+      value:  todayApptsCount,
+      sub:    todayApptsCount > 0 ? `${todayApptsCount} scheduled` : 'None scheduled',
+      iconBg: 'bg-purple-100 text-purple-600',
       trend:  'up',
     },
     {
       icon:   AlertCircle,
       label:  'My Overdue Tasks',
-      value:  overdueTasksCount > 0 ? overdueTasksCount : '2',
-      sub:    'Requires immediate action',
+      value:  overdueTasksCount,
+      sub:    overdueTasksCount > 0 ? 'Requires immediate action' : 'All tasks up to date',
       iconBg: 'bg-amber-100 text-amber-600',
-      trend:  'down',
+      trend:  overdueTasksCount > 0 ? 'down' : 'up',
+    },
+    {
+      icon:   TrendingUp,
+      label:  'My Conversion Rate',
+      value:  `${revenue?.conversionRate ?? kpis?.conversionRate ?? 0}%`,
+      sub:    'Lead to booking',
+      iconBg: 'bg-cyan-100 text-cyan-600',
+      trend:  'up',
+    },
+    {
+      icon:   DollarSign,
+      label:  'My Revenue',
+      value:  formatCurrency(revenue?.monthlyRevenue || 0),
+      sub:    `${revenue?.totalConversions ?? kpis?.convertedLeads ?? 0} closed this month`,
+      iconBg: 'bg-emerald-100 text-emerald-600',
+      trend:  'up',
     },
   ];
 
@@ -828,8 +845,8 @@ export default function AgentDashboardView() {
         </div>
       </div>
 
-      {/* ── Personal Scoped KPI Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── Personal Scoped KPI Cards (3-col x 2-row) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {kpiCards.map((k) => (
           <KpiCard key={k.label} {...k} />
         ))}

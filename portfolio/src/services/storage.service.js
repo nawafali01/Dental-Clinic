@@ -26,7 +26,7 @@ import { SEED_USERS } from '../dashboard/super-admin/mock-data/usersData';
 // so that existing localStorage sessions are cleared and re-seeded
 // with the updated data structure.
 // ─────────────────────────────────────────────────────────────
-const DB_VERSION = '4.0'; // v4.0: Guaranteed Smile Care Group canonical seeding and validation
+const DB_VERSION = '4.1'; // v4.1: Agent assigned payments and scoping updates
 
 const STORAGE_KEYS = {
   USERS:           'dental_crm_users',

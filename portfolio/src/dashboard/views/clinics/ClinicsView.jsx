@@ -31,7 +31,11 @@ export const ClinicsView = () => {
   const role = userRole || currentUser?.role || 'org_admin';
   const isSuperAdmin = role === 'super_admin';
   const isOrgAdmin = role === 'org_admin';
-  const userOrgId = currentUser?.organizationId || (isOrgAdmin ? 'org-001' : null);
+  const isFinance = role === 'finance';
+  const isAuditor = role === 'auditor';
+  const isOrgScoped = isOrgAdmin || isFinance || isAuditor;
+  const canManageClinics = isSuperAdmin || isOrgAdmin;
+  const userOrgId = currentUser?.organizationId || (isOrgScoped ? 'org-001' : null);
 
   const scopedUser = useMemo(() => ({
     ...currentUser,
@@ -56,15 +60,15 @@ export const ClinicsView = () => {
       resource: 'clinics',
       data: clinicsList,
       currentUser: scopedUser,
-      selectedClinicId: (isSuperAdmin || isOrgAdmin) ? 'all' : selectedClinicId,
+      selectedClinicId: (isSuperAdmin || isOrgScoped) ? 'all' : selectedClinicId,
     });
-  }, [clinicsList, scopedUser, isSuperAdmin, isOrgAdmin, selectedClinicId]);
+  }, [clinicsList, scopedUser, isSuperAdmin, isOrgScoped, selectedClinicId]);
 
   // Filtered clinics by Organization, Search, and Status
   const filteredClinics = useMemo(() => {
     return scopedClinics.filter((c) => {
       // Organization filter
-      const effectiveOrg = isOrgAdmin ? 'org-001' : selectedOrgId;
+      const effectiveOrg = isOrgScoped ? (userOrgId || 'org-001') : selectedOrgId;
       if (effectiveOrg && effectiveOrg !== 'all') {
         if (c.orgId !== effectiveOrg) return false;
       }
@@ -88,18 +92,24 @@ export const ClinicsView = () => {
 
   // Actions
   const handleOpenAdd = () => {
+    if (!canManageClinics) return;
     setClinicToEdit(null);
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (clinic, e) => {
     e.stopPropagation();
+    if (!canManageClinics) return;
     setClinicToEdit(clinic);
     setIsModalOpen(true);
   };
 
   const handleToggleStatus = (clinicId, e) => {
     e.stopPropagation();
+    if (!canManageClinics) {
+      toast.error('Unauthorized: Read-only access');
+      return;
+    }
     try {
       const updated = clinicsService.toggleClinicStatus(clinicId);
       refreshClinics();
@@ -111,6 +121,10 @@ export const ClinicsView = () => {
 
   const handleConfirmDelete = () => {
     if (!clinicToDelete) return;
+    if (!canManageClinics) {
+      toast.error('Unauthorized: Read-only access');
+      return;
+    }
     try {
       clinicsService.deleteClinic(clinicToDelete.id);
       refreshClinics();
@@ -127,10 +141,14 @@ export const ClinicsView = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Clinics Management"
-        description="Configure dental clinic branches, locations, operating hours, and operational status."
-        action="+ Add Clinic Branch"
-        onAction={handleOpenAdd}
+        title={isFinance || isAuditor ? "Clinic Branches" : "Clinics Management"}
+        description={
+          isFinance || isAuditor
+            ? "Dental clinic branches, locations, and operational contacts across your organization (Read Only)."
+            : "Configure dental clinic branches, locations, operating hours, and operational status."
+        }
+        action={canManageClinics ? "+ Add Clinic Branch" : undefined}
+        onAction={canManageClinics ? handleOpenAdd : undefined}
       />
 
       {/* KPI Cards (Recalculated per filtered scope) */}
@@ -138,7 +156,7 @@ export const ClinicsView = () => {
         <StatCard
           label="Total Branches"
           value={filteredClinics.length}
-          sub={selectedOrgId === 'all' ? 'All organizations' : 'Selected organization'}
+          sub={isOrgScoped ? 'Your organization' : (selectedOrgId === 'all' ? 'All organizations' : 'Selected organization')}
         />
         <StatCard label="Active Locations" value={activeCount} sub="Operational & accepting leads" />
         <StatCard label="Maintenance / Inactive" value={inactiveCount} sub="Temporarily paused" />
@@ -160,11 +178,11 @@ export const ClinicsView = () => {
             />
           </div>
 
-          {/* Organization Filter or Locked Badge for Org Admin */}
-          {isOrgAdmin ? (
+          {/* Organization Filter or Locked Badge for Org-Scoped Roles */}
+          {isOrgScoped ? (
             <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs self-stretch sm:self-auto">
               <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span className="truncate">{currentOrg?.name || 'Smile Care Group'}</span>
+              <span className="truncate">{organizations.find((o) => o.id === (userOrgId || 'org-001'))?.name || 'Smile Care Group'}</span>
             </div>
           ) : (
             <div className="relative sm:w-64">
@@ -223,16 +241,20 @@ export const ClinicsView = () => {
               <th className="px-5 py-3 font-bold uppercase tracking-wider text-[10px]">Contact Phone</th>
               <th className="px-5 py-3 font-bold uppercase tracking-wider text-[10px]">Operating Hours</th>
               <th className="px-5 py-3 font-bold uppercase tracking-wider text-[10px]">Status</th>
-              <th className="px-5 py-3 font-bold uppercase tracking-wider text-[10px] text-right">Actions</th>
+              {canManageClinics && (
+                <th className="px-5 py-3 font-bold uppercase tracking-wider text-[10px] text-right">Actions</th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filteredClinics.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-12 text-slate-400">
+                <td colSpan={canManageClinics ? 7 : 6} className="text-center py-12 text-slate-400">
                   <Building2 className="w-8 h-8 mx-auto mb-2 text-slate-300 stroke-1" />
                   <p className="font-semibold text-slate-600">No clinic branches found</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Try adjusting your filters or add a new branch</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {canManageClinics ? 'Try adjusting your filters or add a new branch' : 'No branches match your search query'}
+                  </p>
                 </td>
               </tr>
             ) : (
@@ -312,44 +334,46 @@ export const ClinicsView = () => {
                       </span>
                     </td>
 
-                    {/* Actions */}
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {/* Toggle status */}
-                        <button
-                          onClick={(e) => handleToggleStatus(c.id, e)}
-                          title={isActive ? 'Deactivate Branch' : 'Activate Branch'}
-                          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                            isActive
-                              ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
-                              : 'text-emerald-600 hover:bg-emerald-50'
-                          }`}
-                        >
-                          <Power className="w-4 h-4" />
-                        </button>
+                    {/* Actions (Hidden for View-Only roles like Finance) */}
+                    {canManageClinics && (
+                      <td className="px-5 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Toggle status */}
+                          <button
+                            onClick={(e) => handleToggleStatus(c.id, e)}
+                            title={isActive ? 'Deactivate Branch' : 'Activate Branch'}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                              isActive
+                                ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
+                                : 'text-emerald-600 hover:bg-emerald-50'
+                            }`}
+                          >
+                            <Power className="w-4 h-4" />
+                          </button>
 
-                        {/* Edit button */}
-                        <button
-                          onClick={(e) => handleOpenEdit(c, e)}
-                          title="Edit Clinic Details"
-                          className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
+                          {/* Edit button */}
+                          <button
+                            onClick={(e) => handleOpenEdit(c, e)}
+                            title="Edit Clinic Details"
+                            className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
 
-                        {/* Delete button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setClinicToDelete(c);
-                          }}
-                          title="Delete Clinic"
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+                          {/* Delete button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setClinicToDelete(c);
+                            }}
+                            title="Delete Clinic"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })

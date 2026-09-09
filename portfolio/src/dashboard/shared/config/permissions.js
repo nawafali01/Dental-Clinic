@@ -121,6 +121,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_PATIENTS,
     PERMISSIONS.VIEW_CALLS,
     PERMISSIONS.VIEW_TASKS,
+    PERMISSIONS.VIEW_REPORTS,
     PERMISSIONS.VIEW_AI_COPILOT,
     PERMISSIONS.VIEW_NOTIFICATIONS,
   ],
@@ -132,6 +133,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.MANAGE_APPOINTMENTS,
     PERMISSIONS.VIEW_PATIENTS,
     PERMISSIONS.VIEW_NOTIFICATIONS,
+    PERMISSIONS.VIEW_REPORTS,
   ],
 
   // ── Finance — financial data, read-only on appointments ──────
@@ -141,6 +143,8 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_PAYMENTS,
     PERMISSIONS.MANAGE_BILLING,
     PERMISSIONS.VIEW_REPORTS,
+    PERMISSIONS.VIEW_CLINICS,
+    PERMISSIONS.VIEW_LEADS, // limited revenue context
     PERMISSIONS.VIEW_NOTIFICATIONS,
   ],
 
@@ -248,7 +252,7 @@ export const RESOURCE_PERMISSIONS = {
     clinic_manager: RESOURCE_ACCESS.OWN_CLINIC,
     agent:          RESOURCE_ACCESS.ASSIGNED_ONLY,
     receptionist:   RESOURCE_ACCESS.VIEW,
-    finance:        RESOURCE_ACCESS.NONE,
+    finance:        RESOURCE_ACCESS.LIMITED,
     auditor:        RESOURCE_ACCESS.VIEW,
   },
   appointments: {
@@ -283,8 +287,8 @@ export const RESOURCE_PERMISSIONS = {
     org_admin:      RESOURCE_ACCESS.MANAGE_ORG,
     clinic_manager: RESOURCE_ACCESS.CLINIC_TEAM,
     agent:          RESOURCE_ACCESS.SELF,
-    receptionist:   RESOURCE_ACCESS.NONE,
-    finance:        RESOURCE_ACCESS.NONE,
+    receptionist:   RESOURCE_ACCESS.SELF,
+    finance:        RESOURCE_ACCESS.SELF,
     auditor:        RESOURCE_ACCESS.VIEW,
   },
   reports: {
@@ -292,7 +296,7 @@ export const RESOURCE_PERMISSIONS = {
     org_admin:      RESOURCE_ACCESS.ALL_ORG,
     clinic_manager: RESOURCE_ACCESS.CLINIC,
     agent:          RESOURCE_ACCESS.PERSONAL,
-    receptionist:   RESOURCE_ACCESS.NONE,
+    receptionist:   RESOURCE_ACCESS.CLINIC,
     finance:        RESOURCE_ACCESS.ALL_ORG,
     auditor:        RESOURCE_ACCESS.VIEW,
   },
@@ -390,18 +394,20 @@ export const ACTION_PERMISSIONS = {
   },
   revenue: {
     view:    ['org_admin', 'clinic_manager', 'finance', 'auditor'],
+    create:  ['org_admin', 'clinic_manager', 'finance'],
+    edit:    ['org_admin', 'clinic_manager', 'finance'],
     export:  ['org_admin', 'clinic_manager', 'finance'],
   },
   payments: {
     view:    ['org_admin', 'clinic_manager', 'finance', 'auditor'],
     create:  ['org_admin', 'clinic_manager', 'finance'],
-    edit:    ['org_admin', 'clinic_manager'],
+    edit:    ['org_admin', 'clinic_manager', 'finance'],
     delete:  ['org_admin'],
     export:  ['org_admin', 'clinic_manager', 'finance'],
   },
   reports: {
-    view:    ['org_admin', 'clinic_manager', 'finance', 'auditor'],
-    export:  ['org_admin', 'clinic_manager', 'finance'],
+    view:    ['org_admin', 'clinic_manager', 'receptionist', 'finance', 'auditor'],
+    export:  ['org_admin', 'clinic_manager', 'finance', 'auditor'],
   },
   users: {
     view:    ['org_admin', 'clinic_manager', 'auditor'],
@@ -498,7 +504,7 @@ export const RESOURCE_SCOPES = {
     agent:          SCOPE_TYPES.ASSIGNEE,
     receptionist:   SCOPE_TYPES.CLINIC,
     finance:        SCOPE_TYPES.NONE,
-    auditor:        SCOPE_TYPES.APPROVED,
+    auditor:        SCOPE_TYPES.ORGANIZATION,
   },
   appointments: {
     super_admin:    SCOPE_TYPES.GLOBAL,
@@ -507,7 +513,7 @@ export const RESOURCE_SCOPES = {
     agent:          SCOPE_TYPES.ASSIGNEE,
     receptionist:   SCOPE_TYPES.CLINIC,
     finance:        SCOPE_TYPES.CLINIC,
-    auditor:        SCOPE_TYPES.APPROVED,
+    auditor:        SCOPE_TYPES.ORGANIZATION,
   },
   patients: {
     super_admin:    SCOPE_TYPES.GLOBAL,
@@ -516,7 +522,7 @@ export const RESOURCE_SCOPES = {
     agent:          SCOPE_TYPES.CLINIC,
     receptionist:   SCOPE_TYPES.CLINIC,
     finance:        SCOPE_TYPES.NONE,
-    auditor:        SCOPE_TYPES.APPROVED,
+    auditor:        SCOPE_TYPES.ORGANIZATION,
   },
   calls: {
     super_admin:    SCOPE_TYPES.GLOBAL,
@@ -525,7 +531,7 @@ export const RESOURCE_SCOPES = {
     agent:          SCOPE_TYPES.ASSIGNEE,
     receptionist:   SCOPE_TYPES.NONE,
     finance:        SCOPE_TYPES.NONE,
-    auditor:        SCOPE_TYPES.APPROVED,
+    auditor:        SCOPE_TYPES.ORGANIZATION,
   },
   tasks: {
     super_admin:    SCOPE_TYPES.GLOBAL,
@@ -534,7 +540,7 @@ export const RESOURCE_SCOPES = {
     agent:          SCOPE_TYPES.ASSIGNEE,
     receptionist:   SCOPE_TYPES.NONE,
     finance:        SCOPE_TYPES.NONE,
-    auditor:        SCOPE_TYPES.APPROVED,
+    auditor:        SCOPE_TYPES.ORGANIZATION,
   },
   revenue: {
     super_admin:    SCOPE_TYPES.GLOBAL,
@@ -543,7 +549,7 @@ export const RESOURCE_SCOPES = {
     agent:          SCOPE_TYPES.NONE,
     receptionist:   SCOPE_TYPES.NONE,
     finance:        SCOPE_TYPES.ORGANIZATION,
-    auditor:        SCOPE_TYPES.APPROVED,
+    auditor:        SCOPE_TYPES.ORGANIZATION,
   },
   payments: {
     super_admin:    SCOPE_TYPES.GLOBAL,
@@ -552,16 +558,16 @@ export const RESOURCE_SCOPES = {
     agent:          SCOPE_TYPES.NONE,
     receptionist:   SCOPE_TYPES.NONE,
     finance:        SCOPE_TYPES.ORGANIZATION,
-    auditor:        SCOPE_TYPES.APPROVED,
+    auditor:        SCOPE_TYPES.ORGANIZATION,
   },
   reports: {
     super_admin:    SCOPE_TYPES.GLOBAL,
     org_admin:      SCOPE_TYPES.ORGANIZATION,
     clinic_manager: SCOPE_TYPES.CLINIC,
     agent:          SCOPE_TYPES.ASSIGNEE,
-    receptionist:   SCOPE_TYPES.NONE,
+    receptionist:   SCOPE_TYPES.CLINIC,
     finance:        SCOPE_TYPES.ORGANIZATION,
-    auditor:        SCOPE_TYPES.APPROVED,
+    auditor:        SCOPE_TYPES.ORGANIZATION,
   },
   users: {
     super_admin:    SCOPE_TYPES.GLOBAL,
@@ -570,7 +576,7 @@ export const RESOURCE_SCOPES = {
     agent:          SCOPE_TYPES.NONE,
     receptionist:   SCOPE_TYPES.NONE,
     finance:        SCOPE_TYPES.NONE,
-    auditor:        SCOPE_TYPES.APPROVED,
+    auditor:        SCOPE_TYPES.ORGANIZATION,
   },
   clinics: {
     super_admin:    SCOPE_TYPES.GLOBAL,
@@ -578,8 +584,8 @@ export const RESOURCE_SCOPES = {
     clinic_manager: SCOPE_TYPES.CLINIC,
     agent:          SCOPE_TYPES.CLINIC,
     receptionist:   SCOPE_TYPES.CLINIC,
-    finance:        SCOPE_TYPES.CLINIC,
-    auditor:        SCOPE_TYPES.APPROVED,
+    finance:        SCOPE_TYPES.ORGANIZATION,
+    auditor:        SCOPE_TYPES.ORGANIZATION,
   },
 };
 
@@ -594,4 +600,42 @@ export const getResourceScope = (roleId, resource) => {
   if (!resMap) return SCOPE_TYPES.NONE;
   return resMap[roleId] || SCOPE_TYPES.NONE;
 };
+
+// ─────────────────────────────────────────────────────────────
+// Read-Only Enforcement & Service-Layer Mutation Assertion
+// ─────────────────────────────────────────────────────────────
+export const READ_ONLY_ROLES = ['auditor'];
+export const isReadOnlyRole = (role) => role === 'auditor';
+
+/**
+ * Assert that a user/role has permission to mutate a resource.
+ * Throws an Error if the role is read-only (such as auditor) or lacks permission.
+ *
+ * @param {string} resource - e.g. 'leads', 'revenue', 'users', 'clinics'
+ * @param {string} action - e.g. 'create', 'edit', 'delete'
+ * @param {object} [user] - current user object or role string
+ */
+export const assertCanMutate = (resource, action, user) => {
+  let role = typeof user === 'string' ? user : user?.role;
+  if (!role) {
+    try {
+      const stored = localStorage.getItem('auth_user') || localStorage.getItem('current_user') || localStorage.getItem('dental_current_user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        role = parsed?.role;
+      }
+    } catch {
+      // storage unavailable
+    }
+  }
+
+  if (role === 'auditor' || isReadOnlyRole(role)) {
+    throw new Error(`Unauthorized: Role 'auditor' has read-only access and cannot perform '${action}' on '${resource}'.`);
+  }
+
+  if (role && !canDoAction(role, resource, action)) {
+    throw new Error(`Unauthorized: Role '${role}' lacks permission to perform '${action}' on '${resource}'.`);
+  }
+};
+
 

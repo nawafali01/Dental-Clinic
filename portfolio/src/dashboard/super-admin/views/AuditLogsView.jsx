@@ -1,10 +1,3 @@
-import React from 'react';
+import AuditLogsView from '@/dashboard/views/audit/AuditLogsView';
 
-export default function AuditLogsView() {
-  return (
-    <div className="p-6 rounded-2xl bg-white border border-slate-200">
-      <h1 className="text-xl font-bold text-slate-900">Audit Logs & Compliance</h1>
-      <p className="mt-1 text-sm text-slate-500">Phase I view container ready.</p>
-    </div>
-  );
-}
+export default AuditLogsView;

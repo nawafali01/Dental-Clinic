@@ -35,13 +35,14 @@ import {
   STATUS_FILTER_OPTIONS,
 } from '@/constants/userConstants';
 
-export default function UserManagementView() {
+export default function UserManagementView({ readOnly = false }) {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { userRole } = useRole();
   const { currentOrg } = useOrg();
   const isSuperAdmin = userRole === 'super_admin';
   const isOrgAdmin = userRole === 'org_admin';
+  const isAuditor = currentUser?.role === 'auditor' || userRole === 'auditor' || readOnly;
   const userOrgId = currentUser?.organizationId || 'org-001';
 
   const [users, setUsers] = useState([]);
@@ -81,22 +82,22 @@ export default function UserManagementView() {
     loadData();
   }, []);
 
-  // Base users list strictly scoped for org_admin
+  // Base users list strictly scoped for org_admin and auditor
   const baseScopedUsers = useMemo(() => {
-    if (isOrgAdmin) {
+    if (isOrgAdmin || isAuditor) {
       return users.filter((u) => u.organizationId === userOrgId);
     }
     return users;
-  }, [users, isOrgAdmin, userOrgId]);
+  }, [users, isOrgAdmin, isAuditor, userOrgId]);
 
   // Filter available clinics in the filter dropdown by the selected organization
   const filterClinicOptions = useMemo(() => {
-    if (isOrgAdmin && userOrgId) {
+    if ((isOrgAdmin || isAuditor) && userOrgId) {
       return clinics.filter((c) => c.orgId === userOrgId);
     }
     if (selectedOrgFilter === 'ALL') return clinics;
     return clinics.filter((c) => c.orgId === selectedOrgFilter);
-  }, [clinics, selectedOrgFilter, isOrgAdmin, userOrgId]);
+  }, [clinics, selectedOrgFilter, isOrgAdmin, isAuditor, userOrgId]);
 
   // Filtered users
   const filteredUsers = useMemo(() => {
@@ -160,18 +161,20 @@ export default function UserManagementView() {
 
   // Actions
   const handleOpenInvite = () => {
+    if (isAuditor) return;
     setUserToEdit(null);
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (user, e) => {
     e.stopPropagation();
+    if (isAuditor) return;
     setUserToEdit(user);
     setIsModalOpen(true);
   };
 
   const handleConfirmToggleStatus = () => {
-    if (!statusConfirmUser) return;
+    if (isAuditor || !statusConfirmUser) return;
     try {
       const isCurrentlyActive = statusConfirmUser.status === 'active';
       const updated = isCurrentlyActive
@@ -202,9 +205,16 @@ export default function UserManagementView() {
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
             <Users className="w-6 h-6 text-primary" />
             Users & Access Management
+            {isAuditor && (
+              <span className="text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
+                Read Only • Auditing
+              </span>
+            )}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Global directory of platform staff, role assignments, multi-tenant permissions, and branch scoping.
+            {isAuditor
+              ? 'Read-only staff directory for Smile Care Group. Role assignments and branch scopes.'
+              : 'Global directory of platform staff, role assignments, multi-tenant permissions, and branch scoping.'}
           </p>
         </div>
 
@@ -216,14 +226,16 @@ export default function UserManagementView() {
             onClick={loadData}
             title="Reload data"
           />
-          <Button
-            variant="primary"
-            size="sm"
-            icon={UserPlus}
-            onClick={handleOpenInvite}
-          >
-            Invite User
-          </Button>
+          {!isAuditor && (
+            <Button
+              variant="primary"
+              size="sm"
+              icon={UserPlus}
+              onClick={handleOpenInvite}
+            >
+              Invite User
+            </Button>
+          )}
         </div>
       </div>
 
@@ -387,13 +399,13 @@ export default function UserManagementView() {
                 <th className="px-5 py-3.5">Organization</th>
                 <th className="px-5 py-3.5">Branch Clinic</th>
                 <th className="px-5 py-3.5">Status</th>
-                <th className="px-5 py-3.5 text-right">Actions</th>
+                {!isAuditor && <th className="px-5 py-3.5 text-right">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-400">
+                  <td colSpan={isAuditor ? 5 : 6} className="text-center py-12 text-slate-400">
                     <Users className="w-10 h-10 mx-auto mb-2 text-slate-300 stroke-1" />
                     <p className="font-semibold text-slate-700 text-sm">No users matched your filters</p>
                     <p className="text-xs text-slate-400 mt-1">
@@ -423,8 +435,8 @@ export default function UserManagementView() {
                   return (
                     <tr
                       key={u.id}
-                      onClick={() => navigate(`/admin/users/${u.id}`)}
-                      className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                      onClick={() => !isAuditor && navigate(`/admin/users/${u.id}`)}
+                      className={`hover:bg-slate-50/80 transition-colors ${isAuditor ? 'cursor-default' : 'cursor-pointer'}`}
                     >
                       {/* Name & Email */}
                       <td className="px-5 py-3.5">
@@ -501,40 +513,42 @@ export default function UserManagementView() {
                       </td>
 
                       {/* Actions */}
-                      <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* View Detail */}
-                          <button
-                            onClick={() => navigate(`/admin/users/${u.id}`)}
-                            title="View user details"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-slate-100 transition-colors cursor-pointer"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
+                      {!isAuditor && (
+                        <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* View Detail */}
+                            <button
+                              onClick={() => navigate(`/admin/users/${u.id}`)}
+                              title="View user details"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-slate-100 transition-colors cursor-pointer"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
 
-                          {/* Quick Edit / Reassign */}
-                          <button
-                            onClick={(e) => handleOpenEdit(u, e)}
-                            title="Edit Role & Clinic Assignment"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
+                            {/* Quick Edit / Reassign */}
+                            <button
+                              onClick={(e) => handleOpenEdit(u, e)}
+                              title="Edit Role & Clinic Assignment"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
 
-                          {/* Toggle Active / Inactive status */}
-                          <button
-                            onClick={() => setStatusConfirmUser(u)}
-                            title={isActive ? 'Deactivate User' : 'Activate User'}
-                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                              isActive
-                                ? 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
-                                : 'text-emerald-600 hover:bg-emerald-50'
-                            }`}
-                          >
-                            <Power className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
+                            {/* Toggle Active / Inactive status */}
+                            <button
+                              onClick={() => setStatusConfirmUser(u)}
+                              title={isActive ? 'Deactivate User' : 'Activate User'}
+                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                isActive
+                                  ? 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
+                                  : 'text-emerald-600 hover:bg-emerald-50'
+                              }`}
+                            >
+                              <Power className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })

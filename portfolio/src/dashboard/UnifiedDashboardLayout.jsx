@@ -21,7 +21,7 @@ const DashboardShell = () => {
     const expectedBase = getRoleBaseUrl(currentRole.id);
     const pathParts = location.pathname.split('/').filter(Boolean);
     const currentBase = pathParts[0];
-    const knownBasePaths = ['admin', 'manager', 'agent', 'receptionist'];
+    const knownBasePaths = ['admin', 'manager', 'agent', 'receptionist', 'finance', 'auditor'];
 
     if (knownBasePaths.includes(currentBase) && currentBase !== expectedBase) {
       const targetUrl = buildRoleUrl(location.pathname, currentRole.id);

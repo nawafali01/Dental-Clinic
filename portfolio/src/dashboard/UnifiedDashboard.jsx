@@ -12,6 +12,21 @@ const AgentDashboardView = lazy(() =>
   import('./agent/AgentDashboardView')
 );
 
+// Receptionist view lazy-loaded
+const ReceptionistDashboardView = lazy(() =>
+  import('./receptionist/ReceptionistDashboardView')
+);
+
+// Finance view lazy-loaded
+const FinanceDashboardView = lazy(() =>
+  import('./finance/FinanceDashboardView')
+);
+
+// Auditor view lazy-loaded
+const AuditorDashboardView = lazy(() =>
+  import('./auditor/AuditorDashboardView')
+);
+
 // ── Shared Dashboard Widgets ──────────────────────────────────
 // Each widget is wrapped with <CanView permission="..."> in the
 // RoleBasedDashboard below. No role === "..." inside any widget.
@@ -177,6 +192,33 @@ export default function UnifiedDashboard() {
     return (
       <DashboardSuspense>
         <AgentDashboardView />
+      </DashboardSuspense>
+    );
+  }
+
+  // ── Receptionist: dedicated front-desk clinic dashboard ─────────
+  if (role === 'receptionist') {
+    return (
+      <DashboardSuspense>
+        <ReceptionistDashboardView />
+      </DashboardSuspense>
+    );
+  }
+
+  // ── Finance: dedicated finance & revenue operations dashboard ───
+  if (role === 'finance') {
+    return (
+      <DashboardSuspense>
+        <FinanceDashboardView />
+      </DashboardSuspense>
+    );
+  }
+
+  // ── Auditor: dedicated audit & compliance overview ────────────
+  if (role === 'auditor') {
+    return (
+      <DashboardSuspense>
+        <AuditorDashboardView />
       </DashboardSuspense>
     );
   }

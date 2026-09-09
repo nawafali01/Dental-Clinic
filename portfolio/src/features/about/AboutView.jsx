@@ -45,7 +45,7 @@ export function AboutView() {
   return (
     <div className="bg-background">
       {/* ── Hero section ── */}
-      <section className="relative pt-12 md:pt-20 pb-18 md:pb-32 overflow-hidden">
+      <section className="relative pt-12 md:pt-16 pb-10 md:pb-14 overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-accent/60 via-background to-background" />
         <div className="absolute -top-24 -left-24 size-[520px] bg-primary/15 blur-3xl animate-blob" />
         <div className="max-w-7xl mx-auto px-5 md:px-8 text-center">
@@ -92,7 +92,7 @@ export function AboutView() {
       </section>
 
       {/* ── Clinic Story ── */}
-      <section className="py-24 md:py-32">
+      <section className="py-14 md:py-20 bg-gradient-to-b from-accent/35 via-accent/15 to-background border-y border-primary/10 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-5 md:px-8 grid lg:grid-cols-2 gap-14 items-center">
           <div>
             <Reveal>

@@ -113,7 +113,7 @@ export default function LoginView() {
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center mb-2.5">
             Quick Demo Fill
           </p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             <button
               type="button"
               onClick={() => handleQuickFill('manager@test.com', 'password123')}
@@ -134,6 +134,27 @@ export default function LoginView() {
               className="px-2 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 transition-colors text-center"
             >
               Agent
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickFill('receptionist@test.com', 'password123')}
+              className="px-2 py-1.5 text-xs font-semibold rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200/60 transition-colors text-center"
+            >
+              Receptionist
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickFill('finance@test.com', 'password123')}
+              className="px-2 py-1.5 text-xs font-semibold rounded-lg bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200/60 transition-colors text-center"
+            >
+              Finance
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickFill('auditor@test.com', 'password123')}
+              className="px-2 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300/60 transition-colors text-center"
+            >
+              Auditor
             </button>
           </div>
         </div>

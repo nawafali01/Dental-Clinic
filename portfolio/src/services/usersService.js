@@ -1,6 +1,7 @@
 import { storageService } from './storage.service';
 import { ROLES } from '@/constants/permissions';
 import { SEED_USERS } from '@/dashboard/super-admin/mock-data/usersData';
+import { assertCanMutate } from '@/dashboard/shared/config/permissions';
 
 export { SEED_USERS };
 
@@ -89,6 +90,7 @@ class UsersService {
    * Creates / Invites a new user
    */
   createUser(userData) {
+    assertCanMutate('users', 'create');
     const all = this.getUsers();
 
     if (all.some((u) => u.email?.toLowerCase() === userData.email?.toLowerCase())) {
@@ -120,6 +122,7 @@ class UsersService {
    * Updates an existing user (role, assignment, profile, status)
    */
   updateUser(id, updates) {
+    assertCanMutate('users', 'edit');
     const all = this.getUsers();
     const index = all.findIndex((u) => u.id === id);
     if (index === -1) {
@@ -179,6 +182,7 @@ class UsersService {
    * Deletes a user completely
    */
   deleteUser(id) {
+    assertCanMutate('users', 'delete');
     const all = this.getUsers();
     const filtered = all.filter((u) => u.id !== id);
     storageService.set(storageService.KEYS.USERS, filtered);

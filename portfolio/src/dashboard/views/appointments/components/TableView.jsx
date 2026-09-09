@@ -21,6 +21,7 @@ export const TableView = ({
   setCurrentPage,
   onSelectAppointment,
   onQuickCheckIn,
+  readOnly = false,
 }) => {
   const getStatusBadge = (status) => {
     switch (status) {
@@ -195,11 +196,11 @@ export const TableView = ({
                       </td>
 
                       {/* Actions */}
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                          {appt.status !== 'checked-in' && appt.status !== 'attended' && appt.status !== 'completed' && (
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {!readOnly && onQuickCheckIn && appt.status !== 'checked-in' && appt.status !== 'attended' && appt.status !== 'completed' && (
                             <button
-                              onClick={() => onQuickCheckIn(appt.id)}
+                              onClick={(e) => { e.stopPropagation(); onQuickCheckIn(appt.id); }}
                               title="Quick Patient Check-In"
                               className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 border border-emerald-200 transition-colors cursor-pointer"
                             >
@@ -211,7 +212,7 @@ export const TableView = ({
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-primary hover:bg-primary/10 border border-primary/20 transition-colors cursor-pointer"
                           >
                             <Eye className="w-3.5 h-3.5" />
-                            Manage
+                            {readOnly ? 'View' : 'Manage'}
                           </button>
                         </div>
                       </td>

@@ -33,9 +33,10 @@ export function Services() {
   }, []);
 
   return (
-    <section id="services" className="relative py-24 md:py-32">
+    <section id="services" className="relative py-14 md:py-20 bg-gradient-to-b from-accent/35 via-neutral-50/70 to-background border-y border-border/60 overflow-hidden">
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none -z-10" />
       <div className="max-w-7xl mx-auto px-5 md:px-8">
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-14">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-10">
           <div>
             <Reveal>
               <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">

@@ -72,7 +72,7 @@ export function scopeData({ resource, data = [], currentUser, selectedClinicId }
           if (itemClinicId !== selectedClinicId) return false;
         }
 
-        const userOrgId = user.organizationId || (role === 'org_admin' ? 'org-001' : null);
+        const userOrgId = user.organizationId || (role === 'org_admin' || role === 'finance' || role === 'auditor' ? 'org-001' : null);
 
         // Resolve item's organization ID directly or from clinic registry
         let itemOrgId = item.orgId || item.organizationId || item.organization_id;
@@ -108,21 +108,25 @@ export function scopeData({ resource, data = [], currentUser, selectedClinicId }
 
       case SCOPE_TYPES.ASSIGNEE: {
         // Agent MUST NEVER see another staff member's work.
-        const userId = currentUser.id;
-        const matchesAssignee = (
+        const userId = currentUser?.id || user?.id;
+        if (!userId) return false;
+
+        const matchesAssignee = Boolean(
           item.assignee_id === userId ||
           item.assigneeId === userId ||
           item.assignedAgentId === userId ||
+          item.assigned_user_id === userId ||
+          item.responsible_agent === userId ||
           item.agentId === userId ||
           item.doctorId === userId ||
           item.userId === userId ||
           item.assignedTo === userId
         );
 
-        // Also respect clinic boundary if item has clinicId
+        // If explicit clinic filter was selected (not 'all'), respect it
         const itemClinicId = item.clinicId || item.clinic_id;
-        if (activeClinicId && itemClinicId) {
-          return matchesAssignee && itemClinicId === activeClinicId;
+        if (selectedClinicId && selectedClinicId !== 'all' && itemClinicId) {
+          return matchesAssignee && itemClinicId === selectedClinicId;
         }
 
         return matchesAssignee;

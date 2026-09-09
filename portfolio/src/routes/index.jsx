@@ -82,7 +82,7 @@ const router = createBrowserRouter([
   },
 
   // Protected Unified Dashboard Area (Role-based Base Paths)
-  ...["/admin", "/manager", "/agent", "/receptionist"].map((basePath) => ({
+  ...["/admin", "/manager", "/agent", "/receptionist", "/finance", "/auditor"].map((basePath) => ({
     path: basePath,
     element: (
       <AuthGuard>

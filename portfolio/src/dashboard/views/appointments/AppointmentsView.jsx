@@ -29,7 +29,11 @@ export const AppointmentsView = () => {
 
   const isClinicManager = currentUser?.role === 'clinic_manager';
   const isAgent = currentUser?.role === 'agent';
-  const isScopedClinic = isClinicManager || isAgent;
+  const isReceptionist = currentUser?.role === 'receptionist';
+  const isAuditor = currentUser?.role === 'auditor';
+  const isReadOnly = isAuditor;
+  const isScopedClinic = isClinicManager || isAgent || isReceptionist;
+  const userOrgId = currentUser?.organizationId || 'org-001';
   const managerClinicId = currentUser?.clinicId || (currentUser?.clinicIds && currentUser?.clinicIds[0]) || 'clinic-downtown';
   const assignedClinicObj = getClinicById(managerClinicId);
   const assignedClinicName = assignedClinicObj?.name || 'Downtown Dental Excellence';
@@ -155,12 +159,21 @@ export const AppointmentsView = () => {
         if (!isSameClinic(appt.clinicId, managerClinicId)) {
           return false;
         }
-        if (isAgent && appt.assignedAgentId && appt.assignedAgentId !== currentUser?.id) {
-          return false;
+        if (isAgent) {
+          const isAssigned = (
+            appt.assignedAgentId === currentUser?.id ||
+            appt.assignedUserId === currentUser?.id ||
+            appt.assigned_user_id === currentUser?.id
+          );
+          if (!isAssigned) return false;
         }
       } else {
-        // Organization filter
-        if (selectedOrgId !== 'all' && appt.orgId && appt.orgId !== selectedOrgId) {
+        // Auditor is strictly scoped to their own organization
+        if (isAuditor) {
+          if (appt.orgId && appt.orgId !== userOrgId) {
+            return false;
+          }
+        } else if (selectedOrgId !== 'all' && appt.orgId && appt.orgId !== selectedOrgId) {
           return false;
         }
 
@@ -233,10 +246,11 @@ export const AppointmentsView = () => {
 
   // ── Modal / Drawer Handlers ──────────────────────────────────────
   const handleOpenBooking = useCallback(() => {
+    if (isReadOnly) return;
     setSelectedAppointment(null);
     setIsNewBooking(true);
     setIsDrawerOpen(true);
-  }, []);
+  }, [isReadOnly]);
 
   const handleSelectAppointment = useCallback((appt) => {
     setSelectedAppointment(appt);
@@ -252,16 +266,24 @@ export const AppointmentsView = () => {
 
   // ── Quick Check-In Handler ───────────────────────────────────────
   const handleQuickCheckIn = useCallback((apptId) => {
+    if (isReadOnly) {
+      toast.error('Unauthorized: Auditor role has read-only access');
+      return;
+    }
     setRawAppointments((prev) => {
       const updated = prev.map((a) => (a.id === apptId ? { ...a, status: 'checked-in' } : a));
       storageService.set(storageService.KEYS.APPOINTMENTS, updated);
       return updated;
     });
     toast.success('Patient checked in successfully.');
-  }, []);
+  }, [isReadOnly]);
 
   // ── Convert to Patient Handler ───────────────────────────────────
   const handleConvertToPatient = useCallback((apptId) => {
+    if (isReadOnly) {
+      toast.error('Unauthorized: Auditor role has read-only access');
+      return;
+    }
     setRawAppointments((prev) => {
       const updated = prev.map((a) => (a.id === apptId ? { ...a, isConvertedPatient: true } : a));
       storageService.set(storageService.KEYS.APPOINTMENTS, updated);
@@ -269,11 +291,15 @@ export const AppointmentsView = () => {
     });
     setSelectedAppointment((prev) => (prev ? { ...prev, isConvertedPatient: true } : prev));
     toast.success('Lead converted to permanent patient profile.');
-  }, []);
+  }, [isReadOnly]);
 
   // ── Save / Create Appointment Handler ────────────────────────────
   const handleSaveAppointment = useCallback(
     (appointmentData, isNew) => {
+      if (isReadOnly) {
+        toast.error('Unauthorized: Auditor role has read-only access');
+        return;
+      }
       setRawAppointments((prev) => {
         let updated;
         if (isNew) {
@@ -288,7 +314,7 @@ export const AppointmentsView = () => {
       handleCloseDrawer();
       toast.success(isNew ? 'Appointment booked successfully.' : 'Appointment updated successfully.');
     },
-    [handleCloseDrawer]
+    [handleCloseDrawer, isReadOnly]
   );
 
   return (
@@ -314,6 +340,7 @@ export const AppointmentsView = () => {
         onOpenBookingModal={handleOpenBooking}
         isClinicManager={isScopedClinic}
         assignedClinicName={assignedClinicName}
+        readOnly={isReadOnly}
       />
 
       {/* 2. Live Appointment KPI Strip */}
@@ -337,6 +364,7 @@ export const AppointmentsView = () => {
           setCurrentPage={setCurrentPage}
           onSelectAppointment={handleSelectAppointment}
           onQuickCheckIn={handleQuickCheckIn}
+          readOnly={isReadOnly}
         />
       ) : (
         <CalendarView
@@ -356,6 +384,7 @@ export const AppointmentsView = () => {
         availableClinics={availableClinics}
         onSaveAppointment={handleSaveAppointment}
         onConvertToPatient={handleConvertToPatient}
+        readOnly={isReadOnly}
       />
     </div>
   );

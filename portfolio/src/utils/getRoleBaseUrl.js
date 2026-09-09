@@ -12,13 +12,15 @@ export function getRoleBaseUrl(role) {
       return 'agent';
     case 'receptionist':
       return 'receptionist';
+    case 'finance':
+      return 'finance';
+    case 'auditor':
+      return 'auditor';
     case 'clinic_manager':
     case 'manager':
       return 'manager';
     case 'super_admin':
     case 'org_admin':
-    case 'finance':
-    case 'auditor':
     default:
       return 'admin';
   }
@@ -33,6 +35,6 @@ export function getRoleBaseUrl(role) {
  */
 export function buildRoleUrl(relativePath = '', role = 'admin') {
   const base = getRoleBaseUrl(role);
-  const cleanPath = String(relativePath).replace(/^\/(admin|manager|agent|receptionist)\/?/, '').replace(/^\//, '');
+  const cleanPath = String(relativePath).replace(/^\/(admin|manager|agent|receptionist|finance|auditor)\/?/, '').replace(/^\//, '');
   return `/${base}/${cleanPath}`;
 }

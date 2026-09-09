@@ -18,6 +18,7 @@ export const PaymentsView = () => {
   const isSuperAdmin = role === 'super_admin';
   const isOrgAdmin = role === 'org_admin';
   const isClinicManager = role === 'clinic_manager';
+  const isFinance = role === 'finance';
 
   const managerClinicId = currentUser?.clinicId || (currentUser?.clinicIds && currentUser?.clinicIds[0]) || 'clinic-downtown';
   const assignedClinicObj = getClinicById(managerClinicId);
@@ -50,17 +51,17 @@ export const PaymentsView = () => {
       resource: 'payments',
       data: rawRev,
       currentUser: scopedUser,
-      selectedClinicId: isClinicManager ? managerClinicId : ((isSuperAdmin || isOrgAdmin) ? 'all' : selectedClinicId),
+      selectedClinicId: isClinicManager ? managerClinicId : ((isSuperAdmin || isOrgAdmin || isFinance) ? 'all' : selectedClinicId),
     });
-  }, [rawRev, scopedUser, isSuperAdmin, isOrgAdmin, isClinicManager, managerClinicId, selectedClinicId]);
+  }, [rawRev, scopedUser, isSuperAdmin, isOrgAdmin, isClinicManager, isFinance, managerClinicId, selectedClinicId]);
 
   // Clinics available for filter dropdown
   const clinicsList = useMemo(() => {
     try {
       const all = clinicsService.getClinics();
       if (!Array.isArray(all)) return [];
-      const userOrgId = scopedUser?.organizationId || (isOrgAdmin ? 'org-001' : null);
-      if (isOrgAdmin && userOrgId) {
+      const userOrgId = scopedUser?.organizationId || ((isOrgAdmin || isFinance) ? 'org-001' : null);
+      if ((isOrgAdmin || isFinance) && userOrgId) {
         return all.filter((c) => c.orgId === userOrgId);
       }
       return all;

@@ -215,6 +215,7 @@ export const AGENT_NAVIGATION = [
       { name: 'Patients',     path: '/admin/patients',     icon: UserCircle },
       { name: 'Calls',        path: '/admin/calls',        icon: Phone },
       { name: 'Tasks',        path: '/admin/tasks',        icon: CheckSquare },
+      { name: 'Reports',      path: '/admin/reports',      icon: BarChart3 },
     ],
   },
   {
@@ -231,42 +232,29 @@ export const AGENT_NAVIGATION = [
 // ─────────────────────────────────────────────────────────────
 export const RECEPTIONIST_NAVIGATION = [
   {
-    title: 'Front Desk',
+    title: 'CRM',
     items: [
-      { name: 'Dashboard',        path: '/admin/dashboard',       icon: LayoutDashboard },
-      { name: 'Appointments',     path: '/admin/appointments',    icon: Calendar },
-      { name: 'Patient Check-In', path: '/admin/patient-checkin', icon: UserCheck },
-      { name: 'Reschedule',       path: '/admin/reschedule',      icon: CalendarCheck },
-      { name: 'My Schedule',      path: '/admin/my-schedule',     icon: CalendarCheck },
-    ],
-  },
-  {
-    title: 'Patients',
-    items: [
-      { name: 'Patients',       path: '/admin/patients',       icon: UserCircle },
-      { name: 'Notifications',  path: '/admin/notifications',  icon: Bell },
+      { name: 'Dashboard',        path: '/receptionist/dashboard',    icon: LayoutDashboard },
+      { name: 'Appointments',     path: '/receptionist/appointments', icon: Calendar },
+      { name: 'Leads',            path: '/receptionist/leads',        icon: Users },
+      { name: 'Patients',         path: '/receptionist/patients',     icon: UserCircle },
+      { name: 'Schedule Reports', path: '/receptionist/reports',      icon: BarChart3 },
     ],
   },
 ];
 
 // ─────────────────────────────────────────────────────────────
-// Finance Navigation — financial data; appointments read-only
+// Finance Navigation — financial data and reporting
 // ─────────────────────────────────────────────────────────────
 export const FINANCE_NAVIGATION = [
   {
-    title: 'Finance',
+    title: 'CRM',
     items: [
-      { name: 'Dashboard',        path: '/admin/dashboard',    icon: LayoutDashboard },
-      { name: 'Revenue',          path: '/admin/revenue',      icon: DollarSign },
-      { name: 'Payments',         path: '/admin/payments',     icon: CreditCard },
-      { name: 'Finance Reports',  path: '/admin/reports',      icon: FileText },
-    ],
-  },
-  {
-    title: 'Operations',
-    items: [
-      { name: 'Appointments',  path: '/admin/appointments',  icon: Calendar, badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-500' },
-      { name: 'Notifications', path: '/admin/notifications', icon: Bell },
+      { name: 'Dashboard',  path: '/finance/dashboard', icon: LayoutDashboard },
+      { name: 'Revenue',    path: '/finance/revenue',   icon: DollarSign },
+      { name: 'Payments',   path: '/finance/payments',  icon: CreditCard },
+      { name: 'Reports',    path: '/finance/reports',   icon: BarChart3 },
+      { name: 'Clinics',    path: '/finance/clinics',   icon: Building2, badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-500' },
     ],
   },
 ];
@@ -276,19 +264,16 @@ export const FINANCE_NAVIGATION = [
 // ─────────────────────────────────────────────────────────────
 export const AUDITOR_NAVIGATION = [
   {
-    title: 'Audit View',
+    title: 'CRM',
     items: [
-      { name: 'Dashboard',    path: '/admin/dashboard',    icon: LayoutDashboard },
-      { name: 'Leads',        path: '/admin/leads',        icon: Users,         badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-500' },
-      { name: 'Appointments', path: '/admin/appointments', icon: Calendar,      badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-500' },
-      { name: 'Revenue',      path: '/admin/revenue',      icon: DollarSign,    badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-500' },
-      { name: 'Reports',      path: '/admin/reports',      icon: FileText,      badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-500' },
-    ],
-  },
-  {
-    title: 'Platform',
-    items: [
-      { name: 'Notifications', path: '/admin/notifications', icon: Bell },
+      { name: 'Dashboard',    path: '/auditor/dashboard',    icon: LayoutDashboard },
+      { name: 'Audit Logs',   path: '/auditor/audit-logs',   icon: ShieldCheck, badge: 'Primary', badgeColor: 'bg-purple-100 text-purple-700' },
+      { name: 'Leads',        path: '/auditor/leads',        icon: Users,       badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-600' },
+      { name: 'Appointments', path: '/auditor/appointments', icon: Calendar,    badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-600' },
+      { name: 'Revenue',      path: '/auditor/revenue',      icon: DollarSign,  badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-600' },
+      { name: 'Users',        path: '/auditor/users',        icon: UserCheck,   badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-600' },
+      { name: 'Clinics',      path: '/auditor/clinics',      icon: Building2,   badge: 'Read Only', badgeColor: 'bg-slate-200 text-slate-600' },
+      { name: 'Reports',      path: '/auditor/reports',      icon: BarChart3,   badge: 'Export',    badgeColor: 'bg-blue-100 text-blue-700' },
     ],
   },
 ];

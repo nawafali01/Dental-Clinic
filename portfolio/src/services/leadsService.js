@@ -8,6 +8,7 @@
 
 import { storageService } from './storage.service';
 import { scopeData } from '../utils/scopeData';
+import { assertCanMutate } from '@/dashboard/shared/config/permissions';
 
 const LEADS_KEY = storageService.KEYS.LEADS;
 
@@ -105,22 +106,39 @@ export function getLeadById(id) {
 }
 
 /**
+ * Returns all unpaginated leads assigned to a specific agent.
+ *
+ * @param {string} agentId
+ * @returns {Lead[]}
+ */
+export function getAllAssignedLeads(agentId) {
+  if (!agentId) return [];
+  const allLeads = storageService.get(LEADS_KEY) || [];
+  return allLeads.filter(
+    (l) => l.assignedAgentId === agentId || l.assigned_user_id === agentId || l.responsible_agent === agentId
+  );
+}
+
+/**
  * Returns aggregated KPI numbers for the agent dashboard.
  *
  * @param {string} agentId
- * @returns {{ assignedLeads, newLeads, qualifiedLeads, convertedLeads, lostLeads }}
+ * @returns {{ assignedLeads, newLeads, contactedLeads, qualifiedLeads, convertedLeads, lostLeads, conversionRate }}
  */
 export function getLeadKPIs(agentId) {
-  const leads = (storageService.get(LEADS_KEY) || []).filter(
-    (l) => l.assignedAgentId === agentId
-  );
+  const leads = getAllAssignedLeads(agentId);
+  const totalLeads = leads.length;
+  const convertedLeads = leads.filter((l) => l.status === 'converted' || l.status === 'won').length;
+  const conversionRate = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
 
   return {
-    assignedLeads:  leads.length,
+    assignedLeads:  totalLeads,
     newLeads:       leads.filter((l) => l.status === 'new').length,
+    contactedLeads: leads.filter((l) => l.status === 'contacted').length,
     qualifiedLeads: leads.filter((l) => l.status === 'qualified').length,
-    convertedLeads: leads.filter((l) => l.status === 'converted').length,
+    convertedLeads,
     lostLeads:      leads.filter((l) => l.status === 'lost').length,
+    conversionRate,
   };
 }
 
@@ -128,6 +146,7 @@ export function getLeadKPIs(agentId) {
  * Updates a lead's status.
  */
 export function updateLeadStatus(leadId, newStatus) {
+  assertCanMutate('leads', 'edit');
   const leads = storageService.get(LEADS_KEY) || [];
   const updated = leads.map((l) =>
     l.id === leadId ? { ...l, status: newStatus, updatedAt: new Date().toISOString() } : l
@@ -148,6 +167,7 @@ export function sanitizeLeadForReceptionist(lead) {
     patientName: lead.patientName || lead.name || 'Anonymous Patient',
     phone: lead.phone || lead.phoneNumber || '(555) 123-4567',
     email: lead.email || 'N/A',
+    status: lead.status || 'new',
     clinicId: lead.clinicId || lead.clinic || 'Downtown Dental',
     createdAt: lead.createdAt || lead.date || new Date().toISOString(),
     preferredBranch: lead.preferredBranch || lead.clinicId || 'Main Clinic',
@@ -176,6 +196,7 @@ export function getLeadByIdScoped(id, currentUser, selectedClinicId) {
  * Creates a new lead and persists it in storageService
  */
 export function createLead(leadData, currentUser = null) {
+  assertCanMutate('leads', 'create', currentUser);
   const leads = storageService.get(LEADS_KEY) || [];
   const newLead = {
     id: crypto.randomUUID(),
@@ -202,6 +223,7 @@ export function createLead(leadData, currentUser = null) {
  * Deletes a lead by ID
  */
 export function deleteLead(leadId) {
+  assertCanMutate('leads', 'delete');
   const leads = storageService.get(LEADS_KEY) || [];
   const updated = leads.filter((l) => l.id !== leadId);
   storageService.set(LEADS_KEY, updated);

@@ -22,6 +22,7 @@ export const DetailDrawer = ({
   availableClinics,
   onSaveAppointment,
   onConvertToPatient,
+  readOnly = false,
 }) => {
   // Form state for managing or creating
   const [patientName, setPatientName] = useState('');
@@ -325,11 +326,11 @@ export const DetailDrawer = ({
                 )}
 
                 {/* Convert to Patient Action (When Attended / Completed) */}
-                {!isNewBooking && (status === 'attended' || status === 'completed') && (
+                {!isNewBooking && (status === 'attended' || status === 'completed') && !readOnly && (
                   <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between">
                     <div>
-                      <div className="font-bold text-emerald-900 text-xs">Consultation Attended</div>
-                      <div className="text-[11px] text-emerald-700">Patient accepted treatment plan</div>
+                      <div className="font-bold text-emerald-900 text-xs">Patient File Integration</div>
+                      <div className="text-[11px] text-emerald-700">Promote this lead to a registered clinical patient file</div>
                     </div>
                     <Button
                       type="button"
@@ -351,10 +352,11 @@ export const DetailDrawer = ({
               <label className="block text-[11px] font-semibold text-slate-600">Clinical / Intake Notes</label>
               <textarea
                 rows={2}
+                disabled={readOnly}
                 placeholder="Enter pre-op instructions, patient medical alerts, or scheduling notes..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800"
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 disabled:opacity-75"
               />
             </div>
           </form>
@@ -362,18 +364,20 @@ export const DetailDrawer = ({
           {/* 3. Footer Actions */}
           <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
             <Button variant="outline" size="sm" onClick={onClose} className="cursor-pointer">
-              Cancel
+              {readOnly ? 'Close' : 'Cancel'}
             </Button>
-            <Button
-              type="submit"
-              form="appointment-form"
-              variant="primary"
-              size="sm"
-              icon={CheckCircle2}
-              className="cursor-pointer"
-            >
-              {isNewBooking ? 'Confirm & Book Appointment' : 'Save Changes'}
-            </Button>
+            {!readOnly && (
+              <Button
+                type="submit"
+                form="appointment-form"
+                variant="primary"
+                size="sm"
+                icon={CheckCircle2}
+                className="cursor-pointer"
+              >
+                {isNewBooking ? 'Confirm & Book Appointment' : 'Save Changes'}
+              </Button>
+            )}
           </div>
         </div>
       </div>
