@@ -127,7 +127,7 @@ export function BeforeAfterSlider() {
           </p>
         </div>
         <a
-          href="#contact"
+          href="/book-appointment"
           className="text-primary font-semibold hover:underline flex items-center gap-1 cursor-pointer"
         >
           Book Similar Transformation →

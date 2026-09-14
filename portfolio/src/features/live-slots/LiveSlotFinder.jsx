@@ -111,7 +111,7 @@ export function LiveSlotFinder() {
                   asChild
                   className="w-full rounded-full h-10 bg-primary hover:bg-primary/95 text-primary-foreground text-xs font-semibold shadow-sm transition-all cursor-pointer group-hover:shadow-[0_10px_25px_-8px_rgba(31,138,112,0.6)]"
                 >
-                  <a href="#contact">
+                  <a href="/book-appointment">
                     Book Now <ArrowRight className="ml-1 size-3.5 transition-transform group-hover:translate-x-1" />
                   </a>
                 </Button>

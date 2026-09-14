@@ -202,13 +202,13 @@ export function ClinicLocator() {
                       variant="outline"
                       className="rounded-full h-9 text-xs border-border bg-white hover:bg-neutral-50 transition-colors cursor-pointer"
                     >
-                      <a href="#contact">View Clinic</a>
+                      <a href="/contact">View Clinic</a>
                     </Button>
                     <Button
                       asChild
                       className="rounded-full h-9 text-xs bg-primary hover:bg-primary/95 text-primary-foreground transition-all cursor-pointer"
                     >
-                      <a href="#contact">Book Consult</a>
+                      <a href="/book-appointment">Book Consult</a>
                     </Button>
                   </div>
                 </motion.div>
@@ -299,13 +299,13 @@ export function ClinicLocator() {
                   variant="outline"
                   className="flex-1 rounded-full h-10 text-xs border-border bg-white hover:bg-neutral-50 cursor-pointer"
                 >
-                  <a href="#contact">View Clinic</a>
+                  <a href="/contact">View Clinic</a>
                 </Button>
                 <Button
                   asChild
                   className="flex-1 rounded-full h-10 text-xs bg-primary hover:bg-primary/95 text-primary-foreground cursor-pointer"
                 >
-                  <a href="#contact">
+                  <a href="/book-appointment">
                     Book Consultation <ArrowRight className="ml-1 size-3.5" />
                   </a>
                 </Button>

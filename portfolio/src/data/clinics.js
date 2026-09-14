@@ -1,7 +1,7 @@
-import clinic1 from "@/assets/images/clinic-interior.jpg";
-import clinic2 from "@/assets/images/hero-dentist.jpg";
-import clinic3 from "@/assets/images/gallery-1.jpg";
-import clinic4 from "@/assets/images/gallery-3.jpg";
+import clinic1 from "@/assets/images/clinic1.jpg";
+import clinic2 from "@/assets/images/clinic2.jpg";
+import clinic3 from "@/assets/images/clinic3.jpg";
+import clinic4 from "@/assets/images/clinic4.jpg";
 
 export const mockClinics = [
   {

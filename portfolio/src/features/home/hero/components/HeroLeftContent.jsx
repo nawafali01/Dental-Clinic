@@ -46,7 +46,7 @@ export function HeroLeftContent({ greeting }) {
           asChild
           className="group rounded-full h-12 px-6 bg-primary hover:bg-primary/95 text-primary-foreground shadow-[0_14px_40px_-12px_rgba(31,138,112,0.65)] transition-all cursor-pointer"
         >
-          <a href="#contact">
+          <a href="/book-appointment">
             Book Consultation
             <ArrowRight className="ml-1.5 size-4 transition-transform group-hover:translate-x-1" />
           </a>

@@ -71,7 +71,7 @@ export function Services() {
                 <motion.a
                   variants={staggerItem}
                   key={s.title || idx}
-                  href="#contact"
+                  href="/services"
                   whileHover={{ y: -6 }}
                   transition={{ type: "spring", stiffness: 220, damping: 18 }}
                   className="group relative rounded-3xl bg-white border border-border p-6 overflow-hidden hover:border-primary/40 hover:shadow-[0_20px_60px_-20px_rgba(31,138,112,0.35)] transition-shadow"

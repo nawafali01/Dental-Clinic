@@ -8,6 +8,10 @@ import gallery1 from "@/assets/images/gallery-1.jpg";
 import gallery2 from "@/assets/images/gallery-2.jpg";
 import gallery3 from "@/assets/images/gallery-3.jpg";
 import clinicInterior from "@/assets/images/clinic-interior.jpg";
+import clinic1 from "@/assets/images/clinic1.jpg";
+import clinic2 from "@/assets/images/clinic2.jpg";
+import clinic3 from "@/assets/images/clinic3.jpg";
+import clinic4 from "@/assets/images/clinic4.jpg";
 
 const galleryCategories = ["All", "Cosmetic", "Family", "Clinic", "Interior"];
 const galleryAssetMap = {
@@ -15,6 +19,10 @@ const galleryAssetMap = {
   "gallery-2.jpg": gallery2,
   "gallery-3.jpg": gallery3,
   "clinic-interior.jpg": clinicInterior,
+  "clinic1.jpg": clinic1,
+  "clinic2.jpg": clinic2,
+  "clinic3.jpg": clinic3,
+  "clinic4.jpg": clinic4,
 };
 
 export function Gallery() {

@@ -102,7 +102,7 @@ export function Doctors() {
                   </div>
                 </div>
                 <a
-                  href="#contact"
+                  href="/book-appointment"
                   className="mx-5 mb-5 flex items-center justify-center gap-2 rounded-2xl bg-secondary text-secondary-foreground py-3 text-sm font-medium hover:bg-primary transition-colors duration-200"
                 >
                   <CalendarPlus className="size-4" /> Book with {d.name.split(" ")[1]}

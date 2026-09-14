@@ -162,7 +162,7 @@ export function FAQSection() {
               variant="outline"
               className="rounded-full h-10 px-5 border-white/30 text-white hover:bg-white/10 cursor-pointer text-xs"
             >
-              <a href="#contact">
+              <a href="/contact">
                 <Mail className="mr-1.5 size-3.5" /> Send Message
               </a>
             </Button>

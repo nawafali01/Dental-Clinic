@@ -8,7 +8,6 @@ import { Gallery } from "@/features/home/gallery/Gallery";
 import { AISection } from "@/features/home/ai-tools/AISection";
 import { FAQSection } from "@/features/home/faq/FAQSection";
 import { Testimonials } from "@/features/home/testimonials/Testimonials";
-import { Contact } from "@/features/home/contact/Contact";
 import { CookieConsent } from "@/features/footer/CookieConsent";
 
 export default function Home() {
@@ -24,7 +23,6 @@ export default function Home() {
       <AISection />
       <FAQSection />
       <Testimonials />
-      <Contact />
       <CookieConsent />
     </>
   );

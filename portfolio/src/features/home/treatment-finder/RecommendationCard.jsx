@@ -78,7 +78,7 @@ export function RecommendationCard({
             asChild
             className="rounded-full h-11 px-6 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-all cursor-pointer text-sm"
           >
-            <a href="#contact">
+            <a href="/book-appointment">
               Book Consultation <ArrowRight className="ml-1.5 size-4" />
             </a>
           </Button>
