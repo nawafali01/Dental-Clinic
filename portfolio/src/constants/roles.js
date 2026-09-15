@@ -16,14 +16,13 @@ export const ROLE_LABELS = {
   [ROLES.FINANCE]: "Finance",
 };
 
-// Map post-login/onboarding redirects based on role
 export const ROLE_REDIRECTS = {
   [ROLES.SUPER_ADMIN]: "/admin/dashboard",
-  [ROLES.ORG_ADMIN]: "/admin/dashboard", // or /org/dashboard based on your existing structure
+  [ROLES.ORG_ADMIN]: "/admin/dashboard",
   [ROLES.CLINIC_MANAGER]: "/manager/dashboard",
-  [ROLES.AGENT]: "/admin/dashboard",
-  [ROLES.RECEPTIONIST]: "/appointments", // Stub route
-  [ROLES.FINANCE]: "/revenue", // Stub route
+  [ROLES.AGENT]: "/agent/dashboard",
+  [ROLES.RECEPTIONIST]: "/receptionist/dashboard",
+  [ROLES.FINANCE]: "/finance/dashboard",
 };
 
 export const STATUS = {

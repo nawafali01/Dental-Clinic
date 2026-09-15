@@ -96,24 +96,27 @@ function AuthIllustrationPanel() {
 /* ---------- main component ---------- */
 export default function StaffLoginFeature() {
   const { handleLogin, isLoading: isSubmitting } = useAuth();
-  const [values, setValues] = useState({ email: "", password: "" });
+  const [values, setValues] = useState({ email: "", username: "", password: "" });
   const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState('');
   const [showPass, setShowPass] = useState(false);
 
   const canSubmit = useMemo(
-    () => values.email.trim() && values.password.trim(),
-    [values.email, values.password],
+    () => values.email.trim() && values.username.trim() && values.password.trim(),
+    [values.email, values.username, values.password],
   );
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setValues((current) => ({ ...current, [name]: value }));
     setErrors((current) => ({ ...current, [name]: "" }));
+    setServerError('');
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    
+    setServerError('');
+
     const result = loginSchema.safeParse(values);
     if (!result.success) {
       const formattedErrors = {};
@@ -124,7 +127,10 @@ export default function StaffLoginFeature() {
       return;
     }
 
-    await handleLogin(values.email, values.password);
+    const { error } = await handleLogin(values.email, values.username, values.password);
+    if (error) {
+      setServerError(error);
+    }
   };
 
   return (
@@ -165,6 +171,24 @@ export default function StaffLoginFeature() {
           </p>
 
           <form className="mt-10 space-y-5" onSubmit={handleSubmit} noValidate>
+            {/* Server-level error banner (API errors from login endpoint) */}
+            {serverError && (
+              <div
+                role="alert"
+                className="flex items-start gap-3 rounded-xl border px-4 py-3 text-sm"
+                style={{
+                  background: '#fff5f5',
+                  borderColor: '#fecaca',
+                  color: '#b91c1c',
+                }}
+              >
+                <svg className="mt-0.5 size-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 3h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                </svg>
+                <span>{serverError}</span>
+              </div>
+            )}
+
             {/* email */}
             <div>
               <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-gray-700">
@@ -189,6 +213,31 @@ export default function StaffLoginFeature() {
               />
               {errors.email && (
                 <p className="mt-1.5 text-xs text-red-500">{errors.email}</p>
+              )}
+            </div>
+
+            {/* username */}
+            <div>
+              <label htmlFor="username" className="mb-1.5 block text-sm font-medium text-gray-700">
+                Username
+              </label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                autoComplete="username"
+                value={values.username}
+                onChange={handleChange}
+                placeholder="your_username"
+                className="w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-all placeholder:text-gray-400 focus:ring-2"
+                style={{
+                  borderColor: errors.username ? "#ef4444" : "#d1fae5",
+                  background: errors.username ? "#fff5f5" : "#f0fdf4",
+                  color: "#111827",
+                }}
+              />
+              {errors.username && (
+                <p className="mt-1.5 text-xs text-red-500">{errors.username}</p>
               )}
             </div>
 

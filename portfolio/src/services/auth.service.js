@@ -1,118 +1,128 @@
-import { storageService } from './storage.service';
+import apiClient, { AUTH_KEYS } from '../lib/api';
 import { createSuccess, createError } from '../utils/response.util';
+import { storageService } from './storage.service';
 import { SEED_USERS } from '../dashboard/super-admin/mock-data/usersData';
+import { normalizeUser } from '../utils/normalizeUser';
 
 /**
  * AUTH SERVICE
- * Handles authentication flows. Communicates exclusively with StorageService.
- * Can be hot-swapped for Supabase Auth in the future.
+ *
+ * login / logout / getCurrentUser now communicate with the real FastAPI backend
+ * via `apiClient` (src/lib/api.js).
+ *
+ * All other methods (acceptInvite, forgotPassword, etc.) remain mock until
+ * those endpoints are confirmed with the backend team.
+ *
+ * Open items:
+ *  - TODO: Replace getCurrentUser() localStorage read with GET /me once confirmed.
+ *  - TODO: Add refresh-token rotation in api.js interceptor once endpoint confirmed.
  */
 class AuthService {
   /**
-   * Logs a user in by checking email and password.
-   * @param {string} email 
-   * @param {string} password 
+   * Authenticates the user against the real FastAPI backend.
+   *
+   * POST /api/v1/auth/login
+   * Body: { email, username, password } — username mirrors email (Option A).
+   *
+   * On success: stores access_token, refresh_token, and user object in localStorage.
+   * On failure: parses the API error shape { success, error: { code, message } }
+   *             and returns a human-readable message.
+   *
+   * @param {string} email
+   * @param {string} password
    */
-  async login(email, password) {
+  async login(email, username, password) {
     try {
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 400));
+      const cleanEmail    = (email    || '').trim().toLowerCase();
+      const cleanUsername = (username || '').trim();
+      const cleanPassword = (password || '').trim();
 
-      let users = storageService.get(storageService.KEYS.USERS);
-      if (!Array.isArray(users) || users.length === 0) {
-        users = [...SEED_USERS];
-        storageService.set(storageService.KEYS.USERS, users);
-      }
+      if (!cleanEmail)    return createError('Email is required.');
+      if (!cleanUsername) return createError('Username is required.');
+      if (!cleanPassword) return createError('Password is required.');
 
-      const cleanEmail = (email || '').trim().toLowerCase();
-      let user = users.find(u => (u.email || '').trim().toLowerCase() === cleanEmail);
+      const response = await apiClient.post('/api/v1/auth/login', {
+        email:    cleanEmail,
+        username: cleanUsername,   // real username from form — no longer mirroring email
+        password: cleanPassword,
+      });
 
-      // Fallback: check SEED_USERS directly if not found in active storage
-      if (!user) {
-        const seedUser = SEED_USERS.find(u => (u.email || '').trim().toLowerCase() === cleanEmail);
-        if (seedUser) {
-          user = seedUser;
-          users.push(seedUser);
-          storageService.set(storageService.KEYS.USERS, users);
-        }
-      }
+      const { access_token, refresh_token, user } = response.data;
+      const normalizedUser = normalizeUser(user);
 
-      // Alias fallback: if user typed "manager" or similar keyword
-      if (!user && (cleanEmail === 'manager' || cleanEmail.includes('manager@'))) {
-        user = users.find(u => u.role === 'clinic_manager') || SEED_USERS.find(u => u.role === 'clinic_manager');
-      }
+      // Persist tokens and user object
+      localStorage.setItem(AUTH_KEYS.ACCESS_TOKEN,  access_token);
+      localStorage.setItem(AUTH_KEYS.REFRESH_TOKEN, refresh_token || '');
+      localStorage.setItem(AUTH_KEYS.CURRENT_USER,  JSON.stringify(normalizedUser));
 
-      if (!user) {
-        return createError("Invalid email or password.");
-      }
+      // Also keep storageService.KEYS.CURRENT_USER in sync so existing
+      // ClinicContext / RoleContext reads keep working without changes.
+      storageService.set(storageService.KEYS.CURRENT_USER, normalizedUser);
 
-      // In demo environment, accept any non-empty password
-      if (!password || String(password).trim().length === 0) {
-        return createError("Password is required.");
-      }
-
-      // Ensure demo account status is active
-      user.status = 'active';
-
-      // Strip password from the session user object for security
-      const { password: _, ...safeUser } = user;
-      safeUser.status = 'active';
-      
-      // Save session
-      storageService.set(storageService.KEYS.CURRENT_USER, safeUser);
-      
-      return createSuccess(safeUser, "Login successful.");
+      return createSuccess(normalizedUser, 'Login successful.');
     } catch (error) {
-      return createError("An unexpected error occurred during login.", error);
+      // Parse the API error envelope: { success, error: { code, message, details } }
+      const apiError = error.response?.data?.error;
+      const message =
+        apiError?.message ||
+        error.response?.data?.detail ||
+        error.message ||
+        'An unexpected error occurred during login.';
+      return createError(message, error);
     }
   }
 
   /**
-   * Logs the user out by clearing the current session.
+   * Logs the user out.
+   * Clears access_token, refresh_token, and the stored user object.
+   * The axios interceptor in api.js also handles 401s, but explicit logout
+   * must clear state too.
    */
   async logout() {
     try {
+      localStorage.removeItem(AUTH_KEYS.ACCESS_TOKEN);
+      localStorage.removeItem(AUTH_KEYS.REFRESH_TOKEN);
+      localStorage.removeItem(AUTH_KEYS.CURRENT_USER);
+      // Also clear via storageService to keep it consistent
       storageService.remove(storageService.KEYS.CURRENT_USER);
-      return createSuccess(null, "Logged out successfully.");
+      return createSuccess(null, 'Logged out successfully.');
     } catch (error) {
-      return createError("Error during logout.", error);
+      return createError('Error during logout.', error);
     }
   }
 
   /**
-   * Gets the currently authenticated user from local session.
+   * Restores the user session on app load/refresh.
+   *
+   * KNOWN GAP: We read the stored user object from localStorage rather than
+   * calling a /me endpoint. This means a deactivated or role-changed user will
+   * remain authorized until they log out or their access_token triggers a 401.
+   *
+   * TODO: Replace this with GET /api/v1/auth/me once the backend confirms that
+   *       endpoint. At that point, call apiClient.get('/api/v1/auth/me') and
+   *       update localStorage with the fresh user object.
    */
   async getCurrentUser() {
     try {
-      let currentUser = storageService.get(storageService.KEYS.CURRENT_USER);
-      
-      if (!currentUser) {
-        const users = storageService.get(storageService.KEYS.USERS) || [];
-        const fallback = users.find((u) => u.role === 'org_admin') || users[0];
-        if (fallback) {
-          const { password: _, ...safeFallback } = fallback;
-          storageService.set(storageService.KEYS.CURRENT_USER, safeFallback);
-          return createSuccess(safeFallback, "Session retrieved.");
-        }
-        return createError("No active session.");
+      const token = localStorage.getItem(AUTH_KEYS.ACCESS_TOKEN);
+      if (!token) {
+        return createError('No active session.');
       }
 
-      // Always fetch the freshest user data from the DB table
-      const users = storageService.get(storageService.KEYS.USERS) || [];
-      const freshUser = users.find((u) => u.id === currentUser.id) || users.find((u) => u.role === 'org_admin') || users[0];
+      // Read the cached user object that was saved during login
+      const raw = localStorage.getItem(AUTH_KEYS.CURRENT_USER);
+      const user = raw ? normalizeUser(JSON.parse(raw)) : null;
 
-      if (!freshUser || freshUser.status === 'disabled') {
-        storageService.remove(storageService.KEYS.CURRENT_USER);
-        return createError("Session invalidated.");
+      if (!user) {
+        return createError('No active session.');
       }
 
-      const { password: _, ...safeUser } = freshUser;
-      
-      // Update session with fresh data
-      storageService.set(storageService.KEYS.CURRENT_USER, safeUser);
-      return createSuccess(safeUser, "Session retrieved.");
+      // Keep storageService in sync so ClinicContext / RoleContext reads work
+      storageService.set(storageService.KEYS.CURRENT_USER, user);
+
+      return createSuccess(user, 'Session retrieved.');
     } catch (error) {
-      return createError("Failed to get current user.", error);
+      return createError('Failed to get current user.', error);
     }
   }
 

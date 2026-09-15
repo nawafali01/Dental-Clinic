@@ -27,6 +27,7 @@ import {
   CheckCircle2,
   Stethoscope,
   ChevronRight,
+  Globe2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';

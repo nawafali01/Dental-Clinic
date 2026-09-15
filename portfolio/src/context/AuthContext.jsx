@@ -9,12 +9,15 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Initialize session on mount
+  // Initialize session on mount.
+  // Restores user from localStorage (no API call).
+  // TODO: Once GET /api/v1/auth/me is confirmed, replace authService.getCurrentUser()
+  //       with a real /me call so we can validate the token and get a fresh user object.
   useEffect(() => {
     const initializeAuth = async () => {
       setLoading(true);
       const res = await authService.getCurrentUser();
-      
+
       if (res.success && res.data) {
         setCurrentUser(res.data);
         setIsAuthenticated(true);
@@ -28,9 +31,15 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
   }, []);
 
-  const login = async (email, password) => {
+  /**
+   * Calls the real FastAPI login endpoint via authService.
+   * On success, persists tokens + user object and updates context state.
+   * The returned response has shape { success, data, message } matching
+   * createSuccess / createError from response.util.js.
+   */
+  const login = async (email, username, password) => {
     setLoading(true);
-    const res = await authService.login(email, password);
+    const res = await authService.login(email, username, password);
     if (res.success && res.data) {
       setCurrentUser(res.data);
       setIsAuthenticated(true);
@@ -39,20 +48,26 @@ export const AuthProvider = ({ children }) => {
     return res;
   };
 
+  /**
+   * Clears all auth tokens and user state, then performs a hard redirect
+   * to /login so stale React context is fully destroyed.
+   *
+   * Using window.location.replace (not React Router navigate) intentionally —
+   * it guarantees a full page reload so no stale context or token leaks through.
+   */
   const logout = async () => {
     setLoading(true);
-    const res = await authService.logout();
-    if (res.success) {
-      setCurrentUser(null);
-      setIsAuthenticated(false);
-    }
+    await authService.logout();
+    setCurrentUser(null);
+    setIsAuthenticated(false);
     setLoading(false);
-    return res;
+    window.location.replace('/login');
+    return { success: true };
   };
 
   const updateProfile = async (updates) => {
     if (!currentUser) return;
-    
+
     // Calls the userService which strictly limits which fields can be updated
     const res = await userService.updateProfile(currentUser.id, updates);
     if (res.success && res.data) {
@@ -68,11 +83,12 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     updateProfile,
-    // Provide a way to refresh user state without full reload
+    // Re-reads user from localStorage.
+    // TODO: Once GET /me is confirmed, make this a real API call.
     refreshSession: async () => {
       const res = await authService.getCurrentUser();
       if (res.success) setCurrentUser(res.data);
-    }
+    },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -96,3 +112,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

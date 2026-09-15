@@ -11,6 +11,7 @@ export function getRoleBaseUrl(role) {
     case 'agent':
       return 'agent';
     case 'receptionist':
+    case 'reception':
       return 'receptionist';
     case 'finance':
       return 'finance';

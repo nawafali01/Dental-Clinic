@@ -288,6 +288,7 @@ export const NAVIGATION_MAP = {
   clinic_manager: CLINIC_MANAGER_NAVIGATION,
   agent:          AGENT_NAVIGATION,
   receptionist:   RECEPTIONIST_NAVIGATION,
+  reception:      RECEPTIONIST_NAVIGATION,
   finance:        FINANCE_NAVIGATION,
   auditor:        AUDITOR_NAVIGATION,
 };

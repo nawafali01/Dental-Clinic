@@ -25,15 +25,25 @@ const BookAppointment = lazy(() => import("@/pages/BookAppointment"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 // --- New Auth Flows ---
-const LoginView = lazy(() => import("@/features/auth/LoginView"));
+const StaffLogin = lazy(() => import("@/pages/StaffLogin"));       // real API auth + username field
+const LoginView = lazy(() => import("@/features/auth/LoginView"));  // kept for /staff-login fallback
 const AcceptInviteView = lazy(() => import("@/features/auth/AcceptInviteView"));
 const OnboardingView = lazy(() => import("@/features/auth/OnboardingView"));
+
+import { useAuth } from "@/context/AuthContext";
+import { buildRoleUrl } from "@/utils/getRoleBaseUrl";
 
 const fallback = (label = "Loading...") => (
   <div className="h-screen w-screen flex items-center justify-center text-primary font-display font-semibold bg-white">
     {label}
   </div>
 );
+
+const RoleRedirect = ({ subPath = "dashboard" }) => {
+  const { currentUser } = useAuth();
+  const role = currentUser?.role || "admin";
+  return <Navigate to={buildRoleUrl(`/${subPath}`, role)} replace />;
+};
 
 const router = createBrowserRouter([
   // Public Website Routes
@@ -63,7 +73,13 @@ const router = createBrowserRouter([
     element: <AuthLayout />,
     children: [
       {
+        // Primary login — StaffLoginFeature: real API auth, username field
         path: "login",
+        element: <Suspense fallback={fallback("Loading Login...")}><StaffLogin /></Suspense>,
+      },
+      {
+        // Legacy / fallback login view (Quick Demo Fill, mock auth)
+        path: "staff-login",
         element: <Suspense fallback={fallback("Loading Login...")}><LoginView /></Suspense>,
       },
       {
@@ -81,8 +97,50 @@ const router = createBrowserRouter([
     ],
   },
 
+  // Top-level smart redirects for common root paths
+  {
+    path: "/dashboard",
+    element: (
+      <AuthGuard>
+        <RoleRedirect subPath="dashboard" />
+      </AuthGuard>
+    ),
+  },
+  {
+    path: "/appointments",
+    element: (
+      <AuthGuard>
+        <RoleRedirect subPath="appointments" />
+      </AuthGuard>
+    ),
+  },
+  {
+    path: "/leads",
+    element: (
+      <AuthGuard>
+        <RoleRedirect subPath="leads" />
+      </AuthGuard>
+    ),
+  },
+  {
+    path: "/patients",
+    element: (
+      <AuthGuard>
+        <RoleRedirect subPath="patients" />
+      </AuthGuard>
+    ),
+  },
+  {
+    path: "/revenue",
+    element: (
+      <AuthGuard>
+        <RoleRedirect subPath="revenue" />
+      </AuthGuard>
+    ),
+  },
+
   // Protected Unified Dashboard Area (Role-based Base Paths)
-  ...["/admin", "/manager", "/agent", "/receptionist", "/finance", "/auditor"].map((basePath) => ({
+  ...["/admin", "/manager", "/agent", "/receptionist", "/reception", "/finance", "/auditor"].map((basePath) => ({
     path: basePath,
     element: (
       <AuthGuard>

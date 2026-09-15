@@ -25,11 +25,31 @@ export const ClinicProvider = ({ children }) => {
   const selectedOrgId = orgContext?.selectedOrgId || 'all';
   const currentOrg = orgContext?.currentOrg;
 
+  /**
+   * Normalize the user object so both the mock shape and the real API shape work.
+   *
+   * Mock shape:   { clinicIds: [...], organizationId: '...' }
+   * API shape:    { assigned_clinics: [...], organization_id: '...' }
+   *
+   * We derive a unified `normalizedUser` with both aliases populated so all
+   * downstream consumers (scopeData, ClinicContext, etc.) keep working unchanged.
+   */
+  const normalizedUser = useMemo(() => {
+    if (!currentUser) return null;
+    return {
+      ...currentUser,
+      // Prefer the mock field if already present, otherwise fall back to API field
+      clinicIds:      currentUser.clinicIds      ?? currentUser.assigned_clinics ?? [],
+      organizationId: currentUser.organizationId ?? currentUser.organization_id  ?? null,
+    };
+  }, [currentUser]);
+
   /** True if the current user's role allows multi-clinic switching. */
   const canSwitch = useMemo(
-    () => Boolean(currentUser && MULTI_CLINIC_ROLES.includes(currentUser.role)),
-    [currentUser]
+    () => Boolean(normalizedUser && MULTI_CLINIC_ROLES.includes(normalizedUser.role)),
+    [normalizedUser],
   );
+
 
   /**
    * The subset of clinics available to this user in current scope.
@@ -40,12 +60,12 @@ export const ClinicProvider = ({ children }) => {
   const availableClinics = useMemo(() => {
     const primaryClinics = CLINICS.filter((c) => !c.isAlias);
 
-    if (!currentUser) return primaryClinics;
+    if (!normalizedUser) return primaryClinics;
 
     // Single-clinic roles locked to assigned clinicIds
     if (!canSwitch) {
-      if (currentUser.clinicIds && currentUser.clinicIds.length > 0) {
-        const filtered = primaryClinics.filter((c) => currentUser.clinicIds.includes(c.id));
+      if (normalizedUser.clinicIds && normalizedUser.clinicIds.length > 0) {
+        const filtered = primaryClinics.filter((c) => normalizedUser.clinicIds.includes(c.id));
         return filtered.length > 0 ? filtered : primaryClinics;
       }
       return primaryClinics;
@@ -58,15 +78,16 @@ export const ClinicProvider = ({ children }) => {
 
     const orgClinics = primaryClinics.filter((c) => c.orgId === selectedOrgId);
     return orgClinics.length > 0 ? orgClinics : primaryClinics;
-  }, [currentUser, canSwitch, selectedOrgId]);
+  }, [normalizedUser, canSwitch, selectedOrgId]);
+
 
   const getInitialClinicId = () => {
-    if (!currentUser) return 'all';
+    if (!normalizedUser) return 'all';
     if (canSwitch) {
       const saved = typeof window !== 'undefined' ? localStorage.getItem(SELECTED_BRANCH_KEY) : null;
       return saved || 'all';
     }
-    return (currentUser.clinicIds && currentUser.clinicIds[0]) || DEFAULT_CLINIC_ID;
+    return (normalizedUser.clinicIds && normalizedUser.clinicIds[0]) || DEFAULT_CLINIC_ID;
   };
 
   const [selectedClinicId, setSelectedClinicIdState] = useState(getInitialClinicId);

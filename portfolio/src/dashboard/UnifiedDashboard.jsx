@@ -175,12 +175,14 @@ const RoleBasedDashboard = ({ user }) => {
  * decision to select WHICH view to use. All fine-grained widget
  * visibility is handled by <CanView> — no role checks in widgets.
  */
+import { normalizeRole } from '@/utils/normalizeUser';
+
 export default function UnifiedDashboard() {
   const { currentUser } = useAuth();
 
   if (!currentUser) return null;
 
-  const { role } = currentUser;
+  const role = normalizeRole(currentUser.role);
 
   // ── Super Admin and Org Admin: existing full-featured overview ─
   if (role === 'super_admin' || role === 'org_admin') {

@@ -29,12 +29,15 @@ const AuditLogsView        = lazy(() => import("@/dashboard/views/audit/AuditLog
 const ProfileView          = lazy(() => import("@/features/profile/ProfileView"));
 const SettingsWorkspace    = lazy(() => import("@/features/settings/SettingsWorkspace"));
 
+import { normalizeRole } from "@/utils/normalizeUser";
+
 const UsersDispatcher = () => {
   const { currentUser } = useAuth();
-  if (currentUser?.role === 'super_admin' || currentUser?.role === 'org_admin') {
+  const role = normalizeRole(currentUser?.role);
+  if (role === 'super_admin' || role === 'org_admin') {
     return <UserManagementView />;
   }
-  if (currentUser?.role === 'auditor') {
+  if (role === 'auditor') {
     return <UserManagementView readOnly={true} />;
   }
   return <UsersView />;
@@ -42,10 +45,11 @@ const UsersDispatcher = () => {
 
 const RevenueDispatcher = () => {
   const { currentUser } = useAuth();
-  if (currentUser?.role === 'finance') {
+  const role = normalizeRole(currentUser?.role);
+  if (role === 'finance') {
     return <FinanceRevenueView />;
   }
-  if (currentUser?.role === 'auditor') {
+  if (role === 'auditor') {
     return <FinanceRevenueView readOnly={true} />;
   }
   return <RevenueView />;
@@ -53,13 +57,14 @@ const RevenueDispatcher = () => {
 
 const ReportsDispatcher = () => {
   const { currentUser } = useAuth();
-  if (currentUser?.role === 'agent') {
+  const role = normalizeRole(currentUser?.role);
+  if (role === 'agent') {
     return <AgentReportsView />;
   }
-  if (currentUser?.role === 'receptionist') {
+  if (role === 'receptionist') {
     return <ReceptionistReportsView />;
   }
-  if (currentUser?.role === 'finance') {
+  if (role === 'finance') {
     return <FinanceReportsView />;
   }
   return <ReportsView />;

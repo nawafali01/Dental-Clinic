@@ -166,11 +166,24 @@ export const ROLE_PERMISSIONS = {
   ],
 };
 
+ROLE_PERMISSIONS.reception = ROLE_PERMISSIONS.receptionist;
+
+const normalizeRoleId = (roleId) => {
+  if (!roleId) return '';
+  const r = String(roleId).trim().toLowerCase();
+  if (r === 'reception' || r === 'front_desk') return 'receptionist';
+  if (r === 'superadmin' || r === 'admin') return 'super_admin';
+  if (r === 'orgadmin') return 'org_admin';
+  if (r === 'clinicmanager' || r === 'manager') return 'clinic_manager';
+  return r;
+};
+
 export const hasRolePermission = (roleId, permission) => {
   if (!roleId) return false;
+  const normId = normalizeRoleId(roleId);
   // Super Admin override — always grant all
-  if (roleId === 'super_admin') return true;
-  const perms = ROLE_PERMISSIONS[roleId] || [];
+  if (normId === 'super_admin') return true;
+  const perms = ROLE_PERMISSIONS[normId] || [];
   return perms.includes(permission);
 };
 
@@ -326,12 +339,13 @@ export const RESOURCE_PERMISSIONS = {
  */
 export const hasResourcePermission = (roleId, resource) => {
   if (!roleId || !resource) return false;
-  if (roleId === 'super_admin') return true;
+  const normId = normalizeRoleId(roleId);
+  if (normId === 'super_admin') return true;
 
   const resourceMap = RESOURCE_PERMISSIONS[resource];
   if (!resourceMap) return false;
 
-  const level = resourceMap[roleId];
+  const level = resourceMap[normId];
   return Boolean(level) && level !== RESOURCE_ACCESS.NONE;
 };
 
@@ -341,12 +355,13 @@ export const hasResourcePermission = (roleId, resource) => {
  */
 export const getResourceAccess = (roleId, resource) => {
   if (!roleId || !resource) return RESOURCE_ACCESS.NONE;
-  if (roleId === 'super_admin') return RESOURCE_ACCESS.ALL;
+  const normId = normalizeRoleId(roleId);
+  if (normId === 'super_admin') return RESOURCE_ACCESS.ALL;
 
   const resourceMap = RESOURCE_PERMISSIONS[resource];
   if (!resourceMap) return RESOURCE_ACCESS.NONE;
 
-  return resourceMap[roleId] || RESOURCE_ACCESS.NONE;
+  return resourceMap[normId] || RESOURCE_ACCESS.NONE;
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -465,14 +480,15 @@ export const ACTION_PERMISSIONS = {
  */
 export const canDoAction = (roleId, resource, action) => {
   if (!roleId || !resource || !action) return false;
+  const normId = normalizeRoleId(roleId);
   // Super Admin always has full access
-  if (roleId === 'super_admin') return true;
+  if (normId === 'super_admin') return true;
 
   const resourceActions = ACTION_PERMISSIONS[resource];
   if (!resourceActions) return false;
 
   const allowedRoles = resourceActions[action] || [];
-  return allowedRoles.includes(roleId);
+  return allowedRoles.includes(normId);
 };
 
 // ─────────────────────────────────────────────────────────────

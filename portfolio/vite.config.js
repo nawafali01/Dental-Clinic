@@ -15,4 +15,16 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      // Proxy all /api requests to Faraz's FastAPI backend (192.168.18.195)
+      // This avoids CORS issues — browser sees requests on the same origin.
+      '/api': {
+        target: 'http://192.168.18.195:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 })
+

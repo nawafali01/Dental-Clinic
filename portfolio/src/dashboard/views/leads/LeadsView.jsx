@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Building2, RotateCcw, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useClinic } from '@/context/ClinicContext';
+import { useOrg } from '@/dashboard/shared/context/OrgContext';
 import { storageService } from '@/services/storage.service';
 import { scopeData } from '@/utils/scopeData';
 import { PermissionGuard } from '@/guards/PermissionGuard';
@@ -44,6 +45,7 @@ const getStatusBadgeColor = (status) => {
 export const LeadsView = () => {
   const { currentUser } = useAuth();
   const { selectedClinicId } = useClinic();
+  const { currentOrg } = useOrg();        // ← fixes ReferenceError: currentOrg was used but never defined
   const navigate = useNavigate();
 
   const [isModalOpen, setIsModalOpen] = useState(false);

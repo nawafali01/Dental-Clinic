@@ -2,6 +2,7 @@ import React, { createContext, useContext, useMemo, useState, useEffect } from '
 import { ROLES, CLINICS_SCOPE } from '@/dashboard/shared/constants/adminConstants';
 import { hasRolePermission, canDoAction, MULTI_CLINIC_ROLES } from '@/dashboard/shared/config/permissions';
 import { useAuth } from '@/context/AuthContext';
+import { normalizeRole } from '@/utils/normalizeUser';
 
 const RoleContext = createContext(null);
 
@@ -15,7 +16,8 @@ export const RoleProvider = ({ children }) => {
   // Keep selectedRole in sync if currentUser changes (e.g., re-login)
   useEffect(() => {
     if (currentUser?.role) {
-      const matched = ROLES.find((r) => r.id === currentUser.role);
+      const normRole = normalizeRole(currentUser.role);
+      const matched = ROLES.find((r) => r.id === normRole);
       if (matched) setSelectedRole(matched);
     }
   }, [currentUser?.id, currentUser?.role]);
@@ -23,7 +25,8 @@ export const RoleProvider = ({ children }) => {
   const currentRole = useMemo(() => {
     if (selectedRole) return selectedRole;
     if (!currentUser?.role) return ROLES[0];
-    return ROLES.find((r) => r.id === currentUser.role) || ROLES[0];
+    const normRole = normalizeRole(currentUser.role);
+    return ROLES.find((r) => r.id === normRole) || ROLES[0];
   }, [selectedRole, currentUser]);
 
   const setCurrentRole = (role) => {
