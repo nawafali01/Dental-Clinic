@@ -19,6 +19,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import apiClient from '@/lib/api';
 import { usersService } from '@/services/usersService';
 import { organizationsService } from '@/services/organizationsService';
 import { clinicsService } from '@/services/clinicsService';
@@ -42,13 +43,16 @@ export default function UserManagementView({ readOnly = false }) {
   const { currentOrg } = useOrg();
   const isSuperAdmin = userRole === 'super_admin';
   const isOrgAdmin = userRole === 'org_admin';
-  const isAuditor = currentUser?.role === 'auditor' || userRole === 'auditor' || readOnly;
-  const userOrgId = currentUser?.organizationId || 'org-001';
+  const isClinicManager = userRole === 'clinic_manager';
+  const isAuditor = userRole === 'auditor';
+  // Roles that can create users (all except auditor and below)
+  const canManageUsers = isSuperAdmin || isOrgAdmin || isClinicManager;
+  const userOrgId = currentUser?.organizationId || currentUser?.organization_id || currentOrg?.id || 'org-001';
 
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState(() => usersService.getUsers() || []);
   const [organizations, setOrganizations] = useState(() => organizationsService.getOrganizationsSync() || []);
-  const [clinics, setClinics] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [clinics, setClinics] = useState(() => clinicsService.getClinics() || []);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,18 +65,26 @@ export default function UserManagementView({ readOnly = false }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [userToEdit, setUserToEdit] = useState(null);
   const [statusConfirmUser, setStatusConfirmUser] = useState(null);
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState(null);
 
-  const loadData = () => {
+  const loadData = async () => {
     setIsLoading(true);
     try {
-      const u = usersService.getUsers();
       const rawOrgs = organizationsService.getOrganizationsSync();
       const c = clinicsService.getClinics();
-      setUsers(Array.isArray(u) ? u : []);
       setOrganizations(Array.isArray(rawOrgs) ? rawOrgs : []);
       setClinics(Array.isArray(c) ? c : []);
+
+      // Fetch live users directly from backend GET /api/v1/users/
+      const result = await usersService.fetchUsers();
+      if (result.data) {
+        setUsers(result.data);
+      } else {
+        setUsers(usersService.getUsersSync());
+      }
     } catch (err) {
-      toast.error('Failed to load user management data');
+      console.warn('Failed to load live users:', err.message);
+      setUsers(usersService.getUsersSync());
     } finally {
       setIsLoading(false);
     }
@@ -82,22 +94,47 @@ export default function UserManagementView({ readOnly = false }) {
     loadData();
   }, []);
 
-  // Base users list strictly scoped for org_admin and auditor
+  // Base users list strictly scoped for org_admin and auditor, excluding super_admin accounts
   const baseScopedUsers = useMemo(() => {
-    if (isOrgAdmin || isAuditor) {
-      return users.filter((u) => u.organizationId === userOrgId);
+    const staffUsers = users.filter(
+      (u) => u.role !== ROLES.SUPER_ADMIN && u.role !== 'super_admin'
+    );
+    if (isAuditor) {
+      return staffUsers.filter((u) => u.organizationId === userOrgId);
     }
-    return users;
-  }, [users, isOrgAdmin, isAuditor, userOrgId]);
+    if (isOrgAdmin) {
+      const allClinicIds = clinics.map((c) => c.id);
+      if (selectedClinicFilter !== 'ALL') {
+        return staffUsers.filter(
+          (u) =>
+            u.clinicId === selectedClinicFilter ||
+            (Array.isArray(u.clinicIds) && u.clinicIds.includes(selectedClinicFilter)) ||
+            (Array.isArray(u.assignedClinics) && u.assignedClinics.includes(selectedClinicFilter)) ||
+            u.organizationId === userOrgId ||
+            !u.organizationId
+        );
+      }
+      return staffUsers.filter(
+        (u) => !u.organizationId || u.organizationId === userOrgId || u.organizationId === 'org-001'
+      );
+    }
+    return staffUsers;
+  }, [users, clinics, isOrgAdmin, isAuditor, userOrgId, selectedClinicFilter]);
 
-  // Filter available clinics in the filter dropdown by the selected organization
+  // Role filter options excluding Super Admin
+  const roleFilterOptions = useMemo(() => {
+    return ROLE_FILTER_OPTIONS.filter(
+      (opt) => opt.value !== ROLES.SUPER_ADMIN && opt.value !== 'super_admin'
+    ).map((opt) => (opt.value === 'ALL' ? { ...opt, label: 'All Roles' } : opt));
+  }, []);
+
+  // Filter available clinics in the filter dropdown (all clinics accessible or filtered by selectedOrgFilter)
   const filterClinicOptions = useMemo(() => {
-    if ((isOrgAdmin || isAuditor) && userOrgId) {
-      return clinics.filter((c) => c.orgId === userOrgId);
+    if (selectedOrgFilter && selectedOrgFilter !== 'ALL') {
+      return clinics.filter((c) => c.orgId === selectedOrgFilter);
     }
-    if (selectedOrgFilter === 'ALL') return clinics;
-    return clinics.filter((c) => c.orgId === selectedOrgFilter);
-  }, [clinics, selectedOrgFilter, isOrgAdmin, isAuditor, userOrgId]);
+    return clinics;
+  }, [clinics, selectedOrgFilter]);
 
   // Filtered users
   const filteredUsers = useMemo(() => {
@@ -121,11 +158,12 @@ export default function UserManagementView({ readOnly = false }) {
         }
       }
 
-      // 3. Clinic Filter
+      // 3. Clinic Filter — checks clinicId, clinicIds, and assignedClinics
       if (selectedClinicFilter !== 'ALL') {
         const matchesClinic =
           u.clinicId === selectedClinicFilter ||
-          (Array.isArray(u.clinicIds) && u.clinicIds.includes(selectedClinicFilter));
+          (Array.isArray(u.clinicIds) && u.clinicIds.includes(selectedClinicFilter)) ||
+          (Array.isArray(u.assignedClinics) && u.assignedClinics.includes(selectedClinicFilter));
         if (!matchesClinic) return false;
       }
 
@@ -160,32 +198,62 @@ export default function UserManagementView({ readOnly = false }) {
   const managersCount = baseScopedUsers.filter((u) => u.role === ROLES.CLINIC_MANAGER).length;
 
   // Actions
-  const handleOpenInvite = () => {
-    if (isAuditor) return;
+  const handleOpenCreate = () => {
+    if (!canManageUsers) return;
     setUserToEdit(null);
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (user, e) => {
     e.stopPropagation();
-    if (isAuditor) return;
+    if (!canManageUsers) return;
+    if (isOrgAdmin && (user.role === ROLES.SUPER_ADMIN || user.role === ROLES.ORG_ADMIN)) {
+      toast.error('You cannot modify Super Admin or Org Admin accounts.');
+      return;
+    }
+    if (isClinicManager && (user.role === ROLES.SUPER_ADMIN || user.role === ROLES.ORG_ADMIN || user.role === ROLES.AUDITOR)) {
+      toast.error('Clinic Managers cannot modify this account.');
+      return;
+    }
     setUserToEdit(user);
     setIsModalOpen(true);
   };
 
-  const handleConfirmToggleStatus = () => {
-    if (isAuditor || !statusConfirmUser) return;
+  const handleConfirmToggleStatus = async () => {
+    if (!canManageUsers || !statusConfirmUser) return;
+    if ((isOrgAdmin || isClinicManager) && (statusConfirmUser.role === ROLES.SUPER_ADMIN || statusConfirmUser.role === ROLES.ORG_ADMIN)) {
+      toast.error('You cannot change the status of this account.');
+      setStatusConfirmUser(null);
+      return;
+    }
     try {
-      const isCurrentlyActive = statusConfirmUser.status === 'active';
+      const isCurrentlyActive = statusConfirmUser.status === 'active' || statusConfirmUser.is_active;
       const updated = isCurrentlyActive
-        ? usersService.deactivateUser(statusConfirmUser.id)
-        : usersService.activateUser(statusConfirmUser.id);
+        ? await usersService.deactivateUser(statusConfirmUser.id)
+        : await usersService.activateUser(statusConfirmUser.id);
 
-      setUsers(usersService.getUsers());
+      await loadData();
       toast.success(`User "${updated.name}" is now ${updated.status}`);
       setStatusConfirmUser(null);
     } catch (err) {
       toast.error('Failed to change status');
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!canManageUsers || !deleteConfirmUser) return;
+    if ((isOrgAdmin || isClinicManager) && (deleteConfirmUser.role === ROLES.SUPER_ADMIN || deleteConfirmUser.role === ROLES.ORG_ADMIN)) {
+      toast.error('You cannot delete this account.');
+      setDeleteConfirmUser(null);
+      return;
+    }
+    try {
+      await usersService.deleteUser(deleteConfirmUser.id, currentUser || userRole);
+      await loadData();
+      toast.success(`User "${deleteConfirmUser.name}" deleted successfully.`);
+      setDeleteConfirmUser(null);
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete user');
     }
   };
 
@@ -226,14 +294,14 @@ export default function UserManagementView({ readOnly = false }) {
             onClick={loadData}
             title="Reload data"
           />
-          {!isAuditor && (
+          {canManageUsers && (
             <Button
               variant="primary"
               size="sm"
               icon={UserPlus}
-              onClick={handleOpenInvite}
+              onClick={handleOpenCreate}
             >
-              Invite User
+              Create User
             </Button>
           )}
         </div>
@@ -313,7 +381,6 @@ export default function UserManagementView({ readOnly = false }) {
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium cursor-pointer"
               >
                 <option value="ALL">All Organizations</option>
-                <option value="GLOBAL">Global Scope (Super Admins)</option>
                 {Array.isArray(organizations) &&
                   organizations.map((org) => (
                     <option key={org.id} value={org.id}>
@@ -339,14 +406,16 @@ export default function UserManagementView({ readOnly = false }) {
               onChange={(e) => setSelectedClinicFilter(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium cursor-pointer"
             >
-              <option value="ALL">
-                {isSuperAdmin ? 'All Clinics' : `All Org Clinics (${filterClinicOptions.length})`}
-              </option>
-              {filterClinicOptions.map((clinic) => (
-                <option key={clinic.id} value={clinic.id}>
-                  {clinic.name}
-                </option>
-              ))}
+              <option value="ALL">All Clinics ({filterClinicOptions.length})</option>
+              {filterClinicOptions.map((clinic) => {
+                const org = organizations.find((o) => o.id === clinic.orgId);
+                const orgSuffix = org ? ` • ${org.name}` : '';
+                return (
+                  <option key={clinic.id} value={clinic.id}>
+                    {clinic.name} ({clinic.city || 'Branch'}{orgSuffix})
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -360,7 +429,7 @@ export default function UserManagementView({ readOnly = false }) {
               onChange={(e) => setSelectedRoleFilter(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium cursor-pointer"
             >
-              {ROLE_FILTER_OPTIONS.map((opt) => (
+              {roleFilterOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
@@ -426,10 +495,24 @@ export default function UserManagementView({ readOnly = false }) {
                     color: 'bg-slate-100 text-slate-700 border-slate-200',
                   };
 
-                  const org = organizations.find((o) => o.id === u.organizationId);
                   const clinic = clinics.find(
-                    (c) => c.id === u.clinicId || (Array.isArray(u.clinicIds) && u.clinicIds.includes(c.id))
+                    (c) =>
+                      c.id === u.clinicId ||
+                      (Array.isArray(u.clinicIds) && u.clinicIds.includes(c.id)) ||
+                      (Array.isArray(u.assignedClinics) && u.assignedClinics.includes(c.id))
                   );
+                  // For multi-clinic users show count instead of first clinic
+                  const assignedCount = (u.assignedClinics || []).length;
+                  const targetOrgId =
+                    u.organizationId ||
+                    u.organization_id ||
+                    clinic?.orgId ||
+                    (isOrgAdmin ? userOrgId : null);
+                  const org =
+                    organizations.find((o) => o.id === targetOrgId) ||
+                    (targetOrgId === 'org-001' ? { id: 'org-001', name: 'Smile Care Group' } : null) ||
+                    (currentOrg && (!targetOrgId || targetOrgId === currentOrg.id) ? currentOrg : null) ||
+                    (targetOrgId ? { id: targetOrgId, name: currentOrg?.name || 'Smile Care Group' } : null);
                   const isActive = u.status === 'active';
 
                   return (
@@ -487,6 +570,9 @@ export default function UserManagementView({ readOnly = false }) {
                             <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                             <span className="font-medium text-slate-700 text-xs truncate max-w-[150px]">
                               {clinic.name}
+                              {assignedCount > 1 && (
+                                <span className="ml-1 text-[10px] text-slate-400">+{assignedCount - 1} more</span>
+                              )}
                             </span>
                           </div>
                         ) : (
@@ -526,26 +612,41 @@ export default function UserManagementView({ readOnly = false }) {
                             </button>
 
                             {/* Quick Edit / Reassign */}
-                            <button
-                              onClick={(e) => handleOpenEdit(u, e)}
-                              title="Edit Role & Clinic Assignment"
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
+                            {(!isOrgAdmin || (u.role !== ROLES.SUPER_ADMIN && u.role !== ROLES.ORG_ADMIN)) && (
+                              <button
+                                onClick={(e) => handleOpenEdit(u, e)}
+                                title="Edit Role & Clinic Assignment"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                            )}
 
                             {/* Toggle Active / Inactive status */}
-                            <button
-                              onClick={() => setStatusConfirmUser(u)}
-                              title={isActive ? 'Deactivate User' : 'Activate User'}
-                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                                isActive
-                                  ? 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
-                                  : 'text-emerald-600 hover:bg-emerald-50'
-                              }`}
-                            >
-                              <Power className="w-4 h-4" />
-                            </button>
+                            {(!isOrgAdmin || (u.role !== ROLES.SUPER_ADMIN && u.role !== ROLES.ORG_ADMIN)) && (
+                              <button
+                                onClick={() => setStatusConfirmUser(u)}
+                                title={isActive ? 'Deactivate User' : 'Activate User'}
+                                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                  isActive
+                                    ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
+                                    : 'text-emerald-600 hover:bg-emerald-50'
+                                }`}
+                              >
+                                <Power className="w-4 h-4" />
+                              </button>
+                            )}
+
+                            {/* Delete User */}
+                            {u.role !== ROLES.SUPER_ADMIN && (!isOrgAdmin || u.role !== ROLES.ORG_ADMIN) && (
+                              <button
+                                onClick={() => setDeleteConfirmUser(u)}
+                                title="Delete User Account"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       )}
@@ -585,7 +686,7 @@ export default function UserManagementView({ readOnly = false }) {
                 onClick={handleConfirmToggleStatus}
                 className={`px-3.5 py-2 text-xs font-semibold text-white rounded-xl cursor-pointer ${
                   statusConfirmUser.status === 'active'
-                    ? 'bg-rose-600 hover:bg-rose-700'
+                    ? 'bg-amber-600 hover:bg-amber-700'
                     : 'bg-emerald-600 hover:bg-emerald-700'
                 }`}
               >
@@ -596,13 +697,53 @@ export default function UserManagementView({ readOnly = false }) {
         </div>
       )}
 
-      {/* Invite / Edit User Modal */}
+      {/* Confirmation Dialog for Delete User */}
+      {deleteConfirmUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs"
+            onClick={() => setDeleteConfirmUser(null)}
+          />
+          <div className="relative bg-white border border-slate-200 rounded-2xl shadow-xl max-w-sm w-full p-6 z-10 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                Delete User Account?
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Are you sure you want to permanently remove <span className="font-semibold text-slate-700">{deleteConfirmUser.name}</span> ({deleteConfirmUser.email})? This action will completely remove them from the platform.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setDeleteConfirmUser(null)}
+                className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-3.5 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl cursor-pointer shadow-xs"
+              >
+                Delete User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create / Edit User Modal */}
       <UserModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         userToEdit={userToEdit}
-        lockedOrgId={isOrgAdmin ? userOrgId : null}
-        onSuccess={() => setUsers(usersService.getUsers())}
+        lockedOrgId={(isOrgAdmin || isClinicManager) ? userOrgId : null}
+        onSuccess={() => {
+          loadData();
+          setIsModalOpen(false);
+        }}
       />
     </div>
   );

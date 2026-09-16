@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Building2,
   Plus,
@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   XCircle,
   Filter,
+  Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
@@ -22,6 +23,7 @@ import { clinicsService } from '@/services/clinicsService';
 import { scopeData } from '@/utils/scopeData';
 import { Badge, StatCard, PageHeader } from '../components/ViewComponents';
 import { ClinicModal } from './components/ClinicModal';
+import { ClinicDetailModal } from './components/ClinicDetailModal';
 
 export const ClinicsView = () => {
   const { currentUser } = useAuth();
@@ -46,13 +48,26 @@ export const ClinicsView = () => {
   const [clinicsList, setClinicsList] = useState(() => clinicsService.getClinics());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [clinicToEdit, setClinicToEdit] = useState(null);
+  const [selectedClinicForView, setSelectedClinicForView] = useState(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [clinicToDelete, setClinicToDelete] = useState(null);
 
-  const refreshClinics = () => {
+  const refreshClinics = async () => {
+    try {
+      const res = await clinicsService.fetchClinics(selectedOrgId);
+      if (res?.data) {
+        setClinicsList(res.data);
+        return;
+      }
+    } catch {}
     setClinicsList(clinicsService.getClinics());
   };
+
+  useEffect(() => {
+    refreshClinics();
+  }, [selectedOrgId]);
 
   // Scope data according to logged in user role & branch selection
   const scopedClinics = useMemo(() => {
@@ -97,11 +112,23 @@ export const ClinicsView = () => {
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (clinic, e) => {
+  const handleOpenView = (clinic, e) => {
+    if (e) e.stopPropagation();
+    setSelectedClinicForView(clinic);
+    setIsViewModalOpen(true);
+  };
+
+  const handleOpenEdit = async (clinic, e) => {
     e.stopPropagation();
     if (!canManageClinics) return;
     setClinicToEdit(clinic);
     setIsModalOpen(true);
+    try {
+      const res = await clinicsService.fetchClinicById(clinic.id);
+      if (res?.data) {
+        setClinicToEdit(res.data);
+      }
+    } catch {}
   };
 
   const handleToggleStatus = (clinicId, e) => {
@@ -241,9 +268,7 @@ export const ClinicsView = () => {
               <th className="px-5 py-3 font-bold uppercase tracking-wider text-[10px]">Contact Phone</th>
               <th className="px-5 py-3 font-bold uppercase tracking-wider text-[10px]">Operating Hours</th>
               <th className="px-5 py-3 font-bold uppercase tracking-wider text-[10px]">Status</th>
-              {canManageClinics && (
-                <th className="px-5 py-3 font-bold uppercase tracking-wider text-[10px] text-right">Actions</th>
-              )}
+              <th className="px-5 py-3 font-bold uppercase tracking-wider text-[10px] text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -271,9 +296,15 @@ export const ClinicsView = () => {
                           <Building2 className="w-4 h-4" />
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900">{c.name}</p>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenView(c)}
+                            className="font-bold text-slate-900 hover:text-primary transition-colors text-left cursor-pointer"
+                          >
+                            {c.name}
+                          </button>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-[10px] text-slate-400 font-mono">{c.id}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">{c.timezone || 'UTC'}</span>
                             <span className="text-[10px] text-slate-300">•</span>
                             <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
                               Mgr: {c.manager || 'Unassigned'}
@@ -293,22 +324,19 @@ export const ClinicsView = () => {
                       </span>
                     </td>
 
-                    {/* City & Address */}
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-start gap-1 text-slate-700 font-medium">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-semibold text-slate-800">{c.city || 'Riyadh'}</p>
-                          <p className="text-[11px] text-slate-400 line-clamp-1">{c.address || 'Central District'}</p>
-                        </div>
+                    {/* Location & City */}
+                    <td className="px-5 py-3.5 text-slate-600 font-medium">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-3 h-3 text-slate-400" />
+                        <span className="truncate max-w-[150px]">{c.address || c.city || 'Riyadh'}</span>
                       </div>
                     </td>
 
-                    {/* Phone */}
-                    <td className="px-5 py-3.5 text-slate-600 font-medium">
+                    {/* Contact Phone */}
+                    <td className="px-5 py-3.5 text-slate-600 font-medium font-mono text-[11px]">
                       <div className="flex items-center gap-1.5">
                         <Phone className="w-3 h-3 text-slate-400" />
-                        <span>{c.phone || '+1 (555) 020-0000'}</span>
+                        <span>{c.phone || c.contact_phone || '+1 (555) 020-0000'}</span>
                       </div>
                     </td>
 
@@ -334,46 +362,57 @@ export const ClinicsView = () => {
                       </span>
                     </td>
 
-                    {/* Actions (Hidden for View-Only roles like Finance) */}
-                    {canManageClinics && (
-                      <td className="px-5 py-3.5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Toggle status */}
-                          <button
-                            onClick={(e) => handleToggleStatus(c.id, e)}
-                            title={isActive ? 'Deactivate Branch' : 'Activate Branch'}
-                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                              isActive
-                                ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
-                                : 'text-emerald-600 hover:bg-emerald-50'
-                            }`}
-                          >
-                            <Power className="w-4 h-4" />
-                          </button>
+                    {/* Actions */}
+                    <td className="px-5 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {/* View Clinic Details */}
+                        <button
+                          onClick={(e) => handleOpenView(c, e)}
+                          title="View Clinic Details"
+                          className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
 
-                          {/* Edit button */}
-                          <button
-                            onClick={(e) => handleOpenEdit(c, e)}
-                            title="Edit Clinic Details"
-                            className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
+                        {canManageClinics && (
+                          <>
+                            {/* Toggle status */}
+                            <button
+                              onClick={(e) => handleToggleStatus(c.id, e)}
+                              title={isActive ? 'Deactivate Branch' : 'Activate Branch'}
+                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                isActive
+                                  ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
+                                  : 'text-emerald-600 hover:bg-emerald-50'
+                              }`}
+                            >
+                              <Power className="w-4 h-4" />
+                            </button>
 
-                          {/* Delete button */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setClinicToDelete(c);
-                            }}
-                            title="Delete Clinic"
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    )}
+                            {/* Edit button */}
+                            <button
+                              onClick={(e) => handleOpenEdit(c, e)}
+                              title="Edit Clinic Details"
+                              className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+
+                            {/* Delete button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setClinicToDelete(c);
+                              }}
+                              title="Delete Clinic"
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 );
               })
@@ -381,6 +420,16 @@ export const ClinicsView = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Clinic Detail View Modal */}
+      <ClinicDetailModal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        clinic={selectedClinicForView}
+        onEdit={(clinic) => {
+          handleOpenEdit(clinic);
+        }}
+      />
 
       {/* Add / Edit Clinic Modal */}
       <ClinicModal

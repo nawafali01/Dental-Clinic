@@ -102,8 +102,8 @@ export default function StaffLoginFeature() {
   const [showPass, setShowPass] = useState(false);
 
   const canSubmit = useMemo(
-    () => values.email.trim() && values.username.trim() && values.password.trim(),
-    [values.email, values.username, values.password],
+    () => values.email.trim() && values.password.trim(),
+    [values.email, values.password],
   );
 
   const handleChange = (event) => {
@@ -117,7 +117,10 @@ export default function StaffLoginFeature() {
     event.preventDefault();
     setServerError('');
 
-    const result = loginSchema.safeParse(values);
+    const cleanUsername = values.username.trim() || values.email.trim();
+    const payload = { ...values, username: cleanUsername };
+
+    const result = loginSchema.safeParse(payload);
     if (!result.success) {
       const formattedErrors = {};
       result.error.issues.forEach(issue => {
@@ -127,9 +130,9 @@ export default function StaffLoginFeature() {
       return;
     }
 
-    const { error } = await handleLogin(values.email, values.username, values.password);
-    if (error) {
-      setServerError(error);
+    const res = await handleLogin(values.email.trim(), cleanUsername, values.password.trim());
+    if (res?.error) {
+      setServerError(res.error);
     }
   };
 

@@ -49,12 +49,18 @@ export default function OrganizationDetailView() {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const role = currentUser?.role || 'super_admin';
+  const isSuperAdmin = role === 'super_admin';
+  const isOrgAdmin = role === 'org_admin';
   const listUrl = buildRoleUrl('/organizations', role);
 
-  const loadOrgData = () => {
+  // Scoping check: Org Admin can only view their own organization
+  const isDenied = isOrgAdmin && currentUser?.organizationId && currentUser.organizationId !== id;
+
+  const loadOrgData = async () => {
     setIsLoading(true);
     try {
-      const foundOrg = organizationsService.getOrganizationById(id);
+      const res = await organizationsService.getOrganizationById(id);
+      const foundOrg = res?.data || organizationsService.getOrganizationById(id);
       if (foundOrg) {
         setOrg(foundOrg);
         setSettingsForm({
@@ -74,8 +80,10 @@ export default function OrganizationDetailView() {
   };
 
   useEffect(() => {
-    loadOrgData();
-  }, [id]);
+    if (!isDenied) {
+      loadOrgData();
+    }
+  }, [id, isDenied]);
 
   // Retrieve clinics belonging to this organization
   const orgClinics = useMemo(() => {
@@ -152,6 +160,29 @@ export default function OrganizationDetailView() {
       setIsSavingSettings(false);
     }
   };
+
+  if (isDenied) {
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => navigate(listUrl)}
+          className="text-xs font-semibold text-primary hover:underline flex items-center gap-1.5 cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Organizations
+        </button>
+        <div className="p-12 bg-rose-50 border border-rose-200 rounded-3xl text-center shadow-2xs space-y-3 max-w-lg mx-auto">
+          <Building2 className="w-12 h-12 mx-auto text-rose-400 stroke-1" />
+          <h2 className="text-lg font-bold text-rose-900">Access Restricted</h2>
+          <p className="text-xs text-rose-600 max-w-sm mx-auto">
+            Organization Admins are only authorized to view and manage their own assigned organization.
+          </p>
+          <Button variant="outline" size="sm" onClick={() => navigate(listUrl)}>
+            Return to Organizations
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

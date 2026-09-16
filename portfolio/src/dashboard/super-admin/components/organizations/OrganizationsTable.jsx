@@ -8,6 +8,7 @@ export function OrganizationsTable({
   onOpenCreate,
   onOpenEdit,
   onSelectOrg,
+  canCreate = true,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -64,14 +65,16 @@ export function OrganizationsTable({
             </select>
           </div>
 
-          <Button
-            variant="primary"
-            size="sm"
-            icon={Plus}
-            onClick={onOpenCreate}
-          >
-            New Organization
-          </Button>
+          {canCreate && (
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Plus}
+              onClick={onOpenCreate}
+            >
+              New Organization
+            </Button>
+          )}
         </div>
       </div>
 

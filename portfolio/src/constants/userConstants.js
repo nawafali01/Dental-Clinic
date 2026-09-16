@@ -51,8 +51,10 @@ export const ROLE_FILTER_OPTIONS = [
 export const DEFAULT_USER_FORM_STATE = {
   name: '',
   email: '',
+  phone: '',
+  password: '',
   role: ROLES.AGENT,
   organizationId: '',
-  clinicId: '',
+  assignedClinics: [],  // array — maps to backend "assigned_clinics"
   status: 'active',
 };

@@ -1,3 +1,4 @@
+import apiClient from '@/lib/api';
 import { storageService } from './storage.service';
 import { ROLES } from '@/constants/permissions';
 import { SEED_USERS } from '@/dashboard/super-admin/mock-data/usersData';
@@ -5,51 +6,123 @@ import { assertCanMutate } from '@/dashboard/shared/config/permissions';
 
 export { SEED_USERS };
 
+const LEGACY_MOCK_EMAILS = new Set([
+  'superadmin@test.com',
+  'orgadmin@test.com',
+  'manager@test.com',
+  'agent@test.com',
+  'reception@test.com',
+  'finance@test.com',
+  'auditor@test.com',
+  'edward@brightdental.co.uk',
+  'emma@brightdental.co.uk',
+  'dr.arjun@test.com',
+  'dr.layla@test.com',
+  'dr.faisal@test.com',
+]);
+
+const LEGACY_MOCK_IDS = new Set([
+  'user-000',
+  'user-001',
+  'user-002',
+  'user-003',
+  'user-004',
+  'user-005',
+  'user-006',
+]);
+
+/**
+ * Normalizes user object between backend and frontend formats
+ */
+export function normalizeUser(raw) {
+  if (!raw) return null;
+  const id = raw._id || raw.id || `user-${Date.now()}`;
+  const fullName = raw.full_name || raw.name || raw.fullName || 'User';
+  const isActive = raw.is_active !== undefined ? Boolean(raw.is_active) : (raw.status === 'active');
+  const orgId = raw.organization_id !== undefined ? (raw.organization_id || null) : (raw.organizationId || null);
+  const clinics = Array.isArray(raw.assigned_clinics)
+    ? raw.assigned_clinics
+    : Array.isArray(raw.assignedClinics)
+    ? raw.assignedClinics
+    : [];
+
+  return {
+    id,
+    _id: id,
+    name: fullName,
+    fullName,
+    email: raw.email || '',
+    phone: raw.phone || '',
+    role: raw.role || ROLES.AGENT,
+    is_active: isActive,
+    status: isActive ? 'active' : 'inactive',
+    organization_id: orgId,
+    organizationId: orgId,
+    assigned_clinics: clinics,
+    assignedClinics: clinics,
+    createdAt: raw.createdAt || raw.created_at || new Date().toISOString(),
+    updatedAt: raw.updatedAt || raw.updated_at || new Date().toISOString(),
+    _source: raw._source || 'backend',
+  };
+}
+
 /**
  * USERS SERVICE
- * Handles comprehensive multi-tenant user operations backed by localStorage.
+ * Communicates with backend GET/POST/PUT/DELETE /api/v1/users/
  */
 class UsersService {
-  /**
-   * Internal helper to normalize and ensure persistent seed data
-   */
-  _ensureSeedUsers() {
-    let existing = storageService.get(storageService.KEYS.USERS);
-    if (!existing || existing.length === 0) {
-      storageService.set(storageService.KEYS.USERS, SEED_USERS);
-      return SEED_USERS;
-    }
-
-    // Check if SEED_USERS have been merged (ensure all roles & orgs exist)
-    const existingEmails = new Set(existing.map((u) => u.email));
-    let hasAdditions = false;
-    for (const seed of SEED_USERS) {
-      if (!existingEmails.has(seed.email)) {
-        existing.push(seed);
-        hasAdditions = true;
-      }
-    }
-
-    // Normalize name and status
-    existing = existing.map((u) => ({
-      ...u,
-      name: u.name || u.fullName || 'User',
-      fullName: u.fullName || u.name || 'User',
-      status: u.status === 'disabled' ? 'inactive' : (u.status || 'active'),
-    }));
-
-    if (hasAdditions) {
-      storageService.set(storageService.KEYS.USERS, existing);
-    }
-
-    return existing;
+  getStorageKey() {
+    return storageService.KEYS.USERS || 'dental_crm_users';
   }
 
   /**
-   * Retrieves all users (global across all organizations)
+   * Cleans legacy mock accounts from storage
+   */
+  _sanitizeStoredUsers(list) {
+    if (!Array.isArray(list)) return [];
+    return list
+      .filter((u) => !LEGACY_MOCK_EMAILS.has(u.email?.toLowerCase()) && !LEGACY_MOCK_IDS.has(u.id))
+      .map(normalizeUser);
+  }
+
+  /**
+   * Synchronous accessor for fast initial renders
+   */
+  getUsersSync() {
+    const existing = storageService.get(this.getStorageKey()) || [];
+    return this._sanitizeStoredUsers(existing);
+  }
+
+  /**
+   * Retrieves all users.
+   * If called synchronously, returns cached non-mock users.
    */
   getUsers() {
-    return this._ensureSeedUsers();
+    return this.getUsersSync();
+  }
+
+  /**
+   * Asynchronous fetch from GET /api/v1/users/
+   */
+  async fetchUsers() {
+    try {
+      const res = await apiClient.get('/api/v1/users/');
+      const rawList = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data?.data)
+        ? res.data.data
+        : Array.isArray(res.data?.items)
+        ? res.data.items
+        : [];
+
+      const normalized = rawList.map(normalizeUser);
+      storageService.set(this.getStorageKey(), normalized);
+      return { success: true, data: normalized };
+    } catch (err) {
+      console.warn('[UsersService.fetchUsers] Backend unreachable, using cached data:', err.message);
+      const fallback = this.getUsersSync();
+      return { success: false, data: fallback, error: err.message };
+    }
   }
 
   /**
@@ -60,7 +133,7 @@ class UsersService {
       return this.getUsers();
     }
     const all = this.getUsers();
-    return all.filter((u) => u.organizationId === organizationId);
+    return all.filter((u) => u.organizationId === organizationId || u.organization_id === organizationId);
   }
 
   /**
@@ -74,7 +147,8 @@ class UsersService {
     return all.filter(
       (u) =>
         u.clinicId === clinicId ||
-        (Array.isArray(u.clinicIds) && u.clinicIds.includes(clinicId))
+        (Array.isArray(u.assignedClinics) && u.assignedClinics.includes(clinicId)) ||
+        (Array.isArray(u.assigned_clinics) && u.assigned_clinics.includes(clinicId))
     );
   }
 
@@ -83,109 +157,234 @@ class UsersService {
    */
   getUserById(id) {
     const all = this.getUsers();
-    return all.find((u) => u.id === id) || null;
+    return all.find((u) => u.id === id || u._id === id) || null;
   }
 
   /**
-   * Creates / Invites a new user
+   * Retrieves a specific user from backend GET /api/v1/users/:id
    */
-  createUser(userData) {
-    assertCanMutate('users', 'create');
-    const all = this.getUsers();
+  async fetchUserById(id) {
+    try {
+      const res = await apiClient.get(`/api/v1/users/${id}`);
+      const raw = res.data?.data || res.data;
+      if (raw) {
+        const normalized = normalizeUser(raw);
+        return { success: true, data: normalized };
+      }
+    } catch (err) {
+      console.warn('[UsersService.fetchUserById] API notice:', err.message);
+    }
+    const cached = this.getUserById(id);
+    return { success: Boolean(cached), data: cached };
+  }
 
-    if (all.some((u) => u.email?.toLowerCase() === userData.email?.toLowerCase())) {
-      throw new Error('A user with this email address already exists.');
+  /**
+   * Creates a new user via POST /api/v1/users/
+   * Exact Payload:
+   * {
+   *   "email": "",
+   *   "full_name": "",
+   *   "phone": "",
+   *   "role": "super_admin",
+   *   "is_active": true,
+   *   "password": "",
+   *   "organization_id": "",
+   *   "assigned_clinics": [""]
+   * }
+   */
+  async createUser(userData, caller = null) {
+    let callerRole = typeof caller === 'string' ? caller : caller?.role;
+    if (!callerRole) {
+      try {
+        const stored =
+          localStorage.getItem('dental_crm_current_user') ||
+          localStorage.getItem('dental_auth_user') ||
+          localStorage.getItem('auth_user') ||
+          localStorage.getItem('current_user') ||
+          localStorage.getItem('dental_current_user');
+        if (stored) callerRole = JSON.parse(stored)?.role;
+      } catch {}
     }
 
-    const newUser = {
-      id: crypto.randomUUID ? crypto.randomUUID() : `user-${Date.now()}`,
-      name: (userData.name || userData.fullName || '').trim(),
-      fullName: (userData.name || userData.fullName || '').trim(),
-      email: userData.email.trim().toLowerCase(),
-      role: userData.role || ROLES.AGENT,
-      organizationId: userData.role === ROLES.SUPER_ADMIN ? null : (userData.organizationId || null),
-      clinicId: userData.clinicId || null,
-      clinicIds: userData.clinicId ? [userData.clinicId] : (userData.clinicIds || []),
-      status: userData.status || 'active',
-      invitedAt: userData.status === 'invited' ? new Date().toISOString() : null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastLoginAt: null,
+    // Role privilege enforcement: Super Admin accounts cannot be created via internal user management
+    if (userData.role === ROLES.SUPER_ADMIN || userData.role === 'super_admin') {
+      throw new Error('Super Admin accounts cannot be created from internal User Management.');
+    }
+
+    if (callerRole !== ROLES.SUPER_ADMIN && callerRole !== 'super_admin') {
+      assertCanMutate('users', 'create', callerRole || caller);
+      if ((callerRole === ROLES.ORG_ADMIN || callerRole === 'org_admin') && (userData.role === ROLES.ORG_ADMIN || userData.role === 'org_admin')) {
+        throw new Error('Organization Admins cannot create another Organization Admin account.');
+      }
+    }
+
+    const email = (userData.email || '').trim().toLowerCase();
+    const fullName = (userData.full_name || userData.name || userData.fullName || '').trim();
+    const phone = (userData.phone || '').trim();
+    const password = userData.password || '';
+    const role = userData.role || ROLES.AGENT;
+    const isActive = userData.is_active !== undefined ? Boolean(userData.is_active) : (userData.status === 'active');
+    const orgId = role === ROLES.SUPER_ADMIN || role === 'super_admin'
+      ? ''
+      : (userData.organization_id || userData.organizationId || '');
+
+    const assignedClinics = Array.isArray(userData.assigned_clinics)
+      ? userData.assigned_clinics.filter((c) => Boolean(c && typeof c === 'string' && c.trim()))
+      : Array.isArray(userData.assignedClinics)
+      ? userData.assignedClinics.filter((c) => Boolean(c && typeof c === 'string' && c.trim()))
+      : [];
+
+    const apiPayload = {
+      email,
+      full_name: fullName,
+      phone,
+      role,
+      is_active: isActive,
+      password,
+      organization_id: orgId,
+      assigned_clinics: assignedClinics,
     };
 
-    const updated = [newUser, ...all];
-    storageService.set(storageService.KEYS.USERS, updated);
-    return newUser;
+    let createdRecord = null;
+    try {
+      const res = await apiClient.post('/api/v1/users/', apiPayload);
+      createdRecord = res.data?.data || res.data;
+    } catch (apiErr) {
+      console.warn('[UsersService.createUser] API error:', apiErr.response?.data || apiErr.message);
+      const errMsg = apiErr.response?.data?.error?.message || apiErr.response?.data?.error || apiErr.response?.data?.detail || apiErr.message;
+      throw new Error(typeof errMsg === 'string' ? errMsg : 'Failed to create user on backend.');
+    }
+
+    const normalized = normalizeUser(createdRecord || {
+      id: `user-${Date.now()}`,
+      ...apiPayload,
+    });
+
+    const currentUsers = this.getUsersSync();
+    const updatedUsers = [normalized, ...currentUsers.filter((u) => u.email?.toLowerCase() !== normalized.email.toLowerCase())];
+    storageService.set(this.getStorageKey(), updatedUsers);
+
+    return normalized;
   }
 
   /**
-   * Updates an existing user (role, assignment, profile, status)
+   * Updates an existing user via PUT /api/v1/users/:id
    */
-  updateUser(id, updates) {
-    assertCanMutate('users', 'edit');
-    const all = this.getUsers();
-    const index = all.findIndex((u) => u.id === id);
-    if (index === -1) {
-      throw new Error('User not found');
+  async updateUser(id, updates, caller = null) {
+    let callerRole = typeof caller === 'string' ? caller : caller?.role;
+    if (!callerRole) {
+      try {
+        const stored =
+          localStorage.getItem('dental_crm_current_user') ||
+          localStorage.getItem('dental_auth_user') ||
+          localStorage.getItem('auth_user') ||
+          localStorage.getItem('current_user') ||
+          localStorage.getItem('dental_current_user');
+        if (stored) callerRole = JSON.parse(stored)?.role;
+      } catch {}
     }
 
-    const current = all[index];
-    const name = updates.name !== undefined ? updates.name : (updates.fullName !== undefined ? updates.fullName : current.name);
-    const fullName = updates.fullName !== undefined ? updates.fullName : name;
-
-    const clinicId = updates.clinicId !== undefined ? updates.clinicId : current.clinicId;
-    let clinicIds = updates.clinicIds !== undefined ? updates.clinicIds : current.clinicIds;
-    if (clinicId && (!clinicIds || !clinicIds.includes(clinicId))) {
-      clinicIds = [clinicId];
+    if (callerRole !== ROLES.SUPER_ADMIN && callerRole !== 'super_admin') {
+      assertCanMutate('users', 'edit', callerRole || caller);
     }
 
-    const updatedUser = {
-      ...current,
+    const currentUsers = this.getUsersSync();
+    const index = currentUsers.findIndex((u) => u.id === id || u._id === id);
+    const existing = index !== -1 ? currentUsers[index] : null;
+
+    const targetRole = updates.role || existing?.role || ROLES.AGENT;
+    const isSuperAdminTarget = targetRole === ROLES.SUPER_ADMIN || targetRole === 'super_admin';
+
+    const cleanClinics = updates.assigned_clinics !== undefined
+      ? (Array.isArray(updates.assigned_clinics) ? updates.assigned_clinics.filter((c) => Boolean(c && typeof c === 'string' && c.trim())) : [])
+      : (updates.assignedClinics !== undefined
+          ? (Array.isArray(updates.assignedClinics) ? updates.assignedClinics.filter((c) => Boolean(c && typeof c === 'string' && c.trim())) : [])
+          : (existing?.assigned_clinics || []));
+
+    const apiUpdates = {
+      full_name: (updates.full_name || updates.name || updates.fullName || existing?.full_name || existing?.name || '').trim(),
+      phone: updates.phone !== undefined ? updates.phone : (existing?.phone || ''),
+      role: targetRole,
+      is_active: updates.is_active !== undefined
+        ? Boolean(updates.is_active)
+        : (updates.status !== undefined ? updates.status === 'active' : Boolean(existing?.is_active)),
+      organization_id: isSuperAdminTarget
+        ? ''
+        : (updates.organization_id !== undefined
+            ? (updates.organization_id || '')
+            : (updates.organizationId !== undefined ? (updates.organizationId || '') : (existing?.organization_id || ''))),
+      assigned_clinics: isSuperAdminTarget ? [] : cleanClinics,
+    };
+
+    let serverUpdated = null;
+    try {
+      const res = await apiClient.put(`/api/v1/users/${id}`, apiUpdates);
+      serverUpdated = res.data?.data || res.data;
+    } catch (apiErr) {
+      console.warn('[UsersService.updateUser] API update notice:', apiErr.response?.data || apiErr.message);
+    }
+
+    const merged = normalizeUser({
+      ...(existing || {}),
+      ...(serverUpdated || {}),
       ...updates,
-      name,
-      fullName,
-      clinicId,
-      clinicIds,
-      updatedAt: new Date().toISOString(),
-    };
+      id,
+    });
 
-    all[index] = updatedUser;
-    storageService.set(storageService.KEYS.USERS, all);
+    if (index !== -1) {
+      currentUsers[index] = merged;
+    } else {
+      currentUsers.unshift(merged);
+    }
+    storageService.set(this.getStorageKey(), currentUsers);
 
-    // If current logged-in user, keep session updated
-    const session = storageService.get(storageService.KEYS.CURRENT_USER);
-    if (session && session.id === id) {
-      storageService.set(storageService.KEYS.CURRENT_USER, {
-        ...session,
-        ...updatedUser,
-      });
+    return merged;
+  }
+
+  /**
+   * Deactivates a user
+   */
+  async deactivateUser(id) {
+    return this.updateUser(id, { is_active: false, status: 'inactive' });
+  }
+
+  /**
+   * Activates a user
+   */
+  async activateUser(id) {
+    return this.updateUser(id, { is_active: true, status: 'active' });
+  }
+
+  /**
+   * Deletes a user via DELETE /api/v1/users/:id
+   */
+  async deleteUser(id, caller = null) {
+    let callerRole = typeof caller === 'string' ? caller : caller?.role;
+    if (!callerRole) {
+      try {
+        const stored =
+          localStorage.getItem('dental_crm_current_user') ||
+          localStorage.getItem('dental_auth_user') ||
+          localStorage.getItem('auth_user') ||
+          localStorage.getItem('current_user') ||
+          localStorage.getItem('dental_current_user');
+        if (stored) callerRole = JSON.parse(stored)?.role;
+      } catch {}
     }
 
-    return updatedUser;
-  }
+    if (callerRole !== ROLES.SUPER_ADMIN && callerRole !== 'super_admin') {
+      assertCanMutate('users', 'delete', callerRole || caller);
+    }
 
-  /**
-   * Deactivates a user (sets status to 'inactive')
-   */
-  deactivateUser(id) {
-    return this.updateUser(id, { status: 'inactive' });
-  }
+    try {
+      await apiClient.delete(`/api/v1/users/${id}`);
+    } catch (apiErr) {
+      console.warn('[UsersService.deleteUser] API delete notice:', apiErr.response?.data || apiErr.message);
+    }
 
-  /**
-   * Activates a user (sets status to 'active')
-   */
-  activateUser(id) {
-    return this.updateUser(id, { status: 'active' });
-  }
-
-  /**
-   * Deletes a user completely
-   */
-  deleteUser(id) {
-    assertCanMutate('users', 'delete');
-    const all = this.getUsers();
-    const filtered = all.filter((u) => u.id !== id);
-    storageService.set(storageService.KEYS.USERS, filtered);
+    const currentUsers = this.getUsersSync();
+    const filtered = currentUsers.filter((u) => u.id !== id && u._id !== id);
+    storageService.set(this.getStorageKey(), filtered);
     return true;
   }
 }
@@ -193,9 +392,11 @@ class UsersService {
 export const usersService = new UsersService();
 
 export const getUsers = (...args) => usersService.getUsers(...args);
+export const fetchUsers = (...args) => usersService.fetchUsers(...args);
 export const getUsersByOrganization = (...args) => usersService.getUsersByOrganization(...args);
 export const getUsersByClinic = (...args) => usersService.getUsersByClinic(...args);
 export const getUserById = (...args) => usersService.getUserById(...args);
+export const fetchUserById = (...args) => usersService.fetchUserById(...args);
 export const createUser = (...args) => usersService.createUser(...args);
 export const updateUser = (...args) => usersService.updateUser(...args);
 export const deactivateUser = (...args) => usersService.deactivateUser(...args);

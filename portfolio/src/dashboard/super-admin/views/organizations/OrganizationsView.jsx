@@ -11,19 +11,28 @@ export default function OrganizationsView() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const role = currentUser?.role || 'super_admin';
+  const isSuperAdmin = role === 'super_admin';
+  const isOrgAdmin = role === 'org_admin';
 
-  const [organizations, setOrganizations] = useState([]);
+  // RBAC Access Guard: Only Super Admin and Org Admin can access organizations
+  const hasAccess = isSuperAdmin || isOrgAdmin;
+
+  const [organizations, setOrganizations] = useState(() => {
+    return organizationsService.getOrganizationsSync();
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOrgForEdit, setSelectedOrgForEdit] = useState(null);
 
-  const fetchOrganizations = useCallback(() => {
+  const fetchOrganizations = useCallback(async () => {
     try {
-      const data = organizationsService.getOrganizationsSync();
-      setOrganizations(Array.isArray(data) ? data : []);
+      setIsLoading(true);
+      const res = await organizationsService.getOrganizations();
+      if (res.success && Array.isArray(res.data)) {
+        setOrganizations(res.data);
+      }
     } catch (err) {
       console.error('Failed to load organizations:', err);
-      setOrganizations([]);
     } finally {
       setIsLoading(false);
     }
@@ -34,6 +43,8 @@ export default function OrganizationsView() {
   }, [fetchOrganizations]);
 
   const handleOpenCreate = () => {
+    // Only Super Admin can create organizations
+    if (!isSuperAdmin) return;
     setSelectedOrgForEdit(null);
     setIsModalOpen(true);
   };
@@ -55,11 +66,23 @@ export default function OrganizationsView() {
     setSelectedOrgForEdit(null);
   };
 
+  if (!hasAccess) {
+    return (
+      <div className="bg-rose-50 border border-rose-200 rounded-2xl p-8 text-center max-w-lg mx-auto my-12">
+        <Building2 className="w-10 h-10 text-rose-500 mx-auto mb-3" />
+        <h2 className="text-lg font-bold text-rose-900">Access Restricted</h2>
+        <p className="text-xs text-rose-600 mt-1">
+          Organization directory and management is only accessible to Super Admins and Organization Admins.
+        </p>
+      </div>
+    );
+  }
+
   // Summary Metrics
   const totalOrgs = organizations.length;
   const activeOrgs = organizations.filter(o => (o.status || 'active').toLowerCase() === 'active').length;
-  const totalClinics = organizations.reduce((acc, o) => acc + (o.clinics ? o.clinics.length : 0), 0);
-  const totalUsers = organizations.reduce((acc, o) => acc + (o.users ? o.users.length : 0), 0);
+  const totalClinics = organizations.reduce((acc, o) => acc + (o.clinic_count ?? (o.clinics ? o.clinics.length : 0)), 0);
+  const totalUsers = organizations.reduce((acc, o) => acc + (o.user_count ?? (o.users ? o.users.length : 0)), 0);
 
   return (
     <div className="space-y-6">
@@ -68,17 +91,21 @@ export default function OrganizationsView() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Organizations</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Global multi-tenant organization directory, brand identities, and branch allocations
+            {isSuperAdmin
+              ? 'Global multi-tenant organization directory, brand identities, and branch allocations'
+              : 'Your organization profile, branch allocations, and brand identity'}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleOpenCreate}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all shadow-xs cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          New Organization
-        </button>
+        {isSuperAdmin && (
+          <button
+            type="button"
+            onClick={handleOpenCreate}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all shadow-xs cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            New Organization
+          </button>
+        )}
       </div>
 
       {/* KPI Stats */}
@@ -111,6 +138,7 @@ export default function OrganizationsView() {
         onOpenCreate={handleOpenCreate}
         onOpenEdit={handleOpenEdit}
         onSelectOrg={handleSelectOrg}
+        canCreate={isSuperAdmin}
       />
 
       {/* Create / Edit Modal */}

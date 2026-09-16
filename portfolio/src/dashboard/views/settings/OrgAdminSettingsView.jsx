@@ -99,7 +99,7 @@ export const OrgAdminSettingsView = () => {
         return;
       }
 
-      const org = organizationsService.getOrganizationById(resolvedOrgId);
+      const org = organizationsService.getOrganizationByIdSync(resolvedOrgId);
       const allOrgs = organizationsService.getOrganizationsSync();
       const current = org || allOrgs.find((o) => o.id === resolvedOrgId) || allOrgs[0];
 

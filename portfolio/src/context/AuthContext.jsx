@@ -37,9 +37,9 @@ export const AuthProvider = ({ children }) => {
    * The returned response has shape { success, data, message } matching
    * createSuccess / createError from response.util.js.
    */
-  const login = async (email, username, password) => {
+  const login = async (...args) => {
     setLoading(true);
-    const res = await authService.login(email, username, password);
+    const res = await authService.login(...args);
     if (res.success && res.data) {
       setCurrentUser(res.data);
       setIsAuthenticated(true);
@@ -80,11 +80,11 @@ export const AuthProvider = ({ children }) => {
     currentUser,
     isAuthenticated,
     loading,
+    isLoading: loading,       // alias used by StaffLogin.jsx
     login,
+    handleLogin: login,       // alias used by StaffLogin.jsx
     logout,
     updateProfile,
-    // Re-reads user from localStorage.
-    // TODO: Once GET /me is confirmed, make this a real API call.
     refreshSession: async () => {
       const res = await authService.getCurrentUser();
       if (res.success) setCurrentUser(res.data);

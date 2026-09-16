@@ -1,21 +1,43 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ORGANIZATIONS } from '@/dashboard/super-admin/mock-data/organizationsData';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { organizationsService } from '@/services/organizationsService';
 import { useRole } from './RoleContext';
 
 const OrgContext = createContext(null);
 
 export const OrgProvider = ({ children }) => {
   const { userRole } = useRole();
-  const [selectedOrgId, setSelectedOrgId] = useState('all'); // 'all' | 'apex' | 'smilecare'
+  const [selectedOrgId, setSelectedOrgId] = useState('all');
+  const [organizations, setOrganizations] = useState(() => organizationsService.getOrganizationsSync());
+  const [isLoading, setIsLoading] = useState(false);
 
-  // If user switches role to org_admin, restrict scope automatically to Smile Care Group (org-001)
-  useEffect(() => {
-    if (userRole === 'org_admin' && selectedOrgId === 'all') {
-      setSelectedOrgId('org-001');
+  const refreshOrganizations = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await organizationsService.getOrganizations();
+      if (res?.data) {
+        setOrganizations(res.data);
+      }
+    } catch (err) {
+      console.error('[OrgContext] Error fetching organizations:', err);
+    } finally {
+      setIsLoading(false);
     }
-  }, [userRole, selectedOrgId]);
+  }, []);
 
-  const currentOrg = ORGANIZATIONS.find((o) => o.id === selectedOrgId) || ORGANIZATIONS[0];
+  useEffect(() => {
+    refreshOrganizations();
+  }, [refreshOrganizations]);
+
+  // If user switches role to org_admin, restrict scope automatically to their org
+  useEffect(() => {
+    if (userRole === 'org_admin' && organizations.length > 0) {
+      if (selectedOrgId === 'all' || !organizations.some((o) => o.id === selectedOrgId)) {
+        setSelectedOrgId(organizations[0].id);
+      }
+    }
+  }, [userRole, organizations, selectedOrgId]);
+
+  const currentOrg = organizations.find((o) => o.id === selectedOrgId) || organizations[0] || null;
 
   return (
     <OrgContext.Provider
@@ -23,7 +45,9 @@ export const OrgProvider = ({ children }) => {
         selectedOrgId,
         setSelectedOrgId,
         currentOrg,
-        organizations: ORGANIZATIONS,
+        organizations,
+        refreshOrganizations,
+        isLoading,
       }}
     >
       {children}
@@ -35,10 +59,12 @@ export const useOrg = () => {
   const context = useContext(OrgContext);
   if (!context) {
     return {
-      selectedOrgId: 'org-001',
+      selectedOrgId: '',
       setSelectedOrgId: () => {},
-      currentOrg: ORGANIZATIONS[0],
-      organizations: ORGANIZATIONS,
+      currentOrg: null,
+      organizations: [],
+      refreshOrganizations: () => {},
+      isLoading: false,
     };
   }
   return context;

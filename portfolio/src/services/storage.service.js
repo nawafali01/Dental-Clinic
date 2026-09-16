@@ -26,7 +26,7 @@ import { SEED_USERS } from '../dashboard/super-admin/mock-data/usersData';
 // so that existing localStorage sessions are cleared and re-seeded
 // with the updated data structure.
 // ─────────────────────────────────────────────────────────────
-const DB_VERSION = '4.1'; // v4.1: Agent assigned payments and scoping updates
+const DB_VERSION = '5.0'; // v5.0: Multi-role authentication and proxy fixes
 
 const STORAGE_KEYS = {
   USERS:           'dental_crm_users',
@@ -206,32 +206,25 @@ class StorageService {
       this.set(STORAGE_KEYS.REVENUE, SMILE_CARE_PAYMENTS);
     }
 
-    const currentUsers = this.get(STORAGE_KEYS.USERS);
-    if (!currentUsers || !Array.isArray(currentUsers) || currentUsers.length === 0) {
-      this.set(STORAGE_KEYS.USERS, SEED_USERS);
-    }
-
-    const currentOrgs = this.get(STORAGE_KEYS.ORGS);
-    if (!currentOrgs || !Array.isArray(currentOrgs) || currentOrgs.length === 0) {
-      this.set(STORAGE_KEYS.ORGS, [
-        { id: ORG_001_ID, name: ORG_001_NAME, createdAt: new Date().toISOString() },
-      ]);
-    }
-
-    const currentClinics = this.get(STORAGE_KEYS.CLINICS);
-    if (!currentClinics || !Array.isArray(currentClinics) || currentClinics.length === 0) {
-      this.set(STORAGE_KEYS.CLINICS, [
-        { id: CLINIC_IDS.DOWNTOWN, orgId: ORG_001_ID, name: 'Downtown Dental Excellence', city: 'Riyadh' },
-        { id: CLINIC_IDS.WEST,     orgId: ORG_001_ID, name: 'Westside Pediatric & Family', city: 'Riyadh' },
-        { id: 'clinic-003',        orgId: ORG_001_ID, name: 'Gulberg Dental Studio',        city: 'Lahore' },
-        { id: 'clinic-004',        orgId: ORG_001_ID, name: 'Clifton Oral Care',           city: 'Karachi' },
-      ]);
-    }
-
-    const defaultUser = SEED_USERS.find((u) => u.role === ROLES.ORG_ADMIN) || SEED_USERS[1];
-    const currentLoggedIn = window.localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    if (!currentLoggedIn) {
-      this.set(STORAGE_KEYS.CURRENT_USER, defaultUser);
+    let currentUsers = this.get(STORAGE_KEYS.USERS);
+    const LEGACY_MOCK_EMAILS = new Set([
+      'superadmin@test.com', 'orgadmin@test.com', 'manager@test.com',
+      'agent@test.com', 'reception@test.com', 'finance@test.com', 'auditor@test.com',
+      'edward@brightdental.co.uk', 'emma@brightdental.co.uk', 'dr.arjun@test.com',
+      'dr.layla@test.com', 'dr.faisal@test.com'
+    ]);
+    const LEGACY_MOCK_IDS = new Set([
+      'user-000', 'user-001', 'user-002', 'user-003', 'user-004', 'user-005', 'user-006'
+    ]);
+    if (Array.isArray(currentUsers)) {
+      const filtered = currentUsers.filter(
+        (u) => !LEGACY_MOCK_EMAILS.has(u.email?.toLowerCase()) && !LEGACY_MOCK_IDS.has(u.id)
+      );
+      if (filtered.length !== currentUsers.length) {
+        this.set(STORAGE_KEYS.USERS, filtered);
+      }
+    } else {
+      this.set(STORAGE_KEYS.USERS, []);
     }
 
     const currentAppointments = this.get(STORAGE_KEYS.APPOINTMENTS);

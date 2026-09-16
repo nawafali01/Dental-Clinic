@@ -5,6 +5,7 @@ export const ROLES = {
   AGENT: "agent",
   RECEPTIONIST: "receptionist",
   FINANCE: "finance",
+  AUDITOR: "auditor",
 };
 
 export const ROLE_LABELS = {
@@ -14,6 +15,7 @@ export const ROLE_LABELS = {
   [ROLES.AGENT]: "Agent",
   [ROLES.RECEPTIONIST]: "Receptionist",
   [ROLES.FINANCE]: "Finance",
+  [ROLES.AUDITOR]: "Auditor",
 };
 
 export const ROLE_REDIRECTS = {
@@ -23,6 +25,7 @@ export const ROLE_REDIRECTS = {
   [ROLES.AGENT]: "/agent/dashboard",
   [ROLES.RECEPTIONIST]: "/receptionist/dashboard",
   [ROLES.FINANCE]: "/finance/dashboard",
+  [ROLES.AUDITOR]: "/admin/dashboard",
 };
 
 export const STATUS = {

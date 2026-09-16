@@ -1,125 +1,58 @@
+import apiClient from '../lib/api';
 import { storageService } from './storage.service';
 import { createSuccess, createError } from '../utils/response.util';
 
-export const INITIAL_ORGANIZATIONS = [
-  {
-    id: 'org-001',
-    name: 'Smile Care Group',
-    status: 'active',
-    timezone: 'Asia/Karachi',
-    currency: 'PKR',
-    brandingColor: '#0F766E',
-    createdAt: '2026-01-12',
-    clinics: [
-      { id: 'clinic-downtown', name: 'Downtown Dental Excellence', city: 'Riyadh', status: 'active' },
-      { id: 'clinic-west', name: 'Westside Pediatric & Family', city: 'Riyadh', status: 'active' },
-      { id: 'clinic-003', name: 'Gulberg Dental Studio', city: 'Lahore', status: 'active' },
-      { id: 'clinic-004', name: 'Clifton Oral Care', city: 'Karachi', status: 'active' },
-    ],
-    users: [
-      { id: 'user-001', name: 'Dr. John Doe', role: 'org_admin' },
-      { id: 'user-002', name: 'Sarah Khan', role: 'manager' },
-      { id: 'user-003', name: 'Ali Raza', role: 'agent' },
-    ],
-    newLeadsCount: 42,
-    revenue: 18400,
-  },
-  {
-    id: 'org-002',
-    name: 'Dental Plus',
-    status: 'active',
-    timezone: 'Asia/Dubai',
-    currency: 'AED',
-    brandingColor: '#2563EB',
-    createdAt: '2026-02-04',
-    clinics: [
-      { id: 'clinic-005', name: 'Marina Branch', city: 'Dubai', status: 'active' },
-      { id: 'clinic-006', name: 'Jumeirah Care', city: 'Dubai', status: 'active' },
-      { id: 'clinic-007', name: 'Downtown Dubai Clinic', city: 'Dubai', status: 'active' },
-    ],
-    users: [
-      { id: 'user-004', name: 'Tariq Mansoor', role: 'org_admin' },
-      { id: 'user-005', name: 'Fatima Al-Sayed', role: 'manager' },
-    ],
-    newLeadsCount: 31,
-    revenue: 12100,
-  },
-  {
-    id: 'org-003',
-    name: 'Bright Dental',
-    status: 'inactive',
-    timezone: 'Europe/London',
-    currency: 'GBP',
-    brandingColor: '#D97706',
-    createdAt: '2026-03-18',
-    clinics: [
-      { id: 'clinic-008', name: 'Kensington Clinic', city: 'London', status: 'inactive' },
-      { id: 'clinic-009', name: 'Westminster Dental', city: 'London', status: 'inactive' },
-    ],
-    users: [
-      { id: 'user-006', name: 'Edward Smith', role: 'org_admin' },
-      { id: 'user-007', name: 'Emma Watson', role: 'agent' },
-    ],
-    newLeadsCount: 14,
-    revenue: 3500,
-  },
-  {
-    id: 'org-004',
-    name: 'Apex Dental Group',
-    status: 'active',
-    timezone: 'America/New_York',
-    currency: 'USD',
-    brandingColor: '#7C3AED',
-    createdAt: '2026-01-05',
-    clinics: [
-      { id: 'clinic-central', name: 'Apex Orthodontics & Smiles', city: 'Jeddah', status: 'active' },
-      { id: 'clinic-011', name: 'Brooklyn Orthodontics', city: 'New York', status: 'active' },
-      { id: 'clinic-east', name: 'Metro Cosmetic Care', city: 'Dammam', status: 'active' },
-    ],
-    users: [
-      { id: 'user-008', name: 'Michael Chang', role: 'org_admin' },
-      { id: 'user-009', name: 'Jessica Taylor', role: 'manager' },
-    ],
-    newLeadsCount: 22,
-    revenue: 9800,
-  },
-  {
-    id: 'org-005',
-    name: 'Saudi Smiles',
-    status: 'active',
-    timezone: 'Asia/Riyadh',
-    currency: 'SAR',
-    brandingColor: '#059669',
-    createdAt: '2026-02-20',
-    clinics: [
-      { id: 'clinic-013', name: 'Olaya Dental Center', city: 'Riyadh', status: 'active' },
-      { id: 'clinic-014', name: 'Corniche Jeddah Clinic', city: 'Jeddah', status: 'active' },
-    ],
-    users: [
-      { id: 'user-010', name: 'Abdullah Al-Ghamdi', role: 'org_admin' },
-      { id: 'user-011', name: 'Reem Khalid', role: 'agent' },
-    ],
-    newLeadsCount: 11,
-    revenue: 3450,
-  },
-  {
-    id: 'org-006',
-    name: 'Crown & Care Dental',
-    status: 'active',
-    timezone: 'Asia/Dubai',
-    currency: 'AED',
-    brandingColor: '#E11D48',
-    createdAt: '2026-03-01',
-    clinics: [
-      { id: 'clinic-015', name: 'Business Bay Branch', city: 'Dubai', status: 'active' },
-    ],
-    users: [
-      { id: 'user-012', name: 'Zaid Al-Harbi', role: 'org_admin' },
-    ],
-    newLeadsCount: 4,
-    revenue: 1500,
-  },
-];
+function getCurrentUser() {
+  try {
+    const raw =
+      localStorage.getItem('dental_crm_current_user') ||
+      localStorage.getItem('dental_current_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeOrg(raw) {
+  if (!raw) return null;
+  const branding = raw.branding || {};
+  const brandColor =
+    raw.brandColor ||
+    raw.brandingColor ||
+    branding.additionalProperty ||
+    branding.brandColor ||
+    '#0F766E';
+
+  return {
+    id: raw.id || `org-${Date.now().toString(36)}`,
+    name: raw.name || 'Unnamed Organization',
+    description: raw.description || '',
+    contact_email: raw.contact_email || raw.contactEmail || '',
+    contact_phone: raw.contact_phone || raw.contactPhone || '',
+    address: raw.address || '',
+    branding: branding,
+    brandColor: brandColor,
+    brandingColor: brandColor,
+    logoUrl: raw.logoUrl || branding.logoUrl || null,
+    status:
+      raw.is_active !== undefined
+        ? raw.is_active
+          ? 'active'
+          : 'inactive'
+        : raw.status || 'active',
+    timezone: raw.timezone || 'Asia/Karachi',
+    currency: raw.currency || 'USD',
+    clinics: raw.clinics || [],
+    users: raw.users || [],
+    clinic_count: raw.clinic_count ?? (raw.clinics ? raw.clinics.length : 0),
+    user_count: raw.user_count ?? (raw.users ? raw.users.length : 0),
+    createdAt:
+      raw.created_at || raw.createdAt || new Date().toISOString().split('T')[0],
+    updatedAt: raw.updated_at || raw.updatedAt || new Date().toISOString(),
+  };
+}
+
+export const INITIAL_ORGANIZATIONS = [];
 
 class OrganizationsService {
   getStorageKey() {
@@ -127,112 +60,263 @@ class OrganizationsService {
   }
 
   /**
-   * Fetch all organizations from LocalStorage (or seed defaults if empty).
+   * Fetch organizations with RBAC enforcement:
+   * - Super Admin: views all organizations
+   * - Org Admin: views only their assigned organization
    */
   async getOrganizations() {
     try {
-      let orgs = storageService.get(this.getStorageKey());
-      if (!orgs || !Array.isArray(orgs) || orgs.length === 0 || !orgs[0].clinics) {
-        orgs = INITIAL_ORGANIZATIONS;
-        storageService.set(this.getStorageKey(), orgs);
+      const user = getCurrentUser();
+      const role = user?.role;
+
+      try {
+        const response = await apiClient.get('/api/v1/organizations/');
+        let list = [];
+        if (Array.isArray(response.data)) {
+          list = response.data.map(normalizeOrg);
+        } else if (response.data && typeof response.data === 'object') {
+          list = [normalizeOrg(response.data)];
+        }
+
+        // RBAC Scoping: Org Admin only sees their own org
+        if (role === 'org_admin') {
+          if (user?.organizationId) {
+            const orgMatch = list.filter((o) => o.id === user.organizationId);
+            if (orgMatch.length > 0) list = orgMatch;
+          }
+        }
+
+        if (list.length > 0) {
+          storageService.set(this.getStorageKey(), list);
+        }
+        return createSuccess(list, 'Organizations retrieved successfully.');
+      } catch (apiErr) {
+        console.warn('[Organizations] API unreachable, using storage fallback:', apiErr.message);
+        const LEGACY_MOCKS = ['org-001', 'org-002', 'org-003', 'org-004', 'org-005', 'org-006'];
+        let orgs = (storageService.get(this.getStorageKey()) || []).filter(
+          (o) => !LEGACY_MOCKS.includes(o.id)
+        );
+
+        // Filter for Org Admin
+        if (role === 'org_admin') {
+          orgs = orgs.filter((o) => o.id === user?.organizationId);
+        }
+
+        return createSuccess(orgs.map(normalizeOrg), 'Organizations retrieved successfully.');
       }
-      return createSuccess(orgs, 'Organizations retrieved successfully.');
     } catch (error) {
       return createError('Failed to fetch organizations.', error);
     }
   }
 
   /**
-   * Synchronously get organizations from LocalStorage for immediate render.
+   * Synchronous accessor for fast initial renders
    */
   getOrganizationsSync() {
     try {
-      let orgs = storageService.get(this.getStorageKey());
-      if (!orgs || !Array.isArray(orgs) || orgs.length === 0 || !orgs[0].clinics) {
-        orgs = INITIAL_ORGANIZATIONS;
-        storageService.set(this.getStorageKey(), orgs);
+      const user = getCurrentUser();
+      const role = user?.role;
+      const LEGACY_MOCKS = ['org-001', 'org-002', 'org-003', 'org-004', 'org-005', 'org-006'];
+      let orgs = (storageService.get(this.getStorageKey()) || []).filter(
+        (o) => !LEGACY_MOCKS.includes(o.id)
+      );
+
+      if (role === 'org_admin') {
+        const filtered = orgs.filter((o) => o.id === user?.organizationId);
+        return filtered.map(normalizeOrg);
       }
-      return orgs;
+
+      return orgs.map(normalizeOrg);
     } catch (error) {
       console.error('Error fetching orgs sync:', error);
-      return INITIAL_ORGANIZATIONS;
+      return [];
     }
   }
 
   /**
-   * Create a new organization.
-   * // TODO: replace with Supabase call when backend is ready
+   * Create a new organization:
+   * Endpoint: POST /api/v1/organizations/
+   * Payload:
+   * {
+   *   "name": "",
+   *   "description": "",
+   *   "contact_email": "",
+   *   "contact_phone": "",
+   *   "address": "",
+   *   "branding": {
+   *     "additionalProperty": "anything"
+   *   }
+   * }
+   *
+   * RBAC: ONLY Super Admin can create organizations.
    */
   async createOrganization(orgData) {
     try {
-      // TODO: replace with Supabase call when backend is ready
-      const orgs = this.getOrganizationsSync();
+      const user = getCurrentUser();
+      const role = user?.role;
 
-      const newOrg = {
-        id: orgData.id || `org-${Date.now().toString(36)}`,
-        name: orgData.name,
-        logoUrl: orgData.logoUrl || null,
-        brandColor: orgData.brandColor || orgData.brandingColor || '#0F766E',
-        brandingColor: orgData.brandColor || orgData.brandingColor || '#0F766E',
-        status: orgData.status || 'active',
-        timezone: orgData.timezone || 'Asia/Karachi',
-        currency: orgData.currency || 'USD',
-        createdAt: new Date().toISOString().split('T')[0],
-        updatedAt: new Date().toISOString(),
-        clinics: [],
-        users: [],
-        newLeadsCount: 0,
-        revenue: 0,
+      // ── RBAC Check ─────────────────────────────────────────────
+      if (role && role !== 'super_admin') {
+        return createError('Access Denied: Only Super Admin is authorized to create organizations.');
+      }
+
+      // Canonical payload matching backend specifications
+      const payload = {
+        name: (orgData.name || '').trim(),
+        description: (orgData.description || '').trim(),
+        contact_email: (orgData.contact_email || orgData.contactEmail || '').trim(),
+        contact_phone: (orgData.contact_phone || orgData.contactPhone || '').trim(),
+        address: (orgData.address || '').trim(),
+        branding: orgData.branding || {
+          additionalProperty: orgData.brandColor || orgData.brandingColor || 'anything',
+        },
       };
 
-      const updatedOrgs = [newOrg, ...orgs];
-      storageService.set(this.getStorageKey(), updatedOrgs);
+      try {
+        const response = await apiClient.post('/api/v1/organizations/', payload);
+        const created = normalizeOrg(response.data);
 
-      return createSuccess(newOrg, 'Organization created successfully.');
+        // Update local storage
+        const currentList = this.getOrganizationsSync();
+        const updatedList = [created, ...currentList.filter((o) => o.id !== created.id)];
+        storageService.set(this.getStorageKey(), updatedList);
+
+        return createSuccess(created, 'Organization created successfully.');
+      } catch (apiErr) {
+        if (apiErr.response?.status === 403) {
+          return createError('Forbidden: Only Super Admin is authorized to create organizations.');
+        }
+
+        console.warn('[Organizations] API call failed, saving to local fallback:', apiErr.message);
+        const fallbackOrg = normalizeOrg({
+          ...orgData,
+          id: `org-${Date.now().toString(36)}`,
+          created_at: new Date().toISOString(),
+          is_active: true,
+        });
+
+        const currentList = this.getOrganizationsSync();
+        const updatedList = [fallbackOrg, ...currentList];
+        storageService.set(this.getStorageKey(), updatedList);
+
+        return createSuccess(fallbackOrg, 'Organization created successfully (offline mode).');
+      }
     } catch (error) {
       return createError('Failed to create organization.', error);
     }
   }
 
   /**
-   * Update an existing organization.
-   * // TODO: replace with Supabase call when backend is ready
+   * Update an existing organization:
+   * Endpoint: PUT /api/v1/organizations/{org_id}
+   * Payload:
+   * {
+   *   "name": "",
+   *   "description": "",
+   *   "contact_email": "",
+   *   "contact_phone": "",
+   *   "address": "",
+   *   "branding": {
+   *     "additionalProperty": "anything"
+   *   },
+   *   "is_active": true
+   * }
    */
   async updateOrganization(id, updates) {
     try {
-      // TODO: replace with Supabase call when backend is ready
-      const orgs = this.getOrganizationsSync();
-      const index = orgs.findIndex((o) => o.id === id);
+      const user = getCurrentUser();
+      const role = user?.role;
 
-      if (index === -1) {
-        return createError('Organization not found.');
+      // Scoping: Org Admin can only update their own organization
+      if (role === 'org_admin' && user?.organizationId && user.organizationId !== id) {
+        return createError('Access Denied: You are only authorized to update your own organization.');
       }
 
-      const brandColor = updates.brandColor || updates.brandingColor || orgs[index].brandColor || orgs[index].brandingColor;
+      const orgs = this.getOrganizationsSync();
+      const existingOrg = orgs.find((o) => o.id === id);
 
-      const updatedOrg = {
-        ...orgs[index],
-        ...updates,
-        brandColor,
-        brandingColor: brandColor,
-        updatedAt: new Date().toISOString(),
+      const payload = {
+        name: (updates.name !== undefined ? updates.name : existingOrg?.name || '').trim(),
+        description: (updates.description !== undefined ? updates.description : existingOrg?.description || '').trim(),
+        contact_email: (updates.contact_email !== undefined ? updates.contact_email : updates.contactEmail || existingOrg?.contact_email || '').trim(),
+        contact_phone: (updates.contact_phone !== undefined ? updates.contact_phone : updates.contactPhone || existingOrg?.contact_phone || '').trim(),
+        address: (updates.address !== undefined ? updates.address : existingOrg?.address || '').trim(),
+        branding: updates.branding || {
+          additionalProperty:
+            existingOrg?.branding?.additionalProperty || 'anything',
+        },
+        is_active:
+          updates.is_active !== undefined
+            ? Boolean(updates.is_active)
+            : updates.status !== undefined
+            ? updates.status === 'active'
+            : existingOrg?.is_active !== undefined
+            ? existingOrg.is_active
+            : true,
       };
 
-      const updatedOrgs = [...orgs];
-      updatedOrgs[index] = updatedOrg;
-      storageService.set(this.getStorageKey(), updatedOrgs);
+      try {
+        const response = await apiClient.put(`/api/v1/organizations/${id}`, payload);
+        const updated = normalizeOrg(response.data);
 
-      return createSuccess(updatedOrg, 'Organization updated successfully.');
+        // Sync with local storage
+        const orgs = this.getOrganizationsSync();
+        const index = orgs.findIndex((o) => o.id === id);
+        if (index !== -1) {
+          orgs[index] = { ...orgs[index], ...updated };
+          storageService.set(this.getStorageKey(), orgs);
+        }
+
+        return createSuccess(updated, 'Organization updated successfully.');
+      } catch (apiErr) {
+        if (apiErr.response?.status === 403) {
+          return createError('Access Denied: You do not have permission to update this organization.');
+        }
+
+        console.warn(`[Organizations] PUT /api/v1/organizations/${id} failed, updating local fallback:`, apiErr.message);
+        const orgs = this.getOrganizationsSync();
+        const index = orgs.findIndex((o) => o.id === id);
+
+        if (index === -1) {
+          return createError('Organization not found.');
+        }
+
+        const brandColor =
+          updates.brandColor ||
+          updates.brandingColor ||
+          orgs[index].brandColor ||
+          orgs[index].brandingColor;
+
+        const updatedOrg = {
+          ...orgs[index],
+          ...updates,
+          brandColor,
+          brandingColor: brandColor,
+          status: payload.is_active ? 'active' : 'inactive',
+          updatedAt: new Date().toISOString(),
+        };
+
+        const updatedOrgs = [...orgs];
+        updatedOrgs[index] = updatedOrg;
+        storageService.set(this.getStorageKey(), updatedOrgs);
+
+        return createSuccess(updatedOrg, 'Organization updated successfully (offline mode).');
+      }
     } catch (error) {
       return createError('Failed to update organization.', error);
     }
   }
 
   /**
-   * Delete an organization by ID.
+   * Delete an organization by ID (Super Admin only)
    */
   async deleteOrganization(id) {
     try {
+      const user = getCurrentUser();
+      if (user?.role && user.role !== 'super_admin') {
+        return createError('Access Denied: Only Super Admin can delete organizations.');
+      }
+
       const orgs = this.getOrganizationsSync();
       const filtered = orgs.filter((o) => o.id !== id);
       storageService.set(this.getStorageKey(), filtered);
@@ -242,7 +326,48 @@ class OrganizationsService {
     }
   }
 
-  getOrganizationById(id) {
+  /**
+   * GET /api/v1/organizations/{org_id}
+   * Fetches organization by ID from real backend API, with fallback to local cache.
+   */
+  async getOrganizationById(id) {
+    if (!id) return createError('Organization ID is required.');
+    const user = getCurrentUser();
+    const role = user?.role;
+
+    // RBAC: Org Admin is restricted to their own organization
+    if (role === 'org_admin' && user?.organizationId && user.organizationId !== id) {
+      return createError('Access Denied: You are only authorized to view your own organization.');
+    }
+
+    try {
+      const response = await apiClient.get(`/api/v1/organizations/${id}`);
+      if (response.data) {
+        const normalized = normalizeOrg(response.data);
+        return createSuccess(normalized, 'Organization retrieved successfully.');
+      }
+    } catch (apiErr) {
+      if (apiErr.response?.status === 403) {
+        return createError('Access Denied: You do not have permission to view this organization.');
+      }
+      if (apiErr.response?.status === 404) {
+        return createError('Organization not found.');
+      }
+      console.warn(`[Organizations] GET /api/v1/organizations/${id} failed, checking local cache:`, apiErr.message);
+    }
+
+    const cached = this.getOrganizationByIdSync(id);
+    if (cached) {
+      return createSuccess(cached, 'Organization retrieved from local cache.');
+    }
+    return createError('Organization not found.');
+  }
+
+  /**
+   * Synchronous accessor for fast initial render or inline lookups
+   */
+  getOrganizationByIdSync(id) {
+    if (!id) return null;
     const orgs = this.getOrganizationsSync();
     return orgs.find((o) => o.id === id) || null;
   }

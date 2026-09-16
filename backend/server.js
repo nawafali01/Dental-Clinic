@@ -12,6 +12,10 @@ import symptomsRoutes from "./routes/symptoms.js";
 import appointmentsRoutes from "./routes/appointments.js";
 import aiRoutes from "./routes/ai.js";
 import userRoutes from "./routes/userRoutes.js";
+import v1UsersRoutes from "./routes/v1Users.js";
+import v1AuthRoutes from "./routes/v1Auth.js";
+import v1OrganizationsRoutes from "./routes/v1Organizations.js";
+import v1ClinicsRoutes from "./routes/v1Clinics.js";
 
 // Initialize config
 dotenv.config();
@@ -40,6 +44,10 @@ app.use("/api/symptoms", symptomsRoutes);
 app.use("/api/appointments", appointmentsRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/v1/auth", v1AuthRoutes);                   // Auth: login / logout (MongoDB)
+app.use("/api/v1/users", v1UsersRoutes);                 // User CRUD (MongoDB)
+app.use("/api/v1/organizations", v1OrganizationsRoutes); // Organizations CRUD (MongoDB)
+app.use("/api/v1/clinics", v1ClinicsRoutes);             // Clinics CRUD (MongoDB)
 
 // Root route
 app.get("/", (req, res) => {

@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, UserPlus, Shield, Building2, MapPin, Mail, User, CheckCircle2 } from 'lucide-react';
+import { X, UserPlus, Building2, CheckCircle2, Eye, EyeOff, Phone, Lock, MapPin } from 'lucide-react';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { ROLES } from '@/constants/permissions';
 import { organizationsService } from '@/services/organizationsService';
 import { clinicsService } from '@/services/clinicsService';
 import { usersService } from '@/services/usersService';
+import { useRole } from '@/dashboard/shared/context/RoleContext';
+import { useAuth } from '@/context/AuthContext';
+import { useOrg } from '@/dashboard/shared/context/OrgContext';
+import apiClient from '@/lib/api';
 import {
   ROLE_OPTIONS,
   USER_STATUS_OPTIONS,
@@ -14,7 +18,9 @@ import {
 
 const userSchema = z.object({
   name: z.string().trim().min(2, 'Name must be at least 2 characters'),
-  email: z.string().trim().email('Invalid email address format'),
+  email: z.string().trim().email('Invalid email address'),
+  phone: z.string().optional(),
+  password: z.string().optional(),
   role: z.enum([
     ROLES.SUPER_ADMIN,
     ROLES.ORG_ADMIN,
@@ -25,79 +31,177 @@ const userSchema = z.object({
     ROLES.AUDITOR,
   ]),
   organizationId: z.string().nullable().optional(),
-  clinicId: z.string().nullable().optional(),
+  assignedClinics: z.array(z.string()).optional(),
   status: z.enum(['active', 'inactive', 'invited']),
 }).refine(
   (data) => {
-    // If role is not super_admin, organization is required
     if (data.role !== ROLES.SUPER_ADMIN) {
       return Boolean(data.organizationId && data.organizationId.trim() !== '');
     }
     return true;
   },
-  {
-    message: 'Organization is required for this role',
-    path: ['organizationId'],
-  }
+  { message: 'Organization is required for this role', path: ['organizationId'] }
 );
 
 export function UserModal({ isOpen, onClose, onSuccess, userToEdit = null, lockedOrgId = null }) {
   const isEdit = Boolean(userToEdit);
+  const { userRole } = useRole();
+  const { currentUser } = useAuth();
+  const { currentOrg } = useOrg();
+
+  const isSuperAdmin =
+    currentUser?.role === ROLES.SUPER_ADMIN ||
+    currentUser?.role === 'super_admin' ||
+    userRole === ROLES.SUPER_ADMIN ||
+    userRole === 'super_admin';
+
+  const isOrgAdmin =
+    !isSuperAdmin &&
+    (userRole === ROLES.ORG_ADMIN ||
+      userRole === 'org_admin' ||
+      currentUser?.role === ROLES.ORG_ADMIN ||
+      currentUser?.role === 'org_admin' ||
+      Boolean(lockedOrgId));
+
+  const isClinicManager = !isSuperAdmin && !isOrgAdmin && (
+    userRole === ROLES.CLINIC_MANAGER ||
+    userRole === 'clinic_manager' ||
+    currentUser?.role === ROLES.CLINIC_MANAGER ||
+    currentUser?.role === 'clinic_manager'
+  );
+
+  const activeOrgId =
+    lockedOrgId ||
+    currentUser?.organizationId ||
+    currentUser?.organization_id ||
+    currentOrg?.id ||
+    'org-001';
 
   const [organizations, setOrganizations] = useState(() => organizationsService.getOrganizationsSync() || []);
-  const [allClinics, setAllClinics] = useState([]);
+  const [allClinics, setAllClinics] = useState(() => clinicsService.getClinics() || []);
 
+  // On-the-fly creation states
+  const [isCreatingNewOrg, setIsCreatingNewOrg] = useState(false);
+  const [newOrgName, setNewOrgName] = useState('');
+  const [isCreatingNewClinic, setIsCreatingNewClinic] = useState(false);
+  const [newClinicName, setNewClinicName] = useState('');
+  const [newClinicCity, setNewClinicCity] = useState('Riyadh');
+
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState(DEFAULT_USER_FORM_STATE);
+  const isSuperAdminRole = formData.role === ROLES.SUPER_ADMIN;
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Load fresh data when modal opens
   useEffect(() => {
     if (isOpen) {
       const orgs = organizationsService.getOrganizationsSync() || [];
       setOrganizations(Array.isArray(orgs) ? orgs : []);
-      
-      clinicsService.getClinicsAsync?.().then((cls) => {
-        setAllClinics(Array.isArray(cls) ? cls : []);
-      }).catch(() => {
-        setAllClinics(clinicsService.getClinics() || []);
+      const cls = clinicsService.getClinics() || [];
+      setAllClinics(Array.isArray(cls) ? cls : []);
+
+      // Fetch fresh live data from API
+      organizationsService.getOrganizations().then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setOrganizations(res.data);
+        }
+      });
+      clinicsService.fetchClinics().then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setAllClinics(res.data);
+        }
       });
     }
   }, [isOpen]);
 
+  // Reset form when opening
   useEffect(() => {
     if (isOpen) {
+      setIsCreatingNewOrg(false);
+      setNewOrgName('');
+      setIsCreatingNewClinic(false);
+      setNewClinicName('');
+      setNewClinicCity('Riyadh');
+      setShowPassword(false);
+
       if (userToEdit) {
+        const clinicIds = userToEdit.assignedClinics ||
+          (userToEdit.clinicId ? [userToEdit.clinicId] : []) ||
+          (userToEdit.clinicIds || []);
         setFormData({
-          name: userToEdit.name || userToEdit.fullName || '',
+          name: userToEdit.name || userToEdit.fullName || userToEdit.full_name || '',
           email: userToEdit.email || '',
+          phone: userToEdit.phone || '',
+          password: '',
           role: userToEdit.role || ROLES.AGENT,
-          organizationId: userToEdit.organizationId || lockedOrgId || '',
-          clinicId: userToEdit.clinicId || (userToEdit.clinicIds && userToEdit.clinicIds[0]) || '',
+          organizationId: userToEdit.organizationId || userToEdit.organization_id || activeOrgId || '',
+          assignedClinics: Array.isArray(clinicIds) ? clinicIds : [],
           status: userToEdit.status || 'active',
         });
       } else {
+        const defaultRole = isSuperAdmin && !isOrgAdmin ? ROLES.ORG_ADMIN : ROLES.AGENT;
         setFormData({
           ...DEFAULT_USER_FORM_STATE,
-          organizationId: lockedOrgId || '',
-          role: lockedOrgId ? ROLES.AGENT : DEFAULT_USER_FORM_STATE.role,
+          organizationId: isSuperAdmin && !isOrgAdmin ? '' : activeOrgId,
+          role: defaultRole,
         });
       }
       setErrors({});
     }
-  }, [isOpen, userToEdit, lockedOrgId]);
+  }, [isOpen, userToEdit, lockedOrgId, isOrgAdmin, isSuperAdmin, activeOrgId]);
 
   const availableRoleOptions = useMemo(() => {
-    if (lockedOrgId) {
-      return ROLE_OPTIONS.filter((r) => r.value !== ROLES.SUPER_ADMIN);
-    }
-    return ROLE_OPTIONS;
-  }, [lockedOrgId]);
+    // Editing an existing Super Admin — keep all options
+    if (isEdit && userToEdit?.role === ROLES.SUPER_ADMIN) return ROLE_OPTIONS;
 
-  // Clinics filtered by currently chosen organization
+    if (isSuperAdmin) {
+      // Super Admin can create any role EXCEPT super_admin and auditor
+      return ROLE_OPTIONS.filter(
+        (r) => r.value !== ROLES.SUPER_ADMIN && r.value !== ROLES.AUDITOR
+      );
+    }
+
+    if (isOrgAdmin) {
+      // Org Admin can create any role EXCEPT super_admin, org_admin, and auditor
+      return ROLE_OPTIONS.filter(
+        (r) =>
+          r.value !== ROLES.SUPER_ADMIN &&
+          r.value !== ROLES.ORG_ADMIN &&
+          r.value !== ROLES.AUDITOR
+      );
+    }
+
+    if (isClinicManager) {
+      // Clinic Manager can only create: clinic_manager, agent, receptionist, finance
+      return ROLE_OPTIONS.filter(
+        (r) =>
+          r.value === ROLES.CLINIC_MANAGER ||
+          r.value === ROLES.AGENT ||
+          r.value === ROLES.RECEPTIONIST ||
+          r.value === ROLES.FINANCE
+      );
+    }
+
+    // Fallback — same as clinic manager
+    return ROLE_OPTIONS.filter(
+      (r) =>
+        r.value === ROLES.CLINIC_MANAGER ||
+        r.value === ROLES.AGENT ||
+        r.value === ROLES.RECEPTIONIST ||
+        r.value === ROLES.FINANCE
+    );
+  }, [isSuperAdmin, isOrgAdmin, isClinicManager, lockedOrgId, isEdit, userToEdit]);
+
+  // Clinics filtered by selected org (or all if super admin with no org filter)
   const availableClinics = useMemo(() => {
-    if (!formData.organizationId) return allClinics;
-    return allClinics.filter((c) => c.orgId === formData.organizationId);
+    if (!allClinics || allClinics.length === 0) return [];
+    if (formData.organizationId) {
+      const orgClinics = allClinics.filter((c) => c.orgId === formData.organizationId);
+      if (orgClinics.length > 0) return orgClinics;
+    }
+    return allClinics;
   }, [allClinics, formData.organizationId]);
 
   if (!isOpen) return null;
@@ -105,78 +209,188 @@ export function UserModal({ isOpen, onClose, onSuccess, userToEdit = null, locke
   const handleChange = (field, value) => {
     setFormData((prev) => {
       const next = { ...prev, [field]: value };
-      // When changing organization, reset clinic if it no longer belongs to that org
-      if (field === 'organizationId') {
-        const clinicStillValid = allClinics.some(
-          (c) => c.id === prev.clinicId && c.orgId === value
-        );
-        if (!clinicStillValid) {
-          next.clinicId = '';
-        }
-      }
-      // If role changed to super_admin, clear org and clinic
       if (field === 'role' && value === ROLES.SUPER_ADMIN) {
         next.organizationId = '';
-        next.clinicId = '';
+        next.assignedClinics = [];
+      }
+      // Reset clinics when org changes
+      if (field === 'organizationId') {
+        next.assignedClinics = [];
       }
       return next;
     });
-
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: null }));
-    }
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: null }));
   };
 
-  const handleSubmit = (e) => {
+  // Toggle a clinic in/out of assignedClinics array
+  const handleClinicToggle = (clinicId) => {
+    setFormData((prev) => {
+      const current = Array.isArray(prev.assignedClinics) ? prev.assignedClinics : [];
+      const next = current.includes(clinicId)
+        ? current.filter((id) => id !== clinicId)
+        : [...current, clinicId];
+      return { ...prev, assignedClinics: next };
+    });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrors({});
 
-    const payload = {
-      name: formData.name.trim(),
-      email: formData.email.trim(),
-      role: formData.role,
-      organizationId: formData.role === ROLES.SUPER_ADMIN ? null : (formData.organizationId || null),
-      clinicId: formData.clinicId ? formData.clinicId : null,
-      status: formData.status,
-    };
+    const activeCaller = currentUser || { role: userRole };
 
-    const validation = userSchema.safeParse(payload);
-    if (!validation.success) {
-      const fieldErrors = {};
-      validation.error.errors.forEach((err) => {
-        const key = err.path[0] || 'general';
-        fieldErrors[key] = err.message;
-      });
-      setErrors(fieldErrors);
-      toast.error('Please resolve the form errors');
+    if (!isEdit && (formData.role === ROLES.SUPER_ADMIN || formData.role === 'super_admin')) {
+      toast.error('Super Admin accounts cannot be created from User Management.');
+      return;
+    }
+    if ((isOrgAdmin || lockedOrgId) && (formData.role === ROLES.ORG_ADMIN || formData.role === 'org_admin')) {
+      toast.error('Organization Admins cannot create another Organization Admin account.');
+      return;
+    }
+    if ((isOrgAdmin || lockedOrgId) && (formData.role === ROLES.AUDITOR || formData.role === 'auditor')) {
+      toast.error('Organization Admins cannot create Auditor accounts.');
+      return;
+    }
+    if (isClinicManager && (formData.role === ROLES.SUPER_ADMIN || formData.role === ROLES.ORG_ADMIN || formData.role === ROLES.AUDITOR)) {
+      toast.error('Clinic Managers cannot create this role.');
+      return;
+    }
+    if (!isSuperAdminRole && isCreatingNewOrg && !newOrgName.trim()) {
+      setErrors((prev) => ({ ...prev, newOrgName: 'Organization name is required' }));
+      toast.error('Please enter the new organization name.');
+      return;
+    }
+    if (!isSuperAdminRole && isCreatingNewClinic && !newClinicName.trim()) {
+      setErrors((prev) => ({ ...prev, newClinicName: 'Clinic branch name is required' }));
+      toast.error('Please enter the new clinic branch name.');
+      return;
+    }
+    if (!isEdit && !formData.password.trim()) {
+      setErrors((prev) => ({ ...prev, password: 'Password is required' }));
+      toast.error('Please set a password for the new user.');
       return;
     }
 
     setIsSubmitting(true);
+    let createdOrgRecord = null;
+    let createdClinicRecord = null;
     try {
+      let effectiveOrgId = formData.organizationId || lockedOrgId;
+
+      // 1. Create Organization on the fly if toggled
+      if (!isSuperAdminRole && isCreatingNewOrg) {
+        const orgRes = await organizationsService.createOrganization({
+          name: newOrgName.trim(),
+          status: 'active',
+        });
+        if (!orgRes.success || !orgRes.data?.id) {
+          throw new Error(orgRes.error || orgRes.message || 'Could not create the organization.');
+        }
+        effectiveOrgId = orgRes.data.id;
+        createdOrgRecord = orgRes.data;
+        setOrganizations((prev) => [createdOrgRecord, ...(Array.isArray(prev) ? prev : [])]);
+      }
+
+      // 2. Create Clinic Branch on the fly if toggled
+      let effectiveAssignedClinics = [...(formData.assignedClinics || [])];
+      if (!isSuperAdminRole && isCreatingNewClinic) {
+        const clinicData = {
+          name: newClinicName.trim(),
+          city: newClinicCity.trim() || 'Riyadh',
+          orgId: effectiveOrgId || activeOrgId,
+          status: 'active',
+        };
+        const createdClinic = clinicsService.addClinic(clinicData, activeCaller);
+        createdClinicRecord = createdClinic;
+        effectiveAssignedClinics = [...effectiveAssignedClinics, createdClinic.id];
+        setAllClinics((prev) => [createdClinic, ...(Array.isArray(prev) ? prev : [])]);
+      }
+
+      // Resolve org from clinic if missing
+      if (!effectiveOrgId && effectiveAssignedClinics.length > 0) {
+        const matched = allClinics.find((c) => c.id === effectiveAssignedClinics[0]);
+        if (matched?.orgId) effectiveOrgId = matched.orgId;
+      }
+      if (!effectiveOrgId && (isOrgAdmin || userRole === 'org_admin')) {
+        effectiveOrgId = activeOrgId;
+      }
+
+      const payload = {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim() || null,
+        password: formData.password,
+        role: formData.role,
+        organizationId: formData.role === ROLES.SUPER_ADMIN ? null : (effectiveOrgId || activeOrgId),
+        assignedClinics: isSuperAdminRole ? [] : effectiveAssignedClinics,
+        status: formData.status,
+      };
+
+      const validation = userSchema.safeParse(payload);
+      if (!validation.success) {
+        const fieldErrors = {};
+        validation.error.errors.forEach((err) => {
+          const key = err.path[0] || 'general';
+          fieldErrors[key] = err.message;
+        });
+        setErrors(fieldErrors);
+        toast.error('Please fix the errors in the form.');
+        setIsSubmitting(false);
+        return;
+      }
+
       if (isEdit) {
-        const updated = usersService.updateUser(userToEdit.id, payload);
-        toast.success(`User "${updated.name}" updated successfully!`);
+        const putPayload = {
+          full_name: payload.name,
+          phone: payload.phone || '',
+          role: payload.role,
+          is_active: payload.status === 'active',
+          organization_id: payload.role === ROLES.SUPER_ADMIN ? '' : (payload.organizationId || ''),
+          assigned_clinics: Array.isArray(payload.assignedClinics)
+            ? payload.assignedClinics.filter((c) => Boolean(c && typeof c === 'string' && c.trim()))
+            : [],
+        };
+        const updated = await usersService.updateUser(userToEdit.id, putPayload, activeCaller);
+        toast.success(`User "${updated.name}" updated successfully.`);
         onSuccess?.(updated);
       } else {
-        const created = usersService.createUser(payload);
-        toast.success(`Invitation simulated for "${created.name}" (${created.email})`);
+        const apiPayload = {
+          email: payload.email,
+          full_name: payload.name,
+          phone: payload.phone || '',
+          role: payload.role,
+          is_active: payload.status === 'active',
+          password: payload.password,
+          organization_id: payload.role === ROLES.SUPER_ADMIN ? '' : (payload.organizationId || ''),
+          assigned_clinics: Array.isArray(payload.assignedClinics)
+            ? payload.assignedClinics.filter((c) => Boolean(c && typeof c === 'string' && c.trim()))
+            : [],
+        };
+        const created = await usersService.createUser(apiPayload, activeCaller);
+        let msg = `User "${created.name}" created successfully.`;
+        if (createdOrgRecord && createdClinicRecord) {
+          msg = `New org "${createdOrgRecord.name}", branch "${createdClinicRecord.name}", and user "${created.name}" created.`;
+        } else if (createdOrgRecord) {
+          msg = `New org "${createdOrgRecord.name}" and user "${created.name}" created.`;
+        } else if (createdClinicRecord) {
+          msg = `New branch "${createdClinicRecord.name}" and user "${created.name}" added.`;
+        }
+        toast.success(msg);
         onSuccess?.(created);
       }
       onClose();
     } catch (err) {
-      toast.error(err.message || 'Operation failed');
+      toast.error(err.message || 'Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const isSuperAdminRole = formData.role === ROLES.SUPER_ADMIN;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity" onClick={onClose} />
-      <div className="relative bg-white border border-slate-200 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
+      <div className="relative bg-white border border-slate-200 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[92vh]">
+
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
           <div className="flex items-center gap-2.5">
@@ -185,12 +399,10 @@ export function UserModal({ isOpen, onClose, onSuccess, userToEdit = null, locke
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                {isEdit ? 'Edit User & Reassign Role' : 'Invite New Team Member'}
+                {isEdit ? 'Edit User' : 'Create New User'}
               </h2>
               <p className="text-xs text-slate-500">
-                {isEdit
-                  ? 'Update user role, organization, and clinic branch assignment'
-                  : 'Add a new user with dedicated role-based access control'}
+                {isEdit ? 'Update role, org, and clinic assignment' : 'Fill in all required fields to add a new user'}
               </p>
             </div>
           </div>
@@ -204,143 +416,297 @@ export function UserModal({ isOpen, onClose, onSuccess, userToEdit = null, locke
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-4 flex-1 text-xs">
-          {/* Full Name */}
-          <div>
-            <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">
-              Full Name <span className="text-rose-500">*</span>
-            </label>
-            <div className="relative">
+
+          {/* ── Row: Full Name + Phone ── */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Full Name */}
+            <div>
+              <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">
+                Full Name <span className="text-rose-500">*</span>
+              </label>
               <input
                 type="text"
-                placeholder="e.g. Dr. Sarah Jenkins"
+                placeholder="e.g. Dr. Sarah Ali"
                 value={formData.name}
                 onChange={(e) => handleChange('name', e.target.value)}
-                className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 font-medium ${
+                className={`w-full px-3 py-2.5 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 font-medium ${
                   errors.name
-                    ? 'border-rose-300 focus:ring-rose-200 focus:border-rose-400'
+                    ? 'border-rose-300 focus:ring-rose-200'
                     : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
                 }`}
               />
+              {errors.name && <p className="text-[11px] text-rose-500 mt-1">{errors.name}</p>}
             </div>
-            {errors.name && <p className="text-[11px] text-rose-500 mt-1 font-medium">{errors.name}</p>}
+
+            {/* Phone */}
+            <div>
+              <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">
+                Phone
+              </label>
+              <div className="relative">
+                <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="tel"
+                  placeholder="+966 5XX XXX XXX"
+                  value={formData.phone}
+                  onChange={(e) => handleChange('phone', e.target.value)}
+                  className="w-full pl-8 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-medium"
+                />
+              </div>
+            </div>
           </div>
 
-          {/* Email Address */}
+          {/* Email */}
           <div>
             <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">
-              Email Address <span className="text-rose-500">*</span>
+              Email Address {!isEdit && <span className="text-rose-500">*</span>}
+              {isEdit && <span className="text-slate-400 font-normal normal-case ml-1">(cannot be changed)</span>}
             </label>
-            <div className="relative">
-              <input
-                type="email"
-                placeholder="user@example.com"
-                value={formData.email}
-                onChange={(e) => handleChange('email', e.target.value)}
-                className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 font-medium ${
-                  errors.email
-                    ? 'border-rose-300 focus:ring-rose-200 focus:border-rose-400'
-                    : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
-                }`}
-              />
-            </div>
-            {errors.email && <p className="text-[11px] text-rose-500 mt-1 font-medium">{errors.email}</p>}
+            <input
+              type="email"
+              placeholder="user@example.com"
+              value={formData.email}
+              disabled={isEdit}
+              onChange={(e) => handleChange('email', e.target.value)}
+              className={`w-full px-3 py-2.5 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 font-medium ${
+                isEdit
+                  ? 'opacity-60 cursor-not-allowed bg-slate-100 border-slate-200 text-slate-500'
+                  : errors.email
+                  ? 'border-rose-300 focus:ring-rose-200'
+                  : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
+              }`}
+            />
+            {errors.email && !isEdit && <p className="text-[11px] text-rose-500 mt-1">{errors.email}</p>}
           </div>
 
-          {/* Role Selection */}
+          {/* Password (only on user creation) */}
+          {!isEdit && (
+            <div>
+              <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">
+                Password <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Set a strong password"
+                  value={formData.password}
+                  onChange={(e) => handleChange('password', e.target.value)}
+                  className={`w-full pl-8 pr-10 py-2.5 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 font-medium ${
+                    errors.password
+                      ? 'border-rose-300 focus:ring-rose-200'
+                      : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+              {errors.password && <p className="text-[11px] text-rose-500 mt-1">{errors.password}</p>}
+            </div>
+          )}
+
+          {/* Role */}
           <div>
             <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">
-              Platform Role (7-Role RBAC) <span className="text-rose-500">*</span>
+              Platform Role <span className="text-rose-500">*</span>
             </label>
             <select
               value={formData.role}
               onChange={(e) => handleChange('role', e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-medium cursor-pointer"
+              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-medium cursor-pointer"
             >
               {availableRoleOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
           </div>
 
-          {/* Organization Selection (Hidden/Disabled for Super Admin, Locked for Org Admin) */}
+          {/* Organization (hidden for Super Admin role) */}
           {!isSuperAdminRole && (
             <div>
-              <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">
-                Organization Assignment <span className="text-rose-500">*</span>
-              </label>
-              {lockedOrgId ? (
-                <div className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-primary" />
-                    <span>{organizations.find((o) => o.id === lockedOrgId)?.name || 'Smile Care Group'}</span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-mono">({lockedOrgId})</span>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block font-bold text-slate-700 uppercase tracking-wider text-[10px]">
+                  Organization <span className="text-rose-500">*</span>
+                </label>
+                {!lockedOrgId && !isEdit && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCreatingNewOrg(!isCreatingNewOrg);
+                      if (!isCreatingNewOrg) handleChange('organizationId', '');
+                    }}
+                    className="text-[11px] font-semibold text-primary hover:underline cursor-pointer"
+                  >
+                    {isCreatingNewOrg ? '← Select Existing' : '+ New Organization'}
+                  </button>
+                )}
+              </div>
+
+              {(lockedOrgId || isOrgAdmin) ? (
+                <div className="w-full px-3 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-primary" />
+                  <span>
+                    {organizations.find((o) => o.id === (formData.organizationId || activeOrgId))?.name ||
+                      currentOrg?.name || 'Smile Care Group'}
+                  </span>
+                </div>
+              ) : isCreatingNewOrg ? (
+                <div className="space-y-2 p-3 bg-primary/5 border border-primary/20 rounded-xl animate-in fade-in">
+                  <input
+                    type="text"
+                    placeholder="New organization name (e.g. Apex Health Group)"
+                    value={newOrgName}
+                    onChange={(e) => {
+                      setNewOrgName(e.target.value);
+                      if (errors.newOrgName) setErrors((p) => ({ ...p, newOrgName: null }));
+                    }}
+                    className={`w-full px-3 py-2 bg-white border rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 font-medium ${
+                      errors.newOrgName ? 'border-rose-300' : 'border-primary/30 focus:ring-primary/20'
+                    }`}
+                  />
+                  {errors.newOrgName && <p className="text-[11px] text-rose-500">{errors.newOrgName}</p>}
+                  <p className="text-[10px] text-slate-500">A new organization will be registered and this user assigned as admin.</p>
                 </div>
               ) : (
                 <select
                   value={formData.organizationId}
                   onChange={(e) => handleChange('organizationId', e.target.value)}
-                  className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 font-medium cursor-pointer ${
-                    errors.organizationId
-                      ? 'border-rose-300 focus:ring-rose-200 focus:border-rose-400'
-                      : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
+                  className={`w-full px-3 py-2.5 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 font-medium cursor-pointer ${
+                    errors.organizationId ? 'border-rose-300' : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
                   }`}
                 >
                   <option value="">-- Select Organization --</option>
-                  {Array.isArray(organizations) &&
-                    organizations.map((org) => (
-                      <option key={org.id} value={org.id}>
-                        {org.name} ({org.id})
-                      </option>
-                    ))}
+                  {Array.isArray(organizations) && organizations.map((org) => (
+                    <option key={org.id} value={org.id}>{org.name}</option>
+                  ))}
                 </select>
               )}
-              {errors.organizationId && (
-                <p className="text-[11px] text-rose-500 mt-1 font-medium">{errors.organizationId}</p>
+              {errors.organizationId && !isCreatingNewOrg && (
+                <p className="text-[11px] text-rose-500 mt-1">{errors.organizationId}</p>
               )}
             </div>
           )}
 
-          {/* Clinic Assignment (filtered by selected organization) */}
+          {/* Clinic Branches (multi-select checkboxes) — hidden for Super Admin */}
           {!isSuperAdminRole && (
             <div>
-              <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">
-                Primary Clinic Branch Assignment
-              </label>
-              <select
-                value={formData.clinicId}
-                onChange={(e) => handleChange('clinicId', e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-medium cursor-pointer"
-              >
-                <option value="">All Branches / Organization-wide Scope</option>
-                {availableClinics.map((clinic) => (
-                  <option key={clinic.id} value={clinic.id}>
-                    {clinic.name} ({clinic.city || 'Branch'})
-                  </option>
-                ))}
-              </select>
-              <p className="text-[10px] text-slate-400 mt-1">
-                Leave unselected if user has access to all branches under the organization.
-              </p>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block font-bold text-slate-700 uppercase tracking-wider text-[10px]">
+                  Clinic Branches (assigned_clinics)
+                  {formData.assignedClinics.length > 0 && (
+                    <span className="ml-2 px-1.5 py-0.5 bg-primary/10 text-primary rounded-md font-bold">
+                      {formData.assignedClinics.length} selected
+                    </span>
+                  )}
+                </label>
+                {!isEdit && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCreatingNewClinic(!isCreatingNewClinic);
+                    }}
+                    className="text-[11px] font-semibold text-primary hover:underline cursor-pointer"
+                  >
+                    {isCreatingNewClinic ? '← Select Existing' : '+ New Branch'}
+                  </button>
+                )}
+              </div>
+
+              {isCreatingNewClinic ? (
+                <div className="space-y-2.5 p-3 bg-primary/5 border border-primary/20 rounded-xl animate-in fade-in">
+                  <input
+                    type="text"
+                    placeholder="New clinic branch name (e.g. Al-Olaya Branch)"
+                    value={newClinicName}
+                    onChange={(e) => {
+                      setNewClinicName(e.target.value);
+                      if (errors.newClinicName) setErrors((p) => ({ ...p, newClinicName: null }));
+                    }}
+                    className={`w-full px-3 py-2 bg-white border rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 font-medium ${
+                      errors.newClinicName ? 'border-rose-300' : 'border-primary/30 focus:ring-primary/20'
+                    }`}
+                  />
+                  {errors.newClinicName && <p className="text-[11px] text-rose-500">{errors.newClinicName}</p>}
+                  <input
+                    type="text"
+                    placeholder="City (e.g. Riyadh, Dubai)"
+                    value={newClinicCity}
+                    onChange={(e) => setNewClinicCity(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium"
+                  />
+                  <p className="text-[10px] text-slate-500">A new clinic will be created under this organization.</p>
+                </div>
+              ) : (
+                <div className={`border rounded-xl overflow-hidden ${errors.assignedClinics ? 'border-rose-300' : 'border-slate-200'}`}>
+                  {availableClinics.length === 0 ? (
+                    <div className="px-4 py-3 text-[11px] text-slate-400 italic">
+                      {formData.organizationId ? 'No clinics found for this organization.' : 'Select an organization first.'}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-slate-100 max-h-40 overflow-y-auto">
+                      {/* All Branches option */}
+                      <label className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={formData.assignedClinics.length === 0}
+                          onChange={() => handleChange('assignedClinics', [])}
+                          className="w-3.5 h-3.5 accent-primary cursor-pointer"
+                        />
+                        <div>
+                          <p className="font-semibold text-slate-700 text-xs">All Branches</p>
+                          <p className="text-[10px] text-slate-400">Organization-wide access</p>
+                        </div>
+                      </label>
+                      {availableClinics.map((clinic) => {
+                        const isChecked = formData.assignedClinics.includes(clinic.id);
+                        const clinicOrg = organizations.find((o) => o.id === clinic.orgId);
+                        return (
+                          <label key={clinic.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleClinicToggle(clinic.id)}
+                              className="w-3.5 h-3.5 accent-primary cursor-pointer"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-slate-700 text-xs truncate">{clinic.name}</p>
+                              <p className="text-[10px] text-slate-400 truncate">
+                                {clinic.city || 'Branch'}{clinicOrg ? ` • ${clinicOrg.name}` : ''}
+                              </p>
+                            </div>
+                            {isChecked && <MapPin className="w-3 h-3 text-primary shrink-0" />}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+              {!isCreatingNewClinic && (
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Select specific branches or leave unchecked for full org-wide access.
+                </p>
+              )}
             </div>
           )}
 
-          {/* Operational Status */}
+          {/* Account Status */}
           <div>
             <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">
-              Account Status
+              Account Status <span className="text-[10px] text-slate-400 font-normal">(is_active)</span>
             </label>
             <select
               value={formData.status}
               onChange={(e) => handleChange('status', e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-medium cursor-pointer"
+              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-medium cursor-pointer"
             >
               {USER_STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
           </div>
@@ -360,11 +726,7 @@ export function UserModal({ isOpen, onClose, onSuccess, userToEdit = null, locke
               className="px-4 py-2 text-xs font-semibold rounded-xl bg-primary hover:bg-primary/90 text-white shadow-sm transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              {isSubmitting
-                ? 'Saving...'
-                : isEdit
-                ? 'Save Changes'
-                : 'Send Invite'}
+              {isSubmitting ? 'Saving...' : isEdit ? 'Save Changes' : 'Create User'}
             </button>
           </div>
         </form>

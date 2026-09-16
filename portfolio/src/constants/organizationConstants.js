@@ -34,6 +34,13 @@ export const VALID_LOGO_TYPES = [
 
 export const DEFAULT_ORG_MODAL_FORM = {
   name: '',
+  description: '',
+  contact_email: '',
+  contact_phone: '',
+  address: '',
+  branding: {
+    additionalProperty: 'anything',
+  },
   logoUrl: null,
   timezone: 'Asia/Karachi',
   currency: 'USD',

@@ -635,7 +635,11 @@ export const assertCanMutate = (resource, action, user) => {
   let role = typeof user === 'string' ? user : user?.role;
   if (!role) {
     try {
-      const stored = localStorage.getItem('auth_user') || localStorage.getItem('current_user') || localStorage.getItem('dental_current_user');
+      const stored =
+        localStorage.getItem('dental_auth_user') ||
+        localStorage.getItem('auth_user') ||
+        localStorage.getItem('current_user') ||
+        localStorage.getItem('dental_current_user');
       if (stored) {
         const parsed = JSON.parse(stored);
         role = parsed?.role;
@@ -646,11 +650,11 @@ export const assertCanMutate = (resource, action, user) => {
   }
 
   if (role === 'auditor' || isReadOnlyRole(role)) {
-    throw new Error(`Unauthorized: Role 'auditor' has read-only access and cannot perform '${action}' on '${resource}'.`);
+    throw new Error(`Access Denied: Auditors have read-only access and cannot ${action} ${resource}.`);
   }
 
   if (role && !canDoAction(role, resource, action)) {
-    throw new Error(`Unauthorized: Role '${role}' lacks permission to perform '${action}' on '${resource}'.`);
+    throw new Error(`Access Denied: Your current role (${role}) does not have permission to ${action} ${resource}. Please switch to an Administrator role.`);
   }
 };
 

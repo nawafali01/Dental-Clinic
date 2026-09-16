@@ -14,9 +14,11 @@ import {
   Sparkles,
   CheckCircle2,
   XCircle,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { usersService } from '@/services/usersService';
+import apiClient from '@/lib/api';
+import { usersService, normalizeUser } from '@/services/usersService';
 import { organizationsService } from '@/services/organizationsService';
 import { clinicsService } from '@/services/clinicsService';
 import { Badge } from '@/dashboard/shared/components/ui/Badge';
@@ -33,11 +35,23 @@ export default function UserDetailView() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [confirmStatusModal, setConfirmStatusModal] = useState(false);
+  const [confirmDeleteModal, setConfirmDeleteModal] = useState(false);
 
-  const loadUserData = () => {
+  const loadUserData = async () => {
     setIsLoading(true);
     try {
-      const found = usersService.getUserById(id);
+      let found = usersService.getUserById(id);
+      if (!found) {
+        try {
+          const res = await apiClient.get(`/api/v1/users/${id}`);
+          const raw = res.data?.data || res.data;
+          if (raw) {
+            found = normalizeUser(raw);
+          }
+        } catch (apiErr) {
+          console.warn('[UserDetailView] Error fetching user by id:', apiErr.message);
+        }
+      }
       setUser(found);
     } catch (err) {
       toast.error('Failed to load user');
@@ -50,19 +64,30 @@ export default function UserDetailView() {
     loadUserData();
   }, [id]);
 
-  const handleToggleStatus = () => {
+  const handleToggleStatus = async () => {
     if (!user) return;
     try {
-      const isCurrentlyActive = user.status === 'active';
+      const isCurrentlyActive = user.status === 'active' || user.is_active;
       const updated = isCurrentlyActive
-        ? usersService.deactivateUser(user.id)
-        : usersService.activateUser(user.id);
+        ? await usersService.deactivateUser(user.id)
+        : await usersService.activateUser(user.id);
 
       setUser(updated);
       toast.success(`User "${updated.name}" is now ${updated.status}`);
       setConfirmStatusModal(false);
     } catch (err) {
       toast.error('Failed to update status');
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!user) return;
+    try {
+      await usersService.deleteUser(user.id);
+      toast.success(`User "${user.name}" deleted successfully.`);
+      navigate('/admin/users');
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete user');
     }
   };
 
@@ -103,7 +128,7 @@ export default function UserDetailView() {
     color: 'bg-slate-100 text-slate-700 border-slate-200',
   };
 
-  const org = user.organizationId ? organizationsService.getOrganizationById(user.organizationId) : null;
+  const org = user.organizationId ? organizationsService.getOrganizationByIdSync(user.organizationId) : null;
   const clinic = user.clinicId ? clinicsService.getClinicById(user.clinicId) : null;
   const isActive = user.status === 'active';
 
@@ -165,6 +190,15 @@ export default function UserDetailView() {
               <Power className="w-3.5 h-3.5" />
               {isActive ? 'Deactivate User' : 'Activate User'}
             </button>
+            {user.role !== ROLES.SUPER_ADMIN && user.role !== 'super_admin' && (
+              <button
+                onClick={() => setConfirmDeleteModal(true)}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete User
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -283,6 +317,35 @@ export default function UserDetailView() {
                 }`}
               >
                 Confirm {isActive ? 'Deactivation' : 'Activation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal for Delete User */}
+      {confirmDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs" onClick={() => setConfirmDeleteModal(false)} />
+          <div className="relative bg-white border border-slate-200 rounded-2xl shadow-xl max-w-sm w-full p-6 z-10 space-y-4">
+            <h3 className="text-base font-bold text-slate-900">
+              Delete User Account?
+            </h3>
+            <p className="text-xs text-slate-500">
+              Are you sure you want to permanently delete <span className="font-semibold text-slate-800">{user.name}</span>? This action cannot be undone and will revoke all platform access.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setConfirmDeleteModal(false)}
+                className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteUser}
+                className="px-3.5 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl cursor-pointer"
+              >
+                Permanently Delete
               </button>
             </div>
           </div>

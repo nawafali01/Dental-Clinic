@@ -25,7 +25,7 @@ export function OrgModal({ isOpen, onClose, onSave, initialData = null }) {
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 {initialData
-                  ? 'Update organization branding, timezone, and settings'
+                  ? 'Update organization details, branding, and status'
                   : 'Add a new organization to the platform'}
               </p>
             </div>

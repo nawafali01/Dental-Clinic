@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
-import { Menu, X, Sparkles } from "lucide-react";
+import { Menu, X, Sparkles, LogIn } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/shared/ui/Button";
 import { navLinks } from "./data";
@@ -92,12 +92,17 @@ export function Navbar() {
             ))}
           </ul>
           <div className="hidden lg:flex items-center gap-3">
-            <a
-              href="tel:+15551234567"
-              className="text-sm text-muted-foreground hover:text-foreground font-medium transition-colors"
+            <Button
+              asChild
+              variant="outline"
+              className="rounded-full border-slate-200 hover:border-primary/40 text-slate-700 hover:text-primary hover:bg-primary/5 h-10 px-5 font-medium transition-all gap-1.5 cursor-pointer shadow-2xs"
             >
-              +1 (555) 123-4567
-            </a>
+              <Link to="/login">
+                <LogIn className="size-4 text-primary" />
+                Login
+              </Link>
+            </Button>
+
             <Button
               asChild
               className="rounded-full bg-primary hover:bg-primary/95 text-primary-foreground px-5 h-10 shadow-[0_10px_30px_-10px_rgba(31,138,112,0.6)] hover:shadow-[0_16px_40px_-10px_rgba(31,138,112,0.7)] transition-all"
@@ -125,14 +130,27 @@ export function Navbar() {
                 {navLinks.map((l) => (
                   <NavLink key={l.href} l={l} onClick={() => setOpen(false)} />
                 ))}
-                <Button
-                  asChild
-                  className="mt-3 rounded-full bg-primary hover:bg-primary/95"
-                >
-                  <Link to="/book-appointment" onClick={() => setOpen(false)}>
-                    Book Appointment
-                  </Link>
-                </Button>
+                <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-slate-100">
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="rounded-full border-slate-200 text-slate-700 hover:text-primary w-full justify-center gap-2 h-10 font-medium cursor-pointer"
+                  >
+                    <Link to="/login" onClick={() => setOpen(false)}>
+                      <LogIn className="size-4 text-primary" />
+                      Login
+                    </Link>
+                  </Button>
+
+                  <Button
+                    asChild
+                    className="rounded-full bg-primary hover:bg-primary/95 text-primary-foreground w-full h-10 font-medium shadow-sm"
+                  >
+                    <Link to="/book-appointment" onClick={() => setOpen(false)}>
+                      Book Appointment
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </motion.div>
           )}
