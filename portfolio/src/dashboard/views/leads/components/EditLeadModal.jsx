@@ -1,97 +1,78 @@
-import React, { useState, useEffect } from 'react';
-import { X, DollarSign, FileText, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, DollarSign, FileText } from 'lucide-react';
 import { toast } from 'sonner';
-import { createLead, assignLead, LEAD_SOURCES, LEAD_STATUSES, LEAD_PRIORITIES } from '@/services/leadsService';
-import { clinicsService } from '@/services/clinicsService';
+import { updateLead, assignLead, LEAD_SOURCES, LEAD_STATUSES, LEAD_PRIORITIES } from '@/services/leadsService';
 import { usersService } from '@/services/usersService';
+import { storageService } from '@/services/storage.service';
+import { CLINICS, getClinicsByOrgId } from '@/constants/clinics';
 
-export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selectedClinicId }) {
-  const [clinics, setClinics] = useState(() => clinicsService.getClinics() || []);
+import { clinicsService } from '@/services/clinicsService';
+
+export function EditLeadModal({ isOpen, onClose, onSuccess, lead, currentUser }) {
   const [users, setUsers] = useState(() => usersService.getUsersSync() || []);
-  const [isLoadingData, setIsLoadingData] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [clinics, setClinics] = useState(() => clinicsService.getClinics() || []);
+
+  useEffect(() => {
+    if (isOpen) {
+      clinicsService.fetchClinics().then((res) => {
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          setClinics(res.data);
+        }
+      }).catch(() => {});
+
+      const userOrg = currentUser?.organization_id || currentUser?.organizationId || 'f7e07406-f91f-49be-adeb-8d03bcac1dfd';
+      usersService.fetchUsers({ organization_id: userOrg }).then((res) => {
+        if (res?.data && Array.isArray(res.data)) {
+          setUsers(res.data);
+        }
+      }).catch(() => {});
+    }
+  }, [isOpen, currentUser]);
 
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
-    phone: '',
     email: '',
-    treatment_interest: 'Dental Implant',
-    expected_revenue: 1000,
+    phone: '',
     source: 'website',
     status: 'new',
-    priority: 'medium',
-    clinic_id: '',
-    assigned_to: '',
     notes: '',
+    treatment_interest: '',
+    expected_revenue: 1,
+    assigned_to: '',
+    priority: '',
+    clinic_id: '',
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
-    if (isOpen) {
-      setIsLoadingData(true);
-      const userOrg = currentUser?.organization_id || currentUser?.organizationId || 'f7e07406-f91f-49be-adeb-8d03bcac1dfd';
-      Promise.all([
-        clinicsService.fetchClinics(),
-        usersService.fetchUsers({ organization_id: userOrg })
-      ]).then(([clinicsRes, usersRes]) => {
-        let loadedClinics = [];
-        if (clinicsRes?.data && Array.isArray(clinicsRes.data) && clinicsRes.data.length > 0) {
-          loadedClinics = clinicsRes.data;
-          setClinics(loadedClinics);
-        } else {
-          loadedClinics = clinicsService.getClinics() || [];
-          setClinics(loadedClinics);
-        }
-
-        if (usersRes?.data && Array.isArray(usersRes.data) && usersRes.data.length > 0) {
-          setUsers(usersRes.data);
-        }
-
-        // Set default clinic_id if not chosen or currently invalid
-        if (loadedClinics.length > 0) {
-          setFormData((prev) => {
-            const hasMatch = loadedClinics.some((c) => c.id === prev.clinic_id);
-            if (!hasMatch || !prev.clinic_id) {
-              const matchedSelected = selectedClinicId && selectedClinicId !== 'all'
-                ? loadedClinics.find((c) => c.id === selectedClinicId)
-                : null;
-              return {
-                ...prev,
-                clinic_id: matchedSelected ? matchedSelected.id : loadedClinics[0].id,
-              };
-            }
-            return prev;
-          });
-        }
-      }).catch((err) => {
-        console.warn('[NewLeadModal] Error fetching live database data:', err);
-      }).finally(() => {
-        setIsLoadingData(false);
+    if (lead) {
+      setFormData({
+        first_name: lead.first_name || '',
+        last_name: lead.last_name || '',
+        email: lead.email || '',
+        phone: lead.phone || lead.phoneNumber || '',
+        source: (lead.source || 'website').toLowerCase(),
+        status: (lead.status || 'new').toLowerCase(),
+        notes: lead.notes || '',
+        treatment_interest: lead.treatment_interest || lead.treatment || '',
+        expected_revenue: Number(lead.expected_revenue ?? lead.expectedRevenue ?? 1),
+        assigned_to: lead.assigned_to || lead.assignedAgentId || '',
+        priority: (lead.priority || '').toLowerCase(),
+        clinic_id: lead.clinic_id || lead.clinicId || (clinics[0]?.id || 'clinic-downtown'),
       });
     }
-  }, [isOpen, selectedClinicId, currentUser]);
+  }, [lead, clinics]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !lead) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.first_name.trim()) {
-      toast.error('First name is required');
-      return;
-    }
-
-    if (!formData.clinic_id) {
-      toast.error('Please select a clinic branch');
-      return;
-    }
 
     setIsSubmitting(true);
     try {
-      const selectedClinic = clinics.find((c) => c.id === formData.clinic_id);
-      const resolvedOrgId = selectedClinic?.organization_id || selectedClinic?.orgId || currentUser?.organization_id || 'f7e07406-f91f-49be-adeb-8d03bcac1dfd';
-      const assignedUser = users.find((u) => u.id === formData.assigned_to);
-
-      const leadPayload = {
+      const updatePayload = {
         first_name: formData.first_name.trim(),
         last_name: formData.last_name.trim(),
         email: formData.email.trim(),
@@ -99,33 +80,34 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
         source: formData.source || 'website',
         status: formData.status || 'new',
         notes: formData.notes.trim(),
-        treatment_interest: formData.treatment_interest.trim() || 'General Dentistry',
+        treatment_interest: formData.treatment_interest.trim(),
         expected_revenue: Number(formData.expected_revenue) || 1,
-        assigned_to: formData.assigned_to || '',
-        priority: formData.priority || 'medium',
+        assigned_to: formData.assigned_to,
+        priority: formData.priority,
         clinic_id: formData.clinic_id,
-        organization_id: resolvedOrgId,
-        assignedAgentName: assignedUser?.fullName || assignedUser?.name || '',
       };
 
-      const res = await createLead(leadPayload, currentUser);
-      const created = res?.data || res;
-      if (created) {
-        if (formData.assigned_to && created.id) {
-          try {
-            await assignLead(created.id, formData.assigned_to);
-          } catch {}
+      const res = await updateLead(lead.id, updatePayload, currentUser);
+      const updated = res?.data || res;
+
+      if (formData.assigned_to && formData.assigned_to !== lead.assigned_to) {
+        try {
+          await assignLead(lead.id, formData.assigned_to);
+        } catch (assignErr) {
+          console.warn('[EditLeadModal] Background assignLead call warning:', assignErr);
         }
-        const displayName = created.patientName || `${created.first_name} ${created.last_name}`.trim() || 'Lead';
-        toast.success(`Lead "${displayName}" created successfully in backend!`);
-        onSuccess?.(created);
+      }
+
+      if (updated) {
+        toast.success(`Lead updated successfully!`);
+        onSuccess?.(updated);
         onClose();
       } else {
-        toast.error('Failed to create lead');
+        toast.error('Failed to update lead');
       }
     } catch (err) {
       console.error(err);
-      toast.error(err.message || 'Error creating lead');
+      toast.error(err.message || 'Error updating lead');
     } finally {
       setIsSubmitting(false);
     }
@@ -137,8 +119,8 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
       <div className="relative bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Create New Lead</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Post inquiry into CRM pipeline (POST /api/v1/leads/)</p>
+            <h2 className="text-lg font-bold text-slate-900">Edit Lead #{lead.id}</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Update record details (PUT /api/v1/leads/{lead.id})</p>
           </div>
           <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer">
             <X className="size-5" />
@@ -150,15 +132,14 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
-                First Name <span className="text-rose-500">*</span>
+                First Name
               </label>
               <input
                 type="text"
-                required
                 placeholder="e.g. Jonathan"
                 value={formData.first_name}
                 onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
               />
             </div>
             <div>
@@ -170,12 +151,12 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
                 placeholder="e.g. Smith"
                 value={formData.last_name}
                 onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
               />
             </div>
           </div>
 
-          {/* Contact Details: Phone & Email */}
+          {/* Contact Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Phone</label>
@@ -263,6 +244,7 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
                 onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all cursor-pointer uppercase"
               >
+                <option value="">Unspecified</option>
                 {LEAD_PRIORITIES.map((p) => (
                   <option key={p} value={p}>{p}</option>
                 ))}
@@ -273,19 +255,11 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
           {/* Clinic Branch & Assigned Agent */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">Clinic Branch</label>
-                {isLoadingData && (
-                  <span className="text-[10px] text-primary flex items-center gap-1 font-medium">
-                    <Loader2 className="w-3 h-3 animate-spin" /> Fetching DB...
-                  </span>
-                )}
-              </div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Clinic Branch</label>
               <select
                 value={formData.clinic_id}
                 onChange={(e) => setFormData({ ...formData, clinic_id: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all cursor-pointer font-medium"
-                required
               >
                 {clinics.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -295,7 +269,7 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Assigned Agent / Staff</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Assigned Agent</label>
               <select
                 value={formData.assigned_to}
                 onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
@@ -311,7 +285,7 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
             </div>
           </div>
 
-          {/* Status & Pipeline */}
+          {/* Pipeline Status */}
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Pipeline Status</label>
             <select
@@ -333,7 +307,7 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
             </label>
             <textarea
               rows={3}
-              placeholder="Enter any initial patient notes, chief complaint, or scheduling preferences..."
+              placeholder="Enter patient notes or inquiries..."
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none"
@@ -356,10 +330,11 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
             disabled={isSubmitting}
             className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer shadow-xs"
           >
-            {isSubmitting ? 'Creating...' : 'Create Lead'}
+            {isSubmitting ? 'Saving Changes...' : 'Save Changes'}
           </button>
         </div>
       </div>
     </div>
   );
 }
+export default EditLeadModal;

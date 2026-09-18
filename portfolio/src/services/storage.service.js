@@ -26,7 +26,34 @@ import { SEED_USERS } from '../dashboard/super-admin/mock-data/usersData';
 // so that existing localStorage sessions are cleared and re-seeded
 // with the updated data structure.
 // ─────────────────────────────────────────────────────────────
-const DB_VERSION = '5.0'; // v5.0: Multi-role authentication and proxy fixes
+const DB_VERSION = '5.2'; // v5.2: Live API integration for leads, mock leads eliminated
+
+export const LEGACY_MOCK_LEAD_IDS = new Set([
+  'lead-001', 'lead-002', 'lead-003', 'lead-004', 'lead-005', 'lead-006',
+  'lead-007', 'lead-008', 'lead-009', 'lead-010', 'lead-011', 'lead-012',
+]);
+
+export const LEGACY_MOCK_LEAD_EMAILS = new Set([
+  'emma.watson@example.com',
+  'david.miller@example.com',
+  'sarah.connor@example.com',
+  'm.chang@example.com',
+  'layla.hassan@example.com',
+  'james.wilson@example.com',
+  'sophia.alvarez@example.com',
+  'robert.chen@example.com',
+  'aisha.malik@example.com',
+  'thomas.anderson@example.com',
+  'fatima.zahra@example.com',
+  'lucas.silva@example.com',
+]);
+
+export function isLegacyMockLead(lead) {
+  if (!lead) return true;
+  if (LEGACY_MOCK_LEAD_IDS.has(lead.id) || LEGACY_MOCK_LEAD_IDS.has(lead._id)) return true;
+  if (lead.email && LEGACY_MOCK_LEAD_EMAILS.has(lead.email.toLowerCase())) return true;
+  return false;
+}
 
 const STORAGE_KEYS = {
   USERS:           'dental_crm_users',
@@ -84,6 +111,15 @@ class StorageService {
     try {
       const item = window.localStorage.getItem(key);
       const parsed = item ? JSON.parse(item) : null;
+
+      // LEADS: Must only contain real backend data, never fallback to mock seed
+      if (key === STORAGE_KEYS.LEADS) {
+        if (Array.isArray(parsed)) {
+          return parsed.filter((l) => !isLegacyMockLead(l));
+        }
+        return [];
+      }
+
       if (parsed !== null && parsed !== undefined) {
         if (Array.isArray(parsed) && parsed.length === 0) {
           // Empty array in storage — fall through to canonical seed fallback
@@ -91,7 +127,6 @@ class StorageService {
           // Check if domain arrays actually contain org-001 data
           if (
             (key === STORAGE_KEYS.PATIENTS ||
-              key === STORAGE_KEYS.LEADS ||
               key === STORAGE_KEYS.CALLS ||
               key === STORAGE_KEYS.TASKS ||
               key === STORAGE_KEYS.REVENUE) &&
@@ -104,14 +139,13 @@ class StorageService {
         }
       }
 
-      // Canonical fallbacks ensuring tables always receive data
+      // Canonical fallbacks ensuring tables always receive data (excluding leads)
       switch (key) {
         case STORAGE_KEYS.PATIENTS:
           this.set(STORAGE_KEYS.PATIENTS, SMILE_CARE_PATIENTS);
           return SMILE_CARE_PATIENTS;
         case STORAGE_KEYS.LEADS:
-          this.set(STORAGE_KEYS.LEADS, SMILE_CARE_LEADS);
-          return SMILE_CARE_LEADS;
+          return [];
         case STORAGE_KEYS.CALLS:
           this.set(STORAGE_KEYS.CALLS, SMILE_CARE_CALLS);
           return SMILE_CARE_CALLS;
@@ -180,10 +214,18 @@ class StorageService {
       this.set(STORAGE_KEYS.DB_VERSION, DB_VERSION);
     }
 
-    // Always ensure each dataset is populated with canonical seed data
-    const currentLeads = this.get(STORAGE_KEYS.LEADS);
-    if (!isSmileCareData(currentLeads)) {
-      this.set(STORAGE_KEYS.LEADS, SMILE_CARE_LEADS);
+    // Purge mock leads so only real backend leads exist
+    const rawLeads = window.localStorage.getItem(STORAGE_KEYS.LEADS);
+    if (rawLeads) {
+      try {
+        const parsed = JSON.parse(rawLeads);
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter((l) => !isLegacyMockLead(l));
+          this.set(STORAGE_KEYS.LEADS, cleaned);
+        }
+      } catch {
+        this.set(STORAGE_KEYS.LEADS, []);
+      }
     }
 
     const currentPatients = this.get(STORAGE_KEYS.PATIENTS);

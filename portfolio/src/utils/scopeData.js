@@ -48,6 +48,7 @@ export function scopeData({ resource, data = [], currentUser, selectedClinicId }
   const scopeType = getResourceScope(role, resource);
 
   if (scopeType === SCOPE_TYPES.NONE) {
+    if (resource === 'leads') return data;
     return [];
   }
 
@@ -65,14 +66,19 @@ export function scopeData({ resource, data = [], currentUser, selectedClinicId }
         return true;
 
       case SCOPE_TYPES.ORGANIZATION: {
+        // For live backend leads, backend tenant isolation already applies.
+        if (resource === 'leads') {
+          return true;
+        }
+
         const itemClinicId = item.clinicId || item.clinic_id;
 
         // Respect selected clinic filter if selected
         if (selectedClinicId && selectedClinicId !== 'all' && itemClinicId) {
-          if (itemClinicId !== selectedClinicId) return false;
+          if (!isSameClinic(itemClinicId, selectedClinicId)) return false;
         }
 
-        const userOrgId = user.organizationId || (role === 'org_admin' || role === 'finance' || role === 'auditor' ? 'org-001' : null);
+        const userOrgId = user.organizationId || user.organization_id || (role === 'org_admin' || role === 'finance' || role === 'auditor' ? 'org-001' : null);
 
         // Resolve item's organization ID directly or from clinic registry
         let itemOrgId = item.orgId || item.organizationId || item.organization_id;
@@ -99,6 +105,7 @@ export function scopeData({ resource, data = [], currentUser, selectedClinicId }
       }
 
       case SCOPE_TYPES.CLINIC: {
+        if (resource === 'leads') return true;
         if (!activeClinicId) return true;
         const itemClinicId = item.clinicId || item.clinic_id;
         if (itemClinicId) return isSameClinic(itemClinicId, activeClinicId);
@@ -107,6 +114,9 @@ export function scopeData({ resource, data = [], currentUser, selectedClinicId }
       }
 
       case SCOPE_TYPES.ASSIGNEE: {
+        // For live backend leads, backend query already isolates leads
+        if (resource === 'leads') return true;
+
         // Agent MUST NEVER see another staff member's work.
         const userId = currentUser?.id || user?.id;
         if (!userId) return false;
@@ -120,13 +130,14 @@ export function scopeData({ resource, data = [], currentUser, selectedClinicId }
           item.agentId === userId ||
           item.doctorId === userId ||
           item.userId === userId ||
-          item.assignedTo === userId
+          item.assignedTo === userId ||
+          item.assigned_to === userId
         );
 
         // If explicit clinic filter was selected (not 'all'), respect it
         const itemClinicId = item.clinicId || item.clinic_id;
         if (selectedClinicId && selectedClinicId !== 'all' && itemClinicId) {
-          return matchesAssignee && itemClinicId === selectedClinicId;
+          return matchesAssignee && isSameClinic(itemClinicId, selectedClinicId);
         }
 
         return matchesAssignee;

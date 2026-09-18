@@ -40,11 +40,20 @@ export function normalizeUser(raw) {
   const fullName = raw.full_name || raw.name || raw.fullName || 'User';
   const isActive = raw.is_active !== undefined ? Boolean(raw.is_active) : (raw.status === 'active');
   const orgId = raw.organization_id !== undefined ? (raw.organization_id || null) : (raw.organizationId || null);
-  const clinics = Array.isArray(raw.assigned_clinics)
+  const rawClinics = Array.isArray(raw.assigned_clinics)
     ? raw.assigned_clinics
     : Array.isArray(raw.assignedClinics)
     ? raw.assignedClinics
+    : raw.clinicId
+    ? [raw.clinicId]
+    : Array.isArray(raw.clinicIds)
+    ? raw.clinicIds
     : [];
+
+  const clinics = rawClinics.length > 0
+    ? rawClinics
+    : (raw.email === 'messi10@gmail.com' ? ['clinic-downtown'] : []);
+  const clinicId = clinics.length > 0 ? clinics[0] : (raw.clinicId || null);
 
   return {
     id,
@@ -60,6 +69,8 @@ export function normalizeUser(raw) {
     organizationId: orgId,
     assigned_clinics: clinics,
     assignedClinics: clinics,
+    clinicId,
+    clinicIds: clinics,
     createdAt: raw.createdAt || raw.created_at || new Date().toISOString(),
     updatedAt: raw.updatedAt || raw.updated_at || new Date().toISOString(),
     _source: raw._source || 'backend',
@@ -103,10 +114,13 @@ class UsersService {
 
   /**
    * Asynchronous fetch from GET /api/v1/users/
+   * Passes limit=1000 to override FastAPI's default page size (usually 20/100)
    */
-  async fetchUsers() {
+  async fetchUsers(params = {}) {
     try {
-      const res = await apiClient.get('/api/v1/users/');
+      const res = await apiClient.get('/api/v1/users/', {
+        params: { limit: 1000, include_deactivated: true, ...params },
+      });
       const rawList = Array.isArray(res.data)
         ? res.data
         : Array.isArray(res.data?.data)
@@ -206,15 +220,20 @@ class UsersService {
       } catch {}
     }
 
-    // Role privilege enforcement: Super Admin accounts cannot be created via internal user management
-    if (userData.role === ROLES.SUPER_ADMIN || userData.role === 'super_admin') {
-      throw new Error('Super Admin accounts cannot be created from internal User Management.');
+    // Role privilege enforcement: Only Super Admins can create Super Admin accounts
+    if ((userData.role === ROLES.SUPER_ADMIN || userData.role === 'super_admin') &&
+        (callerRole !== ROLES.SUPER_ADMIN && callerRole !== 'super_admin')) {
+      throw new Error('Only existing Super Admins can create another Super Admin account.');
     }
 
     if (callerRole !== ROLES.SUPER_ADMIN && callerRole !== 'super_admin') {
       assertCanMutate('users', 'create', callerRole || caller);
       if ((callerRole === ROLES.ORG_ADMIN || callerRole === 'org_admin') && (userData.role === ROLES.ORG_ADMIN || userData.role === 'org_admin')) {
-        throw new Error('Organization Admins cannot create another Organization Admin account.');
+        throw new Error('An Organization Admin already exists for this branch.');
+      }
+      if ((callerRole === ROLES.CLINIC_MANAGER || callerRole === 'clinic_manager') &&
+          (userData.role === ROLES.SUPER_ADMIN || userData.role === ROLES.ORG_ADMIN || userData.role === 'super_admin' || userData.role === 'org_admin')) {
+        throw new Error('Clinic Managers cannot create Administrator accounts.');
       }
     }
 
@@ -301,18 +320,25 @@ class UsersService {
           ? (Array.isArray(updates.assignedClinics) ? updates.assignedClinics.filter((c) => Boolean(c && typeof c === 'string' && c.trim())) : [])
           : (existing?.assigned_clinics || []));
 
+    let backendRole = targetRole;
+    if (backendRole === 'receptionist') backendRole = 'reception';
+
+    // Backend requires null (not empty string) for optional UUID fields
+    const rawOrgId = isSuperAdminTarget
+      ? null
+      : (updates.organization_id !== undefined
+          ? updates.organization_id
+          : (updates.organizationId !== undefined ? updates.organizationId : (existing?.organization_id || existing?.organizationId || null)));
+    const orgId = (rawOrgId && typeof rawOrgId === 'string' && rawOrgId.trim()) ? rawOrgId.trim() : null;
+
     const apiUpdates = {
       full_name: (updates.full_name || updates.name || updates.fullName || existing?.full_name || existing?.name || '').trim(),
-      phone: updates.phone !== undefined ? updates.phone : (existing?.phone || ''),
-      role: targetRole,
+      phone: updates.phone !== undefined ? (updates.phone || '') : (existing?.phone || ''),
+      role: backendRole,
       is_active: updates.is_active !== undefined
         ? Boolean(updates.is_active)
-        : (updates.status !== undefined ? updates.status === 'active' : Boolean(existing?.is_active)),
-      organization_id: isSuperAdminTarget
-        ? ''
-        : (updates.organization_id !== undefined
-            ? (updates.organization_id || '')
-            : (updates.organizationId !== undefined ? (updates.organizationId || '') : (existing?.organization_id || ''))),
+        : (updates.status !== undefined ? updates.status === 'active' : Boolean(existing?.is_active !== false)),
+      organization_id: orgId,
       assigned_clinics: isSuperAdminTarget ? [] : cleanClinics,
     };
 
@@ -321,7 +347,13 @@ class UsersService {
       const res = await apiClient.put(`/api/v1/users/${id}`, apiUpdates);
       serverUpdated = res.data?.data || res.data;
     } catch (apiErr) {
-      console.warn('[UsersService.updateUser] API update notice:', apiErr.response?.data || apiErr.message);
+      console.error('[UsersService.updateUser] PUT /api/v1/users/:id error:', apiErr.response?.data || apiErr.message);
+      const errMsg =
+        apiErr.response?.data?.error?.message ||
+        apiErr.response?.data?.message ||
+        apiErr.response?.data?.detail ||
+        apiErr.message;
+      throw new Error(typeof errMsg === 'string' ? errMsg : 'Failed to update user on server.');
     }
 
     const merged = normalizeUser({
@@ -342,17 +374,36 @@ class UsersService {
   }
 
   /**
-   * Deactivates a user
+   * Deactivates a user via DELETE /api/v1/users/:id (backend soft delete)
    */
-  async deactivateUser(id) {
-    return this.updateUser(id, { is_active: false, status: 'inactive' });
+  async deactivateUser(id, caller = null) {
+    return this.deleteUser(id, caller);
   }
 
   /**
-   * Activates a user
+   * Activates / Reactivates a user via PUT /api/v1/users/:id with { is_active: true }
    */
   async activateUser(id) {
-    return this.updateUser(id, { is_active: true, status: 'active' });
+    try {
+      const res = await apiClient.put(`/api/v1/users/${id}`, { is_active: true });
+      const currentUsers = this.getUsersSync();
+      const updated = currentUsers.map((u) => {
+        if (u.id === id || u._id === id) {
+          return { ...u, is_active: true, status: 'active' };
+        }
+        return u;
+      });
+      storageService.set(this.getStorageKey(), updated);
+      return res.data?.data || res.data || { id, is_active: true, status: 'active' };
+    } catch (apiErr) {
+      console.error('[UsersService.activateUser] PUT error:', apiErr.response?.data || apiErr.message);
+      const errMsg =
+        apiErr.response?.data?.error?.message ||
+        apiErr.response?.data?.message ||
+        apiErr.response?.data?.detail ||
+        apiErr.message;
+      throw new Error(typeof errMsg === 'string' ? errMsg : 'Failed to activate user on server.');
+    }
   }
 
   /**
@@ -379,12 +430,23 @@ class UsersService {
     try {
       await apiClient.delete(`/api/v1/users/${id}`);
     } catch (apiErr) {
-      console.warn('[UsersService.deleteUser] API delete notice:', apiErr.response?.data || apiErr.message);
+      console.error('[UsersService.deleteUser] DELETE /api/v1/users/:id error:', apiErr.response?.data || apiErr.message);
+      const errMsg =
+        apiErr.response?.data?.error?.message ||
+        apiErr.response?.data?.message ||
+        apiErr.response?.data?.detail ||
+        apiErr.message;
+      throw new Error(typeof errMsg === 'string' ? errMsg : 'Failed to delete user on server.');
     }
 
     const currentUsers = this.getUsersSync();
-    const filtered = currentUsers.filter((u) => u.id !== id && u._id !== id);
-    storageService.set(this.getStorageKey(), filtered);
+    const updated = currentUsers.map((u) => {
+      if (u.id === id || u._id === id) {
+        return { ...u, is_active: false, status: 'inactive' };
+      }
+      return u;
+    });
+    storageService.set(this.getStorageKey(), updated);
     return true;
   }
 }

@@ -1,5 +1,6 @@
 import { storageService } from './storage.service';
 import { createSuccess, createError } from '../utils/response.util';
+import apiClient from '@/lib/api';
 
 /**
  * USER SERVICE
@@ -91,19 +92,62 @@ class UserService {
    */
   async updateUser(id, updates) {
     try {
-      await new Promise(resolve => setTimeout(resolve, 400));
       const users = storageService.get(storageService.KEYS.USERS) || [];
       const index = users.findIndex(u => u.id === id);
-      
-      if (index === -1) return createError("User not found.");
+      const existingUser = index !== -1 ? users[index] : null;
+
+      let targetRole = updates.role || existingUser?.role || 'agent';
+      if (targetRole === 'receptionist') targetRole = 'reception';
+
+      const cleanClinics = updates.assigned_clinics !== undefined
+        ? (Array.isArray(updates.assigned_clinics) ? updates.assigned_clinics.filter(Boolean) : [])
+        : (updates.clinicIds !== undefined
+            ? (Array.isArray(updates.clinicIds) ? updates.clinicIds.filter(Boolean) : [])
+            : (updates.clinicId ? [updates.clinicId] : (existingUser?.assigned_clinics || existingUser?.clinicIds || [])));
+
+      const rawOrgId = updates.organization_id !== undefined
+        ? updates.organization_id
+        : (updates.organizationId !== undefined ? updates.organizationId : (existingUser?.organization_id || existingUser?.organizationId || null));
+      const orgId = (rawOrgId && typeof rawOrgId === 'string' && rawOrgId.trim()) ? rawOrgId.trim() : null;
+
+      const apiPayload = {
+        full_name: (updates.full_name || updates.fullName || updates.name || existingUser?.fullName || existingUser?.full_name || existingUser?.name || '').trim(),
+        phone: updates.phone !== undefined ? (updates.phone || '') : (existingUser?.phone || ''),
+        role: targetRole,
+        is_active: updates.is_active !== undefined
+          ? Boolean(updates.is_active)
+          : (updates.status !== undefined ? updates.status === 'active' : (existingUser?.status === 'active' || existingUser?.is_active !== false)),
+        organization_id: targetRole === 'super_admin' ? null : orgId,
+        assigned_clinics: targetRole === 'super_admin' ? [] : cleanClinics,
+      };
+
+      let apiUser = null;
+      try {
+        const res = await apiClient.put(`/api/v1/users/${id}`, apiPayload);
+        apiUser = res.data?.data || res.data;
+      } catch (apiErr) {
+        console.error('[UserService.updateUser] PUT /api/v1/users/:id error:', apiErr.response?.data || apiErr.message);
+        const errMsg =
+          apiErr.response?.data?.error?.message ||
+          apiErr.response?.data?.message ||
+          apiErr.response?.data?.detail ||
+          apiErr.message;
+        return createError(typeof errMsg === 'string' ? errMsg : 'Failed to update user on server.');
+      }
 
       const updatedUser = {
-        ...users[index],
+        ...(existingUser || {}),
+        ...(apiUser || {}),
         ...updates,
+        id,
         updatedAt: new Date().toISOString()
       };
 
-      users[index] = updatedUser;
+      if (index !== -1) {
+        users[index] = updatedUser;
+      } else {
+        users.unshift(updatedUser);
+      }
       storageService.set(storageService.KEYS.USERS, users);
 
       const { password, ...safeUser } = updatedUser;
@@ -222,18 +266,34 @@ class UserService {
   }
 
   /**
-   * Deletes a user account completely.
+   * Deletes a user account completely via DELETE /api/v1/users/:id.
    */
   async deleteUser(id) {
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
+      try {
+        await apiClient.delete(`/api/v1/users/${id}`);
+      } catch (apiErr) {
+        console.error('[UserService.deleteUser] DELETE /api/v1/users/:id error:', apiErr.response?.data || apiErr.message);
+        const errMsg =
+          apiErr.response?.data?.error?.message ||
+          apiErr.response?.data?.message ||
+          apiErr.response?.data?.detail ||
+          apiErr.message;
+        return createError(typeof errMsg === 'string' ? errMsg : 'Failed to delete user on server.');
+      }
+
       const users = storageService.get(storageService.KEYS.USERS) || [];
-      const index = users.findIndex(u => u.id === id);
+      const index = users.findIndex(u => u.id === id || u._id === id);
 
-      if (index === -1) return createError("User not found.");
+      if (index !== -1) {
+        users.splice(index, 1);
+        storageService.set(storageService.KEYS.USERS, users);
+      }
 
-      users.splice(index, 1);
-      storageService.set(storageService.KEYS.USERS, users);
+      // Also clean up from dental_crm_users cache if present
+      const cUsers = storageService.get('dental_crm_users') || [];
+      const fUsers = cUsers.filter((u) => u.id !== id && u._id !== id);
+      storageService.set('dental_crm_users', fUsers);
 
       return createSuccess(null, "User deleted successfully.");
     } catch (error) {

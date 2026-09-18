@@ -46,7 +46,19 @@ export const DEFAULT_CLINIC_ID = 'clinic-downtown';
  * @param {string} id
  * @returns {{ id: string, name: string, city: string, orgId: string, status: string } | undefined}
  */
-export const getClinicById = (id) => CLINICS.find((c) => c.id === id);
+export const getClinicById = (id) => {
+  if (!id) return undefined;
+  const staticClinic = CLINICS.find((c) => c.id === id);
+  if (staticClinic) return staticClinic;
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = JSON.parse(localStorage.getItem('dental_crm_clinics') || '[]');
+      const dyn = cached.find((c) => c.id === id || c._id === id);
+      if (dyn) return dyn;
+    } catch {}
+  }
+  return undefined;
+};
 
 /**
  * Get all clinics belonging to a specific organization.

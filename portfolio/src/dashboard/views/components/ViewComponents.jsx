@@ -2,12 +2,12 @@ import React from 'react';
 
 export const Badge = ({ children, color = "blue" }) => {
   const colors = {
-    blue:    "bg-blue-100 text-blue-700",
-    green:   "bg-emerald-100 text-emerald-700",
-    amber:   "bg-amber-100 text-amber-700",
-    red:     "bg-red-100 text-red-700",
-    purple:  "bg-purple-100 text-purple-700",
-    slate:   "bg-slate-100 text-slate-600",
+    blue: "bg-blue-100 text-blue-700",
+    green: "bg-emerald-100 text-emerald-700",
+    amber: "bg-amber-100 text-amber-700",
+    red: "bg-red-100 text-red-700",
+    purple: "bg-purple-100 text-purple-700",
+    slate: "bg-slate-100 text-slate-600",
   };
   return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${colors[color] || colors.blue}`}>{children}</span>;
 };
@@ -47,7 +47,7 @@ export const PageHeader = ({ title, description, action, onAction }) => (
   </div>
 );
 
-export const Table = ({ headers, rows }) => (
+export const Table = ({ headers, rows, isLoading = false, emptyMessage = 'No records found', emptySubtext = 'Try adjusting or clearing your filters', footer = null }) => (
   <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
     <table className="w-full text-sm">
       <thead className="bg-slate-50 border-b border-slate-200">
@@ -58,12 +58,21 @@ export const Table = ({ headers, rows }) => (
         </tr>
       </thead>
       <tbody className="divide-y divide-slate-100">
-        {rows.length === 0 ? (
+        {isLoading ? (
+          <tr>
+            <td colSpan={headers.length} className="px-4 py-12 text-center text-slate-400">
+              <div className="flex flex-col items-center justify-center gap-2">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm font-medium text-slate-600">Loading records...</span>
+              </div>
+            </td>
+          </tr>
+        ) : rows.length === 0 ? (
           <tr>
             <td colSpan={headers.length} className="px-4 py-10 text-center text-slate-400">
               <div className="flex flex-col items-center justify-center gap-1.5">
-                <span className="text-base font-medium text-slate-600">No records found</span>
-                <span className="text-xs text-slate-400">Try adjusting or clearing your filters</span>
+                <span className="text-base font-medium text-slate-600">{emptyMessage}</span>
+                <span className="text-xs text-slate-400">{emptySubtext}</span>
               </div>
             </td>
           </tr>
@@ -78,5 +87,6 @@ export const Table = ({ headers, rows }) => (
         )}
       </tbody>
     </table>
+    {footer}
   </div>
 );

@@ -3,8 +3,14 @@ import { X, User, Shield, Building2, Mail, Phone, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { userService } from '@/services/user.service';
 import { storageService } from '@/services/storage.service';
+import { useAuth } from '@/context/AuthContext';
 
 export function EditUserModal({ isOpen, onClose, onSuccess, user }) {
+  const { currentUser } = useAuth();
+  const isClinicManager =
+    currentUser?.role === 'clinic_manager' ||
+    currentUser?.role === 'manager';
+
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -42,12 +48,16 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }) {
     setIsSubmitting(true);
     try {
       const updates = {
+        full_name: formData.fullName.trim(),
         fullName: formData.fullName.trim(),
+        phone: formData.phone || '',
         role: formData.role,
+        is_active: formData.status === 'active',
         status: formData.status,
+        organization_id: user.organization_id || user.organizationId || null,
+        assigned_clinics: formData.clinicId ? [formData.clinicId] : (user.assigned_clinics || user.assignedClinics || user.clinicIds || []),
         clinicId: formData.clinicId || null,
         clinicIds: formData.clinicId ? [formData.clinicId] : [],
-        phone: formData.phone || null,
       };
 
       const res = await userService.updateUser(user.id, updates);
@@ -133,13 +143,23 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }) {
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-medium cursor-pointer"
               >
-                <option value="super_admin">Super Admin (All Access)</option>
-                <option value="org_admin">Organization Admin</option>
-                <option value="clinic_manager">Clinic Manager</option>
-                <option value="agent">Sales / Call Agent</option>
-                <option value="receptionist">Front Desk Receptionist</option>
-                <option value="finance">Finance Controller</option>
-                <option value="auditor">Auditor (Read-Only)</option>
+                {isClinicManager ? (
+                  <>
+                    <option value="agent">Sales / Call Agent</option>
+                    <option value="receptionist">Front Desk Receptionist</option>
+                    <option value="finance">Finance Controller</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="super_admin">Super Admin (All Access)</option>
+                    <option value="org_admin">Organization Admin</option>
+                    <option value="clinic_manager">Clinic Manager</option>
+                    <option value="agent">Sales / Call Agent</option>
+                    <option value="receptionist">Front Desk Receptionist</option>
+                    <option value="finance">Finance Controller</option>
+                    <option value="auditor">Auditor (Read-Only)</option>
+                  </>
+                )}
               </select>
             </div>
             <div>

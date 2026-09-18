@@ -20,9 +20,15 @@ export function InviteUserModal({ isOpen, onClose, onSuccess }) {
   const [inviteLink, setInviteLink] = useState("");
   const { user: currentUser } = useCurrentUser();
 
-  // Filter roles: Admins cannot be created via this modal.
+  const isClinicManager =
+    currentUser?.role === ROLES.CLINIC_MANAGER ||
+    currentUser?.role === 'clinic_manager' ||
+    currentUser?.role === 'manager';
+
+  // Filter roles: Admins cannot be created via this modal; Clinic Managers cannot create other clinic managers
   const availableRoles = Object.values(ROLES).filter((r) => {
     if (r === ROLES.SUPER_ADMIN || r === ROLES.ORG_ADMIN) return false;
+    if (isClinicManager && r === ROLES.CLINIC_MANAGER) return false;
     return true;
   });
 

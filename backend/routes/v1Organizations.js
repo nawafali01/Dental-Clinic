@@ -213,6 +213,8 @@ router.get("/:id", resolveAuth, async (req, res) => {
     console.error("[GET /api/v1/organizations/:id]", err.message);
     res.status(500).json({ success: false, error: { message: err.message } });
   }
+});
+
 /**
  * PUT /api/v1/organizations/:id
  * Body:

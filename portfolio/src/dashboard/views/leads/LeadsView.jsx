@@ -1,16 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Building2, RotateCcw, X } from 'lucide-react';
+import { Search, Building2, RotateCcw, X, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useClinic } from '@/context/ClinicContext';
 import { useOrg } from '@/dashboard/shared/context/OrgContext';
 import { storageService } from '@/services/storage.service';
+import { leadsService } from '@/services/leadsService';
 import { scopeData } from '@/utils/scopeData';
 import { PermissionGuard } from '@/guards/PermissionGuard';
 import { buildRoleUrl } from '@/utils/getRoleBaseUrl';
 import { Badge, StatCard, Table } from '../components/ViewComponents';
+import { Pagination } from '@/dashboard/shared/components/ui/Pagination';
 import { NewLeadModal } from './components/NewLeadModal';
 import { CLINICS, getClinicById, getClinicsByOrgId, isSameClinic } from '@/constants/clinics';
+import { clinicsService } from '@/services/clinicsService';
 import { organizationsService, INITIAL_ORGANIZATIONS } from '@/services/organizationsService';
 
 const STATUS_TABS = [
@@ -52,13 +55,22 @@ export const LeadsView = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Active role detection
-  const role = currentUser?.role;
+  const role = currentUser?.role?.toLowerCase() || '';
   const isSuperAdmin = role === 'super_admin';
   const isOrgAdmin = role === 'org_admin';
   const isClinicManager = role === 'clinic_manager';
-  const isReceptionist = role === 'receptionist';
+  const isReceptionist = role === 'receptionist' || role === 'reception';
   const isAgent = role === 'agent';
   const isAuditor = role === 'auditor';
+  const isFinance = role === 'finance';
+
+  // Exclude finance and auditor from pagination as requested
+  const isFinanceOrAuditor = isFinance || isAuditor;
+  const shouldPaginate = !isFinanceOrAuditor;
+
+  // Pagination state (same as UsersView)
+  const PAGE_SIZE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Clinic Manager assigned clinic resolution
   const managerClinicId = currentUser?.clinicId || (currentUser?.clinicIds && currentUser?.clinicIds[0]) || 'clinic-downtown';
@@ -79,59 +91,113 @@ export const LeadsView = () => {
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrgFilter, setSelectedOrgFilter] = useState('all');
-  const [selectedClinicFilter, setSelectedClinicFilter] = useState(
-    (isClinicManager || isAgent || isReceptionist) ? managerClinicId : (selectedClinicId && selectedClinicId !== 'all' ? selectedClinicId : 'all')
-  );
+  const [selectedClinicFilter, setSelectedClinicFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [backendClinics, setBackendClinics] = useState(() => clinicsService.getClinics() || []);
+
+  useEffect(() => {
+    clinicsService.fetchClinics().then((res) => {
+      if (res?.data && Array.isArray(res.data)) {
+        setBackendClinics(res.data);
+      }
+    }).catch(() => {});
+  }, []);
 
   // Organizations list (for Super Admin)
+  const [backendOrgs, setBackendOrgs] = useState(() => {
+    const sync = organizationsService.getOrganizationsSync();
+    return (sync && sync.length > 0) ? sync : [];
+  });
+
+  useEffect(() => {
+    organizationsService.getOrganizations().then((res) => {
+      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        setBackendOrgs(res.data);
+      }
+    }).catch(() => {});
+  }, []);
+
   const organizations = useMemo(() => {
+    if (backendOrgs && Array.isArray(backendOrgs) && backendOrgs.length > 0) {
+      return backendOrgs;
+    }
     const orgs = organizationsService.getOrganizationsSync();
     if (orgs && Array.isArray(orgs) && orgs.length > 0) return orgs;
     return INITIAL_ORGANIZATIONS;
-  }, []);
+  }, [backendOrgs]);
 
   // Clinics available to the current user and filter
   const availableClinics = useMemo(() => {
-    if (isOrgAdmin && userOrgId) {
-      return getClinicsByOrgId(userOrgId);
-    }
-    if (isSuperAdmin) {
-      if (selectedOrgFilter === 'all') {
-        return CLINICS.filter((c) => !c.isAlias);
+    const list = [...backendClinics];
+    for (const c of CLINICS) {
+      if (!c.isAlias && !list.some((b) => b.id === c.id)) {
+        list.push(c);
       }
-      return CLINICS.filter((c) => !c.isAlias && c.orgId === selectedOrgFilter);
     }
-    if (userOrgId) {
-      return getClinicsByOrgId(userOrgId);
+    if (isOrgAdmin && userOrgId && userOrgId !== 'org-001') {
+      return list.filter((c) => c.orgId === userOrgId || c.organization_id === userOrgId);
     }
-    return CLINICS.filter((c) => !c.isAlias);
-  }, [isOrgAdmin, isSuperAdmin, userOrgId, selectedOrgFilter]);
+    if (isSuperAdmin && selectedOrgFilter !== 'all' && selectedOrgFilter !== 'org-001') {
+      return list.filter((c) => c.orgId === selectedOrgFilter || c.organization_id === selectedOrgFilter);
+    }
+    return list;
+  }, [isOrgAdmin, isSuperAdmin, userOrgId, selectedOrgFilter, backendClinics]);
 
-  // 1. Fetch raw data and pass through multi-tenant scoping utility
-  const rawLeads = storageService.get(storageService.KEYS.LEADS) || [];
+  // 1. Fetch leads strictly from live API (mock data removed)
+  const [leads, setLeads] = useState(() => leadsService.getLeadsSync());
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadLeads = async () => {
+      setIsLoading(true);
+      try {
+        const orgParam = (selectedOrgFilter !== 'all' && selectedOrgFilter !== 'org-001') ? selectedOrgFilter : undefined;
+        const clinicParam = (selectedClinicFilter !== 'all' && !selectedClinicFilter.startsWith('clinic-')) ? selectedClinicFilter : undefined;
+
+        const res = await leadsService.fetchLeads({
+          organization_id: orgParam,
+          clinic_id: clinicParam,
+        });
+        if (isMounted) {
+          setLeads(res?.data || []);
+        }
+      } catch (err) {
+        console.warn('Error loading leads from API:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    loadLeads();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedOrgFilter, selectedClinicFilter, refreshTrigger, isSuperAdmin, userOrgId]);
+
+  // 2. Pass through multi-tenant scoping utility
   const scopedLeads = useMemo(() => {
     return scopeData({
       resource: 'leads',
-      data: rawLeads,
+      data: leads,
       currentUser: scopedUser,
-      selectedClinicId: (isClinicManager || isReceptionist) ? managerClinicId : ((isSuperAdmin || isOrgAdmin) ? 'all' : selectedClinicId),
+      selectedClinicId: 'all',
     });
-  }, [rawLeads, scopedUser, isSuperAdmin, isOrgAdmin, isClinicManager, isReceptionist, managerClinicId, selectedClinicId, refreshTrigger]);
+  }, [leads, scopedUser]);
 
-  // 2. Apply interactive page-level filters (Search, Org, Clinic, Status)
+  // 3. Apply interactive page-level filters (Search, Org, Clinic, Status)
   const filteredLeads = useMemo(() => {
     return scopedLeads.filter((lead) => {
       // Organization filter (Super Admin only)
       if (isSuperAdmin && selectedOrgFilter !== 'all') {
-        const leadClinic = getClinicById(lead.clinicId);
-        const leadOrgId = lead.orgId || lead.organizationId || leadClinic?.orgId;
+        const leadClinic = getClinicById(lead.clinicId) || backendClinics.find((c) => c.id === lead.clinicId);
+        const leadOrgId = lead.orgId || lead.organizationId || leadClinic?.orgId || leadClinic?.organization_id;
         if (leadOrgId !== selectedOrgFilter) return false;
       }
 
       // Clinic filter
-      if (!isClinicManager && !isReceptionist && selectedClinicFilter !== 'all') {
-        if (!isSameClinic(lead.clinicId, selectedClinicFilter)) return false;
+      if (selectedClinicFilter !== 'all') {
+        const matches = lead.clinicId === selectedClinicFilter || isSameClinic(lead.clinicId, selectedClinicFilter);
+        if (!matches) return false;
       }
 
       // Status filter
@@ -147,7 +213,7 @@ export const LeadsView = () => {
         const phone = (lead.phone || lead.phoneNumber || '').toLowerCase();
         const treatment = (lead.treatment || '').toLowerCase();
         const source = (lead.source || '').toLowerCase();
-        const clinicObj = getClinicById(lead.clinicId);
+        const clinicObj = getClinicById(lead.clinicId) || backendClinics.find((c) => c.id === lead.clinicId);
         const clinicName = (clinicObj?.name || '').toLowerCase();
 
         const matches =
@@ -163,7 +229,7 @@ export const LeadsView = () => {
 
       return true;
     });
-  }, [scopedLeads, isSuperAdmin, selectedOrgFilter, selectedClinicFilter, statusFilter, searchQuery]);
+  }, [scopedLeads, isSuperAdmin, selectedOrgFilter, selectedClinicFilter, statusFilter, searchQuery, backendClinics]);
 
   const hasActiveFilters = Boolean(
     searchQuery.trim() ||
@@ -172,12 +238,35 @@ export const LeadsView = () => {
     statusFilter !== 'all'
   );
 
+  // Reset page when any filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedOrgFilter, selectedClinicFilter, statusFilter]);
+
   const resetFilters = () => {
     setSearchQuery('');
     if (isSuperAdmin) setSelectedOrgFilter('all');
     setSelectedClinicFilter('all');
     setStatusFilter('all');
+    setCurrentPage(1);
   };
+
+  // Sort leads newest first so newly registered leads always appear at the top
+  const sortedLeads = useMemo(() => {
+    return [...filteredLeads].sort((a, b) => {
+      const timeA = new Date(a.createdAt || a.created_at || a.updatedAt || 0).getTime();
+      const timeB = new Date(b.createdAt || b.created_at || b.updatedAt || 0).getTime();
+      return timeB - timeA;
+    });
+  }, [filteredLeads]);
+
+  // Paginated slice
+  const totalPages = Math.max(1, Math.ceil(sortedLeads.length / PAGE_SIZE));
+  const displayedLeads = useMemo(() => {
+    if (!shouldPaginate) return sortedLeads;
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return sortedLeads.slice(start, start + PAGE_SIZE);
+  }, [sortedLeads, currentPage, shouldPaginate]);
 
   // Dynamic KPI Counts
   const total = filteredLeads.length;
@@ -356,6 +445,17 @@ export const LeadsView = () => {
               </select>
             </div>
 
+            {/* Sync / Refresh Button */}
+            <button
+              onClick={() => setRefreshTrigger((prev) => prev + 1)}
+              disabled={isLoading}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+              title="Sync leads with backend API"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-primary' : ''}`} />
+              <span>{isLoading ? 'Syncing...' : 'Sync'}</span>
+            </button>
+
             {/* Clear Filters Button */}
             {hasActiveFilters && (
               <button
@@ -405,10 +505,13 @@ export const LeadsView = () => {
       {/* Leads Table */}
       {isReceptionist ? (
         <Table
+          isLoading={isLoading}
+          emptyMessage="No leads found in backend database"
+          emptySubtext={hasActiveFilters ? "Try adjusting or clearing your filters" : "No leads have been registered yet"}
           headers={['Patient Name', 'Phone', 'Email', 'Status', 'Clinic Branch', 'Date Received', 'Action']}
-          rows={filteredLeads.map((l) => {
-            const clinic = getClinicById(l.clinicId);
-            const clinicName = clinic?.name || l.clinicId || 'Downtown Dental Excellence';
+          rows={displayedLeads.map((l) => {
+            const clinic = getClinicById(l.clinicId) || backendClinics.find((c) => c.id === l.clinicId);
+            const clinicName = clinic?.name || (l.clinicId === 'f0c74f65-f068-47ad-b82c-27f3413976e2' ? 'Doctor Hospital' : l.clinicId) || 'Doctor Hospital';
             return [
               <span key="name" className="font-semibold text-slate-900">
                 {l.patientName || l.name || 'Anonymous Patient'}
@@ -432,13 +535,28 @@ export const LeadsView = () => {
               </button>,
             ];
           })}
+          footer={
+            shouldPaginate && filteredLeads.length > 0 ? (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredLeads.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setCurrentPage}
+                itemLabel="leads"
+              />
+            ) : null
+          }
         />
       ) : (
         <Table
+          isLoading={isLoading}
+          emptyMessage="No leads found in backend database"
+          emptySubtext={hasActiveFilters ? "Try adjusting or clearing your filters" : "Click '+ New Lead' above to create a new lead in the backend"}
           headers={['Lead Name', 'Status', 'Source / Treatment', 'Assigned Agent', 'Clinic', 'Action']}
-          rows={filteredLeads.map((l) => {
-            const clinic = getClinicById(l.clinicId);
-            const clinicName = clinic?.name || l.clinicId || 'Downtown Dental Excellence';
+          rows={displayedLeads.map((l) => {
+            const clinic = getClinicById(l.clinicId) || backendClinics.find((c) => c.id === l.clinicId);
+            const clinicName = clinic?.name || (l.clinicId === 'f0c74f65-f068-47ad-b82c-27f3413976e2' ? 'Doctor Hospital' : l.clinicId) || 'Doctor Hospital';
             return [
               <div key="name" className="flex flex-col">
                 <span className="font-semibold text-slate-900">{l.patientName || l.name || 'Anonymous Lead'}</span>
@@ -452,8 +570,16 @@ export const LeadsView = () => {
                 {l.status || 'new'}
               </Badge>,
               <div key="treatment" className="flex flex-col">
-                <span className="font-medium text-slate-800">{l.treatment || 'Consultation'}</span>
-                {l.source && <span className="text-[11px] text-slate-400">{l.source}</span>}
+                <span className="font-medium text-slate-800">{l.treatment_interest || l.treatment || 'Consultation'}</span>
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                  {l.source && <span className="capitalize">{l.source.replace('_', ' ')}</span>}
+                  {l.expected_revenue !== undefined && l.expected_revenue !== null ? (
+                    <>
+                      <span>•</span>
+                      <span className="font-medium text-emerald-600">${Number(l.expected_revenue).toLocaleString()}</span>
+                    </>
+                  ) : null}
+                </div>
               </div>,
               l.assignedAgentName || l.assignedAgentId || (isAgent ? currentUser?.name : 'Unassigned'),
               <div key="clinic" className="flex flex-col">
@@ -469,6 +595,18 @@ export const LeadsView = () => {
               </button>,
             ];
           })}
+          footer={
+            shouldPaginate && filteredLeads.length > 0 ? (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredLeads.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setCurrentPage}
+                itemLabel="leads"
+              />
+            ) : null
+          }
         />
       )}
 
@@ -476,7 +614,17 @@ export const LeadsView = () => {
       <NewLeadModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSuccess={() => setRefreshTrigger((prev) => prev + 1)}
+        onSuccess={(created) => {
+          if (created) {
+            setLeads((prev) => [created, ...prev.filter((l) => l.id !== created.id)]);
+            setStatusFilter('all');
+            setSelectedClinicFilter('all');
+            setSelectedOrgFilter('all');
+            setSearchQuery('');
+            setCurrentPage(1);
+          }
+          setRefreshTrigger((prev) => prev + 1);
+        }}
         currentUser={scopedUser}
         selectedClinicId={selectedClinicFilter !== 'all' ? selectedClinicFilter : selectedClinicId}
       />

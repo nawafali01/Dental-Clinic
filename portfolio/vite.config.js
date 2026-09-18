@@ -27,18 +27,20 @@ export default defineConfig({
       '/api/ai':           { target: 'http://localhost:5000', changeOrigin: true, secure: false },
       '/api/health':       { target: 'http://localhost:5000', changeOrigin: true, secure: false },
 
-      // 2. Real Dental CRM FastAPI backend (Faraz's machine: 192.168.18.195:8000)
+      // 2. Real Dental CRM FastAPI backend (LocalTunnel)
       // Handles /api/v1/auth/login, /api/v1/users, and other CRM endpoints
       '/api/v1': {
-        target: 'http://192.168.18.195:8000',
+        target: 'https://neat-sheep-accept.loca.lt',
         changeOrigin: true,
         secure: false,
+        headers: { 'bypass-tunnel-reminder': 'true' },
       },
       // Fallback for any other /api route
       '/api': {
-        target: 'http://192.168.18.195:8000',
+        target: 'https://neat-sheep-accept.loca.lt',
         changeOrigin: true,
         secure: false,
+        headers: { 'bypass-tunnel-reminder': 'true' },
       },
     },
   },

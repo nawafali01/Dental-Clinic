@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Sparkles, Send, Check, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Sparkles, Send, Check, CheckCircle2, ShieldCheck, RefreshCw, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useClinic } from '@/context/ClinicContext';
-import { getLeadByIdScoped, updateLeadStatus } from '@/services/leadsService';
+import { getLeadByIdScoped, updateLead, fetchLeadById } from '@/services/leadsService';
 import { buildRoleUrl } from '@/utils/getRoleBaseUrl';
+import { EditLeadModal } from './components/EditLeadModal';
+import { AssignLeadModal } from './components/AssignLeadModal';
 
 export const LeadDetailView = () => {
   const { id } = useParams();
@@ -17,20 +19,43 @@ export const LeadDetailView = () => {
   const [status, setStatus] = useState('');
   const [copilotDraft, setCopilotDraft] = useState('');
   const [copilotApproved, setCopilotApproved] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const role = currentUser?.role;
   const listUrl = buildRoleUrl('/leads', role);
 
-  useEffect(() => {
-    const data = getLeadByIdScoped(id, currentUser, selectedClinicId);
-    setLead(data);
-    if (data) {
-      setStatus(data.status || 'new');
+  const loadLead = useCallback(async () => {
+    // 1. Instant render from local cache / scoped check
+    const cached = getLeadByIdScoped(id, currentUser, selectedClinicId);
+    if (cached) {
+      setLead(cached);
+      setStatus(cached.status || 'new');
       setCopilotDraft(
-        `Hi ${data.patientName}, this is ${currentUser?.fullName || currentUser?.name || 'Alex'} from Downtown Dental Excellence. I'm reaching out regarding your ${data.treatment || 'dental'} inquiry. We have consultation slots open this week—would you like me to reserve a time for you?`
+        `Hi ${cached.patientName}, this is ${currentUser?.fullName || currentUser?.name || 'Alex'} from Downtown Dental Excellence. I'm reaching out regarding your ${cached.treatment_interest || cached.treatment || 'dental'} inquiry. We have consultation slots open this week—would you like me to reserve a time for you?`
       );
     }
+
+    // 2. Fetch live from GET /api/v1/leads/{lead_id}
+    setIsLoading(true);
+    try {
+      const res = await fetchLeadById(id);
+      if (res) {
+        const scoped = getLeadByIdScoped(id, currentUser, selectedClinicId) || res;
+        setLead(scoped);
+        setStatus(scoped.status || 'new');
+      }
+    } catch (err) {
+      console.warn('[LeadDetailView] API error loading lead:', err);
+    } finally {
+      setIsLoading(false);
+    }
   }, [id, currentUser, selectedClinicId]);
+
+  useEffect(() => {
+    loadLead();
+  }, [loadLead]);
 
   if (!lead) {
     return (
@@ -54,18 +79,24 @@ export const LeadDetailView = () => {
   const isReceptionist = currentUser?.role === 'receptionist' || lead.isBasicView;
   const isAuditor = currentUser?.role === 'auditor';
 
-  const handleStatusChange = (newStatus) => {
+  const handleStatusChange = async (newStatus) => {
     if (isAuditor) {
       toast.error('Unauthorized: Auditor role has read-only access');
       return;
     }
     setStatus(newStatus);
-    updateLeadStatus(lead.id, newStatus);
+    try {
+      await updateLead(lead.id, { ...lead, status: newStatus }, currentUser);
+      toast.success(`Pipeline stage updated to ${newStatus.toUpperCase()}`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update stage');
+    }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <button
           onClick={() => navigate(listUrl)}
           className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors flex items-center gap-1 cursor-pointer"
@@ -73,18 +104,41 @@ export const LeadDetailView = () => {
           ← Back to Leads List
         </button>
 
-        {isReceptionist && (
-          <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">
-            Receptionist Basic Contact View
-          </span>
-        )}
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={loadLead}
+            disabled={isLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+            title="Sync lead record from API (GET /api/v1/leads/{lead_id})"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-primary' : ''}`} />
+            <span>{isLoading ? 'Syncing...' : 'Sync'}</span>
+          </button>
 
-        {isAuditor && (
-          <span className="px-3 py-1 bg-purple-100 text-purple-800 text-xs font-semibold rounded-full flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
-            Auditor Read-Only Record
-          </span>
-        )}
+          {!isReceptionist && !isAuditor && (
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-xl text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-2xs"
+              title="Edit lead details (PUT /api/v1/leads/{lead_id})"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              <span>Edit Lead</span>
+            </button>
+          )}
+
+          {isReceptionist && (
+            <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">
+              Receptionist Basic Contact View
+            </span>
+          )}
+
+          {isAuditor && (
+            <span className="px-3 py-1 bg-purple-100 text-purple-800 text-xs font-semibold rounded-full flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+              Auditor Read-Only Record
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 space-y-6 shadow-sm">
@@ -162,21 +216,38 @@ export const LeadDetailView = () => {
         {!isReceptionist && (
           <div className="border-t border-slate-100 pt-6 space-y-4">
             <h2 className="text-lg font-bold text-slate-900">CRM Pipeline Details</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
                 <p className="text-xs font-semibold text-slate-400 uppercase">Treatment Interest</p>
-                <p className="text-sm font-semibold text-slate-800 mt-1">{lead.treatment || 'General Dentistry'}</p>
+                <p className="text-sm font-semibold text-slate-800 mt-1">{lead.treatment_interest || lead.treatment || 'General Dentistry'}</p>
               </div>
 
               <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                <p className="text-xs font-semibold text-slate-400 uppercase">Lead Source</p>
-                <p className="text-sm font-semibold text-slate-800 mt-1">{lead.source || 'Website Contact Form'}</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase">Expected Revenue</p>
+                <p className="text-sm font-bold text-emerald-600 mt-1">${Number(lead.expected_revenue ?? lead.expectedRevenue ?? 1).toLocaleString()}</p>
               </div>
 
               <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                <p className="text-xs font-semibold text-slate-400 uppercase">Assigned Agent</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase">Source & Priority</p>
+                <p className="text-sm font-semibold text-slate-800 mt-1 capitalize">
+                  {(lead.source || 'other').replace('_', ' ')} • <span className="uppercase text-xs font-bold text-slate-600">{lead.priority || 'medium'}</span>
+                </p>
+              </div>
+
+              <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-slate-400 uppercase">Assigned Agent</p>
+                  {!isAuditor && (
+                    <button
+                      onClick={() => setIsAssignModalOpen(true)}
+                      className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+                    >
+                      Assign
+                    </button>
+                  )}
+                </div>
                 <p className="text-sm font-semibold text-slate-800 mt-1">
-                  {lead.assignedAgentName || lead.assignedAgentId || (currentUser?.role === 'agent' ? currentUser.name : 'Unassigned')}
+                  {lead.assignedAgentName || lead.assigned_to || lead.assignedAgentId || (currentUser?.role === 'agent' ? currentUser.name : 'Unassigned')}
                 </p>
               </div>
             </div>
@@ -264,6 +335,30 @@ export const LeadDetailView = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Lead Modal (PUT /api/v1/leads/{lead_id}) */}
+      <EditLeadModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSuccess={(updated) => {
+          setLead(updated);
+          setStatus(updated.status || 'new');
+        }}
+        lead={lead}
+        currentUser={currentUser}
+      />
+
+      {/* Assign Lead Modal (POST /api/v1/leads/{lead_id}/assign?user_id={user_id}) */}
+      {lead && (
+        <AssignLeadModal
+          isOpen={isAssignModalOpen}
+          onClose={() => setIsAssignModalOpen(false)}
+          onSuccess={() => loadLead()}
+          leadId={lead.id}
+          currentAssignedTo={lead.assigned_to || lead.assignedAgentId}
+          leadName={lead.patientName || lead.name}
+        />
+      )}
     </div>
   );
 };

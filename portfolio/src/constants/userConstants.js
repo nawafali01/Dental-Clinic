@@ -6,7 +6,7 @@ import { ROLES } from './permissions';
 
 export const ROLE_OPTIONS = [
   { value: ROLES.SUPER_ADMIN, label: 'Super Admin (Global Scope)' },
-  { value: ROLES.ORG_ADMIN, label: 'Organization Admin (Multi-Clinic)' },
+  { value: ROLES.ORG_ADMIN, label: 'Organization Admin (Org Admin)' },
   { value: ROLES.CLINIC_MANAGER, label: 'Clinic Manager' },
   { value: ROLES.AGENT, label: 'AI Operations Agent' },
   { value: ROLES.RECEPTIONIST, label: 'Front Desk / Receptionist' },

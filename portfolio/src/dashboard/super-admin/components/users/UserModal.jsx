@@ -10,6 +10,7 @@ import { useRole } from '@/dashboard/shared/context/RoleContext';
 import { useAuth } from '@/context/AuthContext';
 import { useOrg } from '@/dashboard/shared/context/OrgContext';
 import apiClient from '@/lib/api';
+import { normalizeRole } from '@/utils/normalizeUser';
 import {
   ROLE_OPTIONS,
   USER_STATUS_OPTIONS,
@@ -43,32 +44,32 @@ const userSchema = z.object({
   { message: 'Organization is required for this role', path: ['organizationId'] }
 );
 
-export function UserModal({ isOpen, onClose, onSuccess, userToEdit = null, lockedOrgId = null }) {
+export function UserModal({ isOpen, onClose, onSuccess, userToEdit = null, lockedOrgId = null, lockedClinicIds = null }) {
   const isEdit = Boolean(userToEdit);
   const { userRole } = useRole();
   const { currentUser } = useAuth();
   const { currentOrg } = useOrg();
 
+  const effectiveRole = normalizeRole(currentUser?.role || userRole);
   const isSuperAdmin =
-    currentUser?.role === ROLES.SUPER_ADMIN ||
-    currentUser?.role === 'super_admin' ||
-    userRole === ROLES.SUPER_ADMIN ||
-    userRole === 'super_admin';
+    effectiveRole === 'super_admin' ||
+    normalizeRole(currentUser?.role) === 'super_admin' ||
+    normalizeRole(userRole) === 'super_admin';
+
+  const isClinicManager =
+    !isSuperAdmin &&
+    (effectiveRole === 'clinic_manager' ||
+      normalizeRole(userRole) === 'clinic_manager' ||
+      normalizeRole(currentUser?.role) === 'clinic_manager' ||
+      Boolean(lockedClinicIds && lockedClinicIds.length > 0));
 
   const isOrgAdmin =
     !isSuperAdmin &&
-    (userRole === ROLES.ORG_ADMIN ||
-      userRole === 'org_admin' ||
-      currentUser?.role === ROLES.ORG_ADMIN ||
-      currentUser?.role === 'org_admin' ||
+    !isClinicManager &&
+    (effectiveRole === 'org_admin' ||
+      normalizeRole(userRole) === 'org_admin' ||
+      normalizeRole(currentUser?.role) === 'org_admin' ||
       Boolean(lockedOrgId));
-
-  const isClinicManager = !isSuperAdmin && !isOrgAdmin && (
-    userRole === ROLES.CLINIC_MANAGER ||
-    userRole === 'clinic_manager' ||
-    currentUser?.role === ROLES.CLINIC_MANAGER ||
-    currentUser?.role === 'clinic_manager'
-  );
 
   const activeOrgId =
     lockedOrgId ||
@@ -141,30 +142,41 @@ export function UserModal({ isOpen, onClose, onSuccess, userToEdit = null, locke
           status: userToEdit.status || 'active',
         });
       } else {
-        const defaultRole = isSuperAdmin && !isOrgAdmin ? ROLES.ORG_ADMIN : ROLES.AGENT;
+        const defaultRole = isClinicManager
+          ? ROLES.AGENT
+          : isSuperAdmin && !isOrgAdmin
+          ? ROLES.ORG_ADMIN
+          : ROLES.AGENT;
+        // When locked clinic IDs are provided (Clinic Manager), pre-assign them
+        const preAssignedClinics = Array.isArray(lockedClinicIds) && lockedClinicIds.length > 0
+          ? lockedClinicIds
+          : [];
         setFormData({
           ...DEFAULT_USER_FORM_STATE,
           organizationId: isSuperAdmin && !isOrgAdmin ? '' : activeOrgId,
           role: defaultRole,
+          assignedClinics: preAssignedClinics,
         });
       }
       setErrors({});
     }
-  }, [isOpen, userToEdit, lockedOrgId, isOrgAdmin, isSuperAdmin, activeOrgId]);
+  }, [isOpen, userToEdit, lockedOrgId, lockedClinicIds, isOrgAdmin, isClinicManager, isSuperAdmin, activeOrgId]);
 
   const availableRoleOptions = useMemo(() => {
     // Editing an existing Super Admin — keep all options
-    if (isEdit && userToEdit?.role === ROLES.SUPER_ADMIN) return ROLE_OPTIONS;
+    if (isEdit && (userToEdit?.role === ROLES.SUPER_ADMIN || normalizeRole(userToEdit?.role) === 'super_admin')) {
+      return ROLE_OPTIONS.filter((r) => r.value !== ROLES.AUDITOR);
+    }
 
     if (isSuperAdmin) {
-      // Super Admin can create any role EXCEPT super_admin and auditor
+      // Super Admin can create all roles EXCEPT super_admin and auditor
       return ROLE_OPTIONS.filter(
         (r) => r.value !== ROLES.SUPER_ADMIN && r.value !== ROLES.AUDITOR
       );
     }
 
     if (isOrgAdmin) {
-      // Org Admin can create any role EXCEPT super_admin, org_admin, and auditor
+      // Org Admin CANNOT create super_admin and CANNOT create org_admin; can create clinic_manager, agent, receptionist, finance
       return ROLE_OPTIONS.filter(
         (r) =>
           r.value !== ROLES.SUPER_ADMIN &&
@@ -174,23 +186,21 @@ export function UserModal({ isOpen, onClose, onSuccess, userToEdit = null, locke
     }
 
     if (isClinicManager) {
-      // Clinic Manager can only create: clinic_manager, agent, receptionist, finance
+      // Clinic Manager can only create staff roles: agent, receptionist, finance (cannot create clinic manager or org admin)
       return ROLE_OPTIONS.filter(
         (r) =>
-          r.value === ROLES.CLINIC_MANAGER ||
           r.value === ROLES.AGENT ||
           r.value === ROLES.RECEPTIONIST ||
           r.value === ROLES.FINANCE
       );
     }
 
-    // Fallback — same as clinic manager
+    // Fallback — roles excluding super_admin, org_admin, and auditor
     return ROLE_OPTIONS.filter(
       (r) =>
-        r.value === ROLES.CLINIC_MANAGER ||
-        r.value === ROLES.AGENT ||
-        r.value === ROLES.RECEPTIONIST ||
-        r.value === ROLES.FINANCE
+        r.value !== ROLES.SUPER_ADMIN &&
+        r.value !== ROLES.ORG_ADMIN &&
+        r.value !== ROLES.AUDITOR
     );
   }, [isSuperAdmin, isOrgAdmin, isClinicManager, lockedOrgId, isEdit, userToEdit]);
 
@@ -243,11 +253,39 @@ export function UserModal({ isOpen, onClose, onSuccess, userToEdit = null, locke
       toast.error('Super Admin accounts cannot be created from User Management.');
       return;
     }
-    if ((isOrgAdmin || lockedOrgId) && (formData.role === ROLES.ORG_ADMIN || formData.role === 'org_admin')) {
-      toast.error('Organization Admins cannot create another Organization Admin account.');
-      return;
+    if (formData.role === ROLES.ORG_ADMIN || formData.role === 'org_admin') {
+      if (!isSuperAdmin && (isOrgAdmin || lockedOrgId)) {
+        toast.error('An Organization Admin already exists for this branch.');
+        return;
+      }
+
+      // Check if target organization or branch already has an active Org Admin
+      const allUsers = usersService.getUsersSync() || [];
+      const targetOrg = formData.organizationId || lockedOrgId || activeOrgId;
+      const targetClinics = formData.assignedClinics || [];
+
+      const existingOrgAdmin = allUsers.find((u) => {
+        if (isEdit && u.id === userToEdit?.id) return false;
+        if (!u.is_active && u.status !== 'active') return false;
+        const normRole = normalizeRole(u.role);
+        if (normRole !== 'org_admin') return false;
+
+        const userOrg = u.organization_id || u.organizationId;
+        if (targetOrg && userOrg && userOrg === targetOrg) return true;
+
+        const uClinics = u.assigned_clinics || u.assignedClinics || [];
+        if (targetClinics.length > 0 && uClinics.some((c) => targetClinics.includes(c))) {
+          return true;
+        }
+        return false;
+      });
+
+      if (existingOrgAdmin) {
+        toast.error('An Organization Admin already exists for this branch.');
+        return;
+      }
     }
-    if ((isOrgAdmin || lockedOrgId) && (formData.role === ROLES.AUDITOR || formData.role === 'auditor')) {
+    if (!isSuperAdmin && (isOrgAdmin || lockedOrgId) && (formData.role === ROLES.AUDITOR || formData.role === 'auditor')) {
       toast.error('Organization Admins cannot create Auditor accounts.');
       return;
     }
@@ -380,7 +418,18 @@ export function UserModal({ isOpen, onClose, onSuccess, userToEdit = null, locke
       }
       onClose();
     } catch (err) {
-      toast.error(err.message || 'Something went wrong. Please try again.');
+      const msg = err.response?.data?.error || err.response?.data?.message || err.message || '';
+      if (
+        (formData.role === ROLES.ORG_ADMIN || formData.role === 'org_admin') &&
+        (msg.toLowerCase().includes('org_admin') ||
+          msg.toLowerCase().includes('already exists') ||
+          msg.toLowerCase().includes('organization admin') ||
+          msg.toLowerCase().includes('admin'))
+      ) {
+        toast.error('An Organization Admin already exists for this branch.');
+      } else {
+        toast.error(msg || 'Something went wrong. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -592,19 +641,19 @@ export function UserModal({ isOpen, onClose, onSuccess, userToEdit = null, locke
             </div>
           )}
 
-          {/* Clinic Branches (multi-select checkboxes) — hidden for Super Admin */}
+          {/* Clinic Branches — locked for Clinic Manager, multi-select for others */}
           {!isSuperAdminRole && (
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block font-bold text-slate-700 uppercase tracking-wider text-[10px]">
-                  Clinic Branches (assigned_clinics)
-                  {formData.assignedClinics.length > 0 && (
+                  Clinic Branch
+                  {!Array.isArray(lockedClinicIds) && formData.assignedClinics.length > 0 && (
                     <span className="ml-2 px-1.5 py-0.5 bg-primary/10 text-primary rounded-md font-bold">
                       {formData.assignedClinics.length} selected
                     </span>
                   )}
                 </label>
-                {!isEdit && (
+                {!isEdit && !Array.isArray(lockedClinicIds) && (
                   <button
                     type="button"
                     onClick={() => {
@@ -617,7 +666,27 @@ export function UserModal({ isOpen, onClose, onSuccess, userToEdit = null, locke
                 )}
               </div>
 
-              {isCreatingNewClinic ? (
+              {/* Locked clinic badge for Clinic Manager */}
+              {Array.isArray(lockedClinicIds) && lockedClinicIds.length > 0 ? (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {lockedClinicIds.map((cid) => {
+                    const c = allClinics.find((x) => x.id === cid);
+                    return (
+                      <span
+                        key={cid}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[11px] font-bold"
+                      >
+                        <MapPin className="w-3 h-3" />
+                        {c?.name || cid}
+                        <span className="text-[10px] text-primary/60 font-normal">(auto-assigned)</span>
+                      </span>
+                    );
+                  })}
+                  <p className="w-full text-[10px] text-slate-400 mt-0.5">
+                    This user will be assigned to your clinic automatically.
+                  </p>
+                </div>
+              ) : isCreatingNewClinic ? (
                 <div className="space-y-2.5 p-3 bg-primary/5 border border-primary/20 rounded-xl animate-in fade-in">
                   <input
                     type="text"
@@ -687,7 +756,7 @@ export function UserModal({ isOpen, onClose, onSuccess, userToEdit = null, locke
                   )}
                 </div>
               )}
-              {!isCreatingNewClinic && (
+              {!Array.isArray(lockedClinicIds) && !isCreatingNewClinic && (
                 <p className="text-[10px] text-slate-400 mt-1">
                   Select specific branches or leave unchecked for full org-wide access.
                 </p>

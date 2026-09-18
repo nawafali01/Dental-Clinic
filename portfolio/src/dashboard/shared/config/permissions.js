@@ -99,6 +99,8 @@ export const ROLE_PERMISSIONS = {
 
   clinic_manager: [
     PERMISSIONS.VIEW_USERS,
+    PERMISSIONS.INVITE_USER,
+    PERMISSIONS.MANAGE_USERS,
     PERMISSIONS.VIEW_LEADS,
     PERMISSIONS.MANAGE_LEADS,
     PERMISSIONS.VIEW_APPOINTMENTS,
@@ -426,7 +428,7 @@ export const ACTION_PERMISSIONS = {
   },
   users: {
     view:    ['org_admin', 'clinic_manager', 'auditor'],
-    create:  ['org_admin'],
+    create:  ['org_admin', 'clinic_manager'],
     edit:    ['org_admin', 'clinic_manager'],
     delete:  ['org_admin'],
     assign:  ['org_admin', 'clinic_manager'],

@@ -10,7 +10,7 @@ export function normalizeRole(role) {
   if (r === 'reception' || r === 'receptionist' || r === 'front_desk' || r === 'frontdesk') {
     return 'receptionist';
   }
-  if (r === 'superadmin' || r === 'super_admin') {
+  if (r === 'superadmin' || r === 'super_admin' || r === 'super-admin' || r.includes('super')) {
     return 'super_admin';
   }
   if (r === 'orgadmin' || r === 'org_admin' || r === 'admin') {

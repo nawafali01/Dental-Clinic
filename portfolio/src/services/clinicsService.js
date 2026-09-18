@@ -85,10 +85,16 @@ export const clinicsService = {
    */
   async fetchClinics(orgId = null) {
     try {
-      const params = orgId && orgId !== 'all' ? { organization_id: orgId } : {};
+      const params = orgId && orgId !== 'all' && orgId !== 'org-001' ? { organization_id: orgId } : {};
       const res = await apiClient.get('/api/v1/clinics/', { params });
+      let rawList = [];
       if (Array.isArray(res.data)) {
-        const normalized = res.data.map(normalizeClinic);
+        rawList = res.data;
+      } else if (Array.isArray(res.data?.data)) {
+        rawList = res.data.data;
+      }
+      if (rawList.length > 0) {
+        const normalized = rawList.map(normalizeClinic);
         storageService.set(storageService.KEYS.CLINICS, normalized);
         return createSuccess(normalized.map((c) => this._enrichWithManager(c)));
       }
@@ -100,9 +106,15 @@ export const clinicsService = {
   },
 
   getClinics() {
-    const primaryClinics = CLINICS.filter((c) => !c.isAlias);
     let storedClinics = storageService.get(storageService.KEYS.CLINICS) || [];
+    if (Array.isArray(storedClinics) && storedClinics.length > 0) {
+      const hasBackendClinics = storedClinics.some((c) => c.id && c.id.length > 20);
+      if (hasBackendClinics) {
+        return storedClinics.map((c) => this._enrichWithManager(normalizeClinic(c)));
+      }
+    }
 
+    const primaryClinics = CLINICS.filter((c) => !c.isAlias);
     const storedMap = new Map((storedClinics || []).map((c) => [c.id, c]));
     const isOutOfSync =
       !storedClinics ||
