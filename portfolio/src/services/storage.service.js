@@ -55,12 +55,30 @@ export function isLegacyMockLead(lead) {
   return false;
 }
 
+const LEGACY_MOCK_APPOINTMENT_IDS = new Set([
+  'apt-1', 'apt-2', 'apt-3', 'apt-4', 'apt-5',
+  'apt-6', 'apt-7', 'apt-8', 'apt-9', 'apt-10',
+  'apt-001', 'apt-002', 'apt-003', 'apt-004', 'apt-005',
+  'apt-006', 'apt-007', 'apt-008', 'apt-009', 'apt-010',
+]);
+
+export function isLegacyMockAppointment(appt) {
+  if (!appt) return true;
+  const id = String(appt.id || appt._id || '');
+  if (LEGACY_MOCK_APPOINTMENT_IDS.has(id) || /^apt-0*\d+$/.test(id)) return true;
+  if (appt.patientId && String(appt.patientId).startsWith('pat-00')) return true;
+  const name = String(appt.patientName || appt.patient_name || '').toLowerCase();
+  if (['sarah mitchell', 'james thornton', 'priya kapoor', 'michael chang'].includes(name)) return true;
+  return false;
+}
+
 const STORAGE_KEYS = {
   USERS:           'dental_crm_users',
   ORGS:            'dental_crm_orgs',
   CLINICS:         'dental_crm_clinics',
   PATIENTS:        'dental_crm_patients',
   APPOINTMENTS:    'dental_crm_appointments',
+  CANCELLED_APPOINTMENTS: 'dental_crm_cancelled_appointments',
   CURRENT_USER:    'dental_crm_current_user',
   LEADS:           'dental_crm_leads',
   TASKS:           'dental_crm_tasks',
@@ -116,6 +134,14 @@ class StorageService {
       if (key === STORAGE_KEYS.LEADS) {
         if (Array.isArray(parsed)) {
           return parsed.filter((l) => !isLegacyMockLead(l));
+        }
+        return [];
+      }
+
+      // APPOINTMENTS: Must only contain real backend data, never fallback to mock seed
+      if (key === STORAGE_KEYS.APPOINTMENTS) {
+        if (Array.isArray(parsed)) {
+          return parsed.filter((a) => !isLegacyMockAppointment(a));
         }
         return [];
       }
@@ -267,18 +293,6 @@ class StorageService {
       }
     } else {
       this.set(STORAGE_KEYS.USERS, []);
-    }
-
-    const currentAppointments = this.get(STORAGE_KEYS.APPOINTMENTS);
-    if (!currentAppointments || !Array.isArray(currentAppointments) || currentAppointments.length === 0) {
-      const appointments = [
-        { id: crypto.randomUUID(), clinicId: CLINIC_IDS.DOWNTOWN, patientId: 'pat-001', date: new Date().toISOString(), status: 'scheduled' },
-        { id: crypto.randomUUID(), clinicId: CLINIC_IDS.WEST,     patientId: 'pat-002', date: new Date().toISOString(), status: 'completed' },
-        { id: crypto.randomUUID(), clinicId: 'clinic-003',        patientId: 'pat-007', date: new Date().toISOString(), status: 'scheduled' },
-        { id: crypto.randomUUID(), clinicId: 'clinic-004',        patientId: 'pat-008', date: new Date().toISOString(), status: 'pending'   },
-        { id: crypto.randomUUID(), clinicId: CLINIC_IDS.DOWNTOWN, patientId: 'pat-005', date: new Date().toISOString(), status: 'scheduled' },
-      ];
-      this.set(STORAGE_KEYS.APPOINTMENTS, appointments);
     }
   }
 

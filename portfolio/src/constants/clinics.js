@@ -48,13 +48,15 @@ export const DEFAULT_CLINIC_ID = 'clinic-downtown';
  */
 export const getClinicById = (id) => {
   if (!id) return undefined;
-  const staticClinic = CLINICS.find((c) => c.id === id);
+  const staticClinic = CLINICS.find((c) => c.id === id || (c.name && c.name.toLowerCase() === String(id).toLowerCase()));
   if (staticClinic) return staticClinic;
   if (typeof window !== 'undefined') {
     try {
       const cached = JSON.parse(localStorage.getItem('dental_crm_clinics') || '[]');
-      const dyn = cached.find((c) => c.id === id || c._id === id);
-      if (dyn) return dyn;
+      if (Array.isArray(cached)) {
+        const dyn = cached.find((c) => c.id === id || c._id === id || (c.name && c.name.toLowerCase() === String(id).toLowerCase()));
+        if (dyn) return dyn;
+      }
     } catch {}
   }
   return undefined;
@@ -71,7 +73,7 @@ export const getClinicsByOrgId = (orgId) => {
 };
 
 /**
- * Check if two clinic IDs refer to the same clinic (handles aliases).
+ * Check if two clinic IDs refer to the same clinic (handles aliases, UUIDs, and clinic names).
  * @param {string} idA
  * @param {string} idB
  * @returns {boolean}
@@ -79,9 +81,28 @@ export const getClinicsByOrgId = (orgId) => {
 export const isSameClinic = (idA, idB) => {
   if (!idA || !idB) return false;
   if (idA === idB) return true;
-  const clinicA = CLINICS.find((c) => c.id === idA);
-  const clinicB = CLINICS.find((c) => c.id === idB);
-  if (clinicA && clinicB && clinicA.name === clinicB.name) return true;
+  if (typeof idA === 'string' && typeof idB === 'string' && idA.toLowerCase() === idB.toLowerCase()) return true;
+
+  let allClinics = [...CLINICS];
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = JSON.parse(localStorage.getItem('dental_crm_clinics') || '[]');
+      if (Array.isArray(cached)) {
+        allClinics = [...allClinics, ...cached];
+      }
+    } catch {}
+  }
+
+  const clinicA = allClinics.find((c) => c.id === idA || c._id === idA || (c.name && c.name.toLowerCase() === String(idA).toLowerCase()));
+  const clinicB = allClinics.find((c) => c.id === idB || c._id === idB || (c.name && c.name.toLowerCase() === String(idB).toLowerCase()));
+
+  if (clinicA && clinicB) {
+    if (clinicA.id === clinicB.id || (clinicA._id && clinicA._id === clinicB._id)) return true;
+    if (clinicA.name && clinicB.name && clinicA.name.toLowerCase() === clinicB.name.toLowerCase()) return true;
+  }
+  if (clinicA && (clinicA.name?.toLowerCase() === String(idB).toLowerCase() || clinicA.id === idB)) return true;
+  if (clinicB && (clinicB.name?.toLowerCase() === String(idA).toLowerCase() || clinicB.id === idA)) return true;
+
   const canonicalMap = {
     'clinic-001': 'clinic-downtown',
     'clinic-downtown': 'clinic-downtown',

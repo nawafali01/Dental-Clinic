@@ -3,6 +3,7 @@ import { useAdmin } from '@/dashboard/shared/context/AdminContext';
 import { useRole } from '@/dashboard/shared/context/RoleContext';
 import { useOrg } from '@/dashboard/shared/context/OrgContext';
 import { useClinic } from '@/context/ClinicContext';
+import { useAuth } from '@/context/AuthContext';
 import { Breadcrumbs } from './Breadcrumbs';
 import { RecentItems } from './RecentItems';
 import { UserMenu } from './UserMenu';
@@ -15,6 +16,7 @@ export const Header = () => {
   const { userRole, currentRole } = useRole();
   const { currentOrg } = useOrg();
   const { selectedClinic, canSwitch } = useClinic();
+  const { currentUser } = useAuth();
 
   const isMultiAdmin = userRole === 'super_admin' || userRole === 'org_admin';
 
@@ -64,7 +66,9 @@ export const Header = () => {
             <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
             <span className="text-slate-500 font-medium">Clinic:</span>
             <span className="text-slate-900 font-bold truncate max-w-[170px]">
-              {selectedClinic?.name || 'Downtown Dental Excellence'}
+              {(!selectedClinic || selectedClinic.isAll || selectedClinic.id === 'all')
+                ? (currentUser?.clinicName || 'doctor_hospital')
+                : (selectedClinic.name || 'doctor_hospital')}
             </span>
           </div>
         )}

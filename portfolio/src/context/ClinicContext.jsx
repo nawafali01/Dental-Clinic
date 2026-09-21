@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useOrg } from '@/dashboard/shared/context/OrgContext';
-import { CLINICS, DEFAULT_CLINIC_ID } from '@/constants/clinics';
+import { CLINICS, DEFAULT_CLINIC_ID, isSameClinic, getClinicById } from '@/constants/clinics';
+import { clinicsService } from '@/services/clinicsService';
 import { MULTI_CLINIC_ROLES } from '@/dashboard/shared/config/permissions';
 
 /**
@@ -11,7 +12,8 @@ import { MULTI_CLINIC_ROLES } from '@/dashboard/shared/config/permissions';
  * Seamlessly synced with OrgContext:
  *  - When an organization is selected, available clinics filter dynamically
  *    to that organization's clinic branches.
- *  - When switching organizations, invalid clinic selections reset cleanly to 'all'.
+ *  - Single-clinic roles (clinic_manager, receptionist, agent) are strictly
+ *    locked to their assigned clinic and cannot view 'all'.
  *  - Multi-clinic roles (super_admin, org_admin) can switch branches or view 'all'.
  */
 
@@ -25,22 +27,43 @@ export const ClinicProvider = ({ children }) => {
   const selectedOrgId = orgContext?.selectedOrgId || 'all';
   const currentOrg = orgContext?.currentOrg;
 
+  const [backendClinics, setBackendClinics] = useState(() => clinicsService.getClinics() || []);
+
+  useEffect(() => {
+    clinicsService.fetchClinics().then((res) => {
+      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        setBackendClinics(res.data);
+      }
+    }).catch(() => {});
+  }, []);
+
+  const allAvailableClinics = useMemo(() => {
+    const list = [...backendClinics];
+    for (const c of CLINICS) {
+      if (!c.isAlias && !list.some((b) => b.id === c.id || (b.name && b.name.toLowerCase() === c.name.toLowerCase()))) {
+        list.push(c);
+      }
+    }
+    return list;
+  }, [backendClinics]);
+
   /**
    * Normalize the user object so both the mock shape and the real API shape work.
-   *
-   * Mock shape:   { clinicIds: [...], organizationId: '...' }
-   * API shape:    { assigned_clinics: [...], organization_id: '...' }
-   *
-   * We derive a unified `normalizedUser` with both aliases populated so all
-   * downstream consumers (scopeData, ClinicContext, etc.) keep working unchanged.
    */
   const normalizedUser = useMemo(() => {
     if (!currentUser) return null;
+    const assigned = [
+      ...(Array.isArray(currentUser.assigned_clinics) ? currentUser.assigned_clinics : []),
+      ...(Array.isArray(currentUser.assignedClinics) ? currentUser.assignedClinics : []),
+      ...(Array.isArray(currentUser.clinicIds) ? currentUser.clinicIds : []),
+      ...(currentUser.clinicId ? [currentUser.clinicId] : []),
+      ...(currentUser.clinic_id ? [currentUser.clinic_id] : []),
+    ].filter(Boolean);
+
     return {
       ...currentUser,
-      // Prefer the mock field if already present, otherwise fall back to API field
-      clinicIds:      currentUser.clinicIds      ?? currentUser.assigned_clinics ?? [],
-      organizationId: currentUser.organizationId ?? currentUser.organization_id  ?? null,
+      clinicIds: assigned,
+      organizationId: currentUser.organizationId ?? currentUser.organization_id ?? null,
     };
   }, [currentUser]);
 
@@ -50,44 +73,59 @@ export const ClinicProvider = ({ children }) => {
     [normalizedUser],
   );
 
-
   /**
    * The subset of clinics available to this user in current scope.
-   * - Single-clinic roles: only their assigned clinic(s).
-   * - Multi-clinic roles with org selected: only clinics belonging to that organization.
-   * - Multi-clinic roles with global scope ('all'): all canonical clinics.
    */
   const availableClinics = useMemo(() => {
-    const primaryClinics = CLINICS.filter((c) => !c.isAlias);
-
-    if (!normalizedUser) return primaryClinics;
+    if (!normalizedUser) return allAvailableClinics;
 
     // Single-clinic roles locked to assigned clinicIds
     if (!canSwitch) {
       if (normalizedUser.clinicIds && normalizedUser.clinicIds.length > 0) {
-        const filtered = primaryClinics.filter((c) => normalizedUser.clinicIds.includes(c.id));
-        return filtered.length > 0 ? filtered : primaryClinics;
+        const filtered = allAvailableClinics.filter((c) =>
+          normalizedUser.clinicIds.some((assignedId) => assignedId === c.id || isSameClinic(assignedId, c.id))
+        );
+        return filtered.length > 0 ? filtered : allAvailableClinics;
       }
-      return primaryClinics;
+      return allAvailableClinics;
     }
 
     // Multi-clinic roles (super_admin, org_admin)
     if (!selectedOrgId || selectedOrgId === 'all') {
-      return primaryClinics;
+      return allAvailableClinics;
     }
 
-    const orgClinics = primaryClinics.filter((c) => c.orgId === selectedOrgId);
-    return orgClinics.length > 0 ? orgClinics : primaryClinics;
-  }, [normalizedUser, canSwitch, selectedOrgId]);
-
+    const orgClinics = allAvailableClinics.filter(
+      (c) => c.orgId === selectedOrgId || c.organization_id === selectedOrgId
+    );
+    return orgClinics.length > 0 ? orgClinics : allAvailableClinics;
+  }, [normalizedUser, canSwitch, selectedOrgId, allAvailableClinics]);
 
   const getInitialClinicId = () => {
-    if (!normalizedUser) return 'all';
-    if (canSwitch) {
+    const user = normalizedUser || (() => {
+      try {
+        const raw = typeof window !== 'undefined'
+          ? (localStorage.getItem('dental_crm_current_user') || localStorage.getItem('auth_current_user'))
+          : null;
+        return raw ? JSON.parse(raw) : null;
+      } catch { return null; }
+    })();
+
+    if (!user) return 'all';
+    const isMultiClinic = MULTI_CLINIC_ROLES.includes(user.role);
+    if (isMultiClinic) {
       const saved = typeof window !== 'undefined' ? localStorage.getItem(SELECTED_BRANCH_KEY) : null;
       return saved || 'all';
     }
-    return (normalizedUser.clinicIds && normalizedUser.clinicIds[0]) || DEFAULT_CLINIC_ID;
+    const assignedClinics = [
+      ...(Array.isArray(user.assigned_clinics) ? user.assigned_clinics : []),
+      ...(Array.isArray(user.assignedClinics) ? user.assignedClinics : []),
+      ...(Array.isArray(user.clinicIds) ? user.clinicIds : []),
+      ...(user.clinicId ? [user.clinicId] : []),
+      ...(user.clinic_id ? [user.clinic_id] : []),
+    ].filter(Boolean);
+
+    return assignedClinics[0] || 'f0c74f65-f068-47ad-b82c-27f3413976e2';
   };
 
   const [selectedClinicId, setSelectedClinicIdState] = useState(getInitialClinicId);
@@ -98,10 +136,19 @@ export const ClinicProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 
-  // When selected organization changes, reset clinic if current selection doesn't belong to it
+  // Lock single-clinic roles to their assigned clinic; for multi-clinic roles validate against available clinics
   useEffect(() => {
+    if (!canSwitch) {
+      const userClinic = (normalizedUser?.clinicIds && normalizedUser.clinicIds[0]) || 'f0c74f65-f068-47ad-b82c-27f3413976e2';
+      setSelectedClinicIdState(userClinic);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(SELECTED_BRANCH_KEY, userClinic);
+      }
+      return;
+    }
+
     if (selectedClinicId !== 'all') {
-      const exists = availableClinics.some((c) => c.id === selectedClinicId);
+      const exists = availableClinics.some((c) => c.id === selectedClinicId || isSameClinic(c.id, selectedClinicId));
       if (!exists) {
         setSelectedClinicIdState('all');
         if (typeof window !== 'undefined') {
@@ -109,7 +156,7 @@ export const ClinicProvider = ({ children }) => {
         }
       }
     }
-  }, [selectedOrgId, availableClinics, selectedClinicId]);
+  }, [selectedOrgId, availableClinics, selectedClinicId, canSwitch, normalizedUser]);
 
   /**
    * Public setter — only multi-clinic roles can actually change the selection.
@@ -123,7 +170,18 @@ export const ClinicProvider = ({ children }) => {
   };
 
   const selectedClinic = useMemo(() => {
-    if (selectedClinicId === 'all') {
+    let effectiveClinicId = selectedClinicId;
+    if (!canSwitch) {
+      const assigned =
+        (normalizedUser?.clinicIds && normalizedUser.clinicIds[0]) ||
+        currentUser?.clinicId ||
+        (Array.isArray(currentUser?.assigned_clinics) ? currentUser.assigned_clinics[0] : null);
+      if (assigned) {
+        effectiveClinicId = assigned;
+      }
+    }
+
+    if (effectiveClinicId === 'all') {
       return {
         id: 'all',
         name: selectedOrgId === 'all' ? 'All Clinics' : `All Clinics (${currentOrg?.shortName || currentOrg?.name || 'Org'})`,
@@ -131,8 +189,16 @@ export const ClinicProvider = ({ children }) => {
         isAll: true,
       };
     }
-    return CLINICS.find((c) => c.id === selectedClinicId) || availableClinics[0] || CLINICS[0];
-  }, [selectedClinicId, selectedOrgId, currentOrg, availableClinics]);
+
+    const found = allAvailableClinics.find((c) => c.id === effectiveClinicId || isSameClinic(c.id, effectiveClinicId));
+    if (found) return found;
+
+    if (effectiveClinicId === 'f0c74f65-f068-47ad-b82c-27f3413976e2') {
+      return { id: effectiveClinicId, name: 'doctor_hospital', city: '' };
+    }
+
+    return getClinicById(effectiveClinicId) || availableClinics[0] || { id: effectiveClinicId, name: effectiveClinicId, city: '' };
+  }, [selectedClinicId, canSwitch, normalizedUser, currentUser, selectedOrgId, currentOrg, availableClinics, allAvailableClinics]);
 
   return (
     <ClinicContext.Provider

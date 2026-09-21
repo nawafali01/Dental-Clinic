@@ -1,13 +1,13 @@
 import React from 'react';
-import { Search, Plus, Calendar, LayoutList, CalendarDays, CalendarRange, Building2 } from 'lucide-react';
+import { Search, Plus, Calendar, LayoutList, CalendarDays, CalendarRange, Building2, Ban } from 'lucide-react';
 import { Badge } from '@/dashboard/shared/components/ui/Badge';
 import { Button } from '@/dashboard/shared/components/ui/Button';
 import { useRole } from '@/dashboard/shared/context/RoleContext';
 import { useOrg } from '@/dashboard/shared/context/OrgContext';
+import { canUserPerformAction } from '@/utils/appointmentPermissions';
 import {
   VIEW_MODES,
   APPOINTMENT_STATUSES,
-  DOCTORS_LIST,
   TREATMENTS_FILTER_LIST,
 } from '../constants';
 
@@ -26,16 +26,28 @@ export const Header = ({
   onSelectTreatment,
   selectedStatus,
   onSelectStatus,
+  cancelledCount = 0,
   organizations,
   availableClinics,
+  users = [],
   onOpenBookingModal,
   isClinicManager = false,
   assignedClinicName = 'Downtown Dental Excellence',
   readOnly = false,
+  currentUser = null,
 }) => {
   const { userRole } = useRole();
   const { currentOrg } = useOrg();
   const isSuperAdmin = userRole === 'super_admin';
+
+  const sortedUsers = React.useMemo(() => {
+    if (!users || users.length === 0) return [];
+    return [...users].sort((a, b) => {
+      const nameA = a.fullName || a.full_name || a.name || a.email || '';
+      const nameB = b.fullName || b.full_name || b.name || b.email || '';
+      return nameA.localeCompare(nameB);
+    });
+  }, [users]);
 
   const getViewIcon = (id) => {
     switch (id) {
@@ -103,8 +115,8 @@ export const Header = ({
             })}
           </div>
 
-          {/* Book Appointment CTA */}
-          {!readOnly && onOpenBookingModal && (
+          {/* Action: Book Appointment */}
+          {!readOnly && onOpenBookingModal && canUserPerformAction(currentUser, 'create') && (
             <Button
               variant="primary"
               size="sm"
@@ -184,16 +196,23 @@ export const Header = ({
 
           {/* Doctor / Provider Filter */}
           <select
-            aria-label="Filter by Doctor"
+            aria-label="Filter by Provider"
             value={selectedDoctorId}
             onChange={(e) => onSelectDoctorId(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-2xs max-w-[180px] truncate"
+            className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-2xs max-w-[190px] truncate"
           >
-            {DOCTORS_LIST.map((doc) => (
-              <option key={doc.id} value={doc.id}>
-                {doc.name}
-              </option>
-            ))}
+            <option value="all">
+              All Providers {sortedUsers.length > 0 ? `(${sortedUsers.length})` : ''}
+            </option>
+            {sortedUsers.map((u) => {
+              const displayName = u.fullName || u.full_name || u.name || u.email || u.id;
+              const roleLabel = u.role ? ` (${u.role.replace('_', ' ')})` : '';
+              return (
+                <option key={u.id || u._id} value={u.id || u._id}>
+                  {displayName}{roleLabel}
+                </option>
+              );
+            })}
           </select>
 
           {/* Treatment Filter */}
@@ -223,6 +242,21 @@ export const Header = ({
               </option>
             ))}
           </select>
+
+          {/* Quick Filter: Show Cancelled Appointments */}
+          <button
+            type="button"
+            onClick={() => onSelectStatus(selectedStatus === 'cancelled' ? 'all' : 'cancelled')}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
+              selectedStatus === 'cancelled'
+                ? 'bg-rose-50 border-rose-300 text-rose-700 ring-2 ring-rose-200'
+                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+            }`}
+            title="Filter Cancelled Appointments"
+          >
+            <Ban className={`w-3.5 h-3.5 ${selectedStatus === 'cancelled' ? 'text-rose-600' : 'text-slate-400'}`} />
+            <span>Cancelled {cancelledCount > 0 ? `(${cancelledCount})` : ''}</span>
+          </button>
         </div>
       </div>
     </div>

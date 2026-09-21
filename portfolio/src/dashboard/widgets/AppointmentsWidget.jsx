@@ -13,9 +13,9 @@ const AppointmentsWidget = () => {
   const rawAppts = storageService.get(storageService.KEYS.APPOINTMENTS) || [];
   const appts = scopeData({ resource: 'appointments', data: rawAppts, currentUser, selectedClinicId });
 
-  const confirmed = appts.filter(a => a.status === 'confirmed' || a.status === 'scheduled' || a.status === 'completed').length;
-  const pending   = appts.filter(a => a.status === 'pending').length;
-  const cancelled = appts.filter(a => a.status === 'cancelled').length;
+  const confirmed = appts.filter(a => ['confirmed', 'scheduled', 'completed', 'checked-in', 'checked_in', 'attended'].includes(a.status)).length;
+  const pending   = appts.filter(a => ['pending', 'reminded'].includes(a.status)).length;
+  const cancelled = appts.filter(a => ['cancelled', 'no-show', 'no_show'].includes(a.status)).length;
 
   return (
     <section className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">

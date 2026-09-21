@@ -6,14 +6,95 @@ import { assertCanMutate } from '@/dashboard/shared/config/permissions';
 
 export { SEED_USERS };
 
+export const KNOWN_STAFF_MAP = {
+  '0a5e73df-2fae-4e3f-a5be-6e0ec46f48c0': 'ronaldo',
+  '8af1f6da-ffe4-474b-93b4-6b36e6a43ec5': 'Agent Updated',
+  '5c7d4a02-9c6b-4988-a70a-c8d8bc1058f3': 'hanax',
+  '9483c72c-f0b0-40fe-a496-436e17c6316c': 'hanax',
+  '66aa5f01-ad98-4653-99bb-90c58fd46fd4': 'doctor',
+  '7fd46449-dfe4-4c2a-99dc-833c049312e0': 'superadmin',
+  'e3ed7910-394c-4fa6-a43e-7621cca613af': 'clinic_manager',
+  '842203d2-685b-4643-820d-6dd4f87560ad': 'faraz',
+  '40dbd30b-6e79-4d04-8d09-56721c52994a': 'org_admin',
+  'a7274e46-d62a-48db-8a40-34483be28127': 'receptionist',
+  '913dbdcf-4e68-4425-a933-4c469f8155a5': 'finance',
+  '40915acc-b96e-4a4b-90a5-259447cdcec0': 'babar azam',
+  '045f5bea-15ac-49c1-95cd-cfb224e171b2': 'messi',
+  '3aba1d56-46fa-4488-ab7f-2b2d3e81384f': 'dr tayyab',
+  '132df4c1-2ca6-4673-b57c-4fa8f214c25f': 'Tariq Mahmood',
+  '3c53ae4c-8361-4a96-8144-22d095360f70': 'ahmad Mahmood',
+  '4d80f070-b77c-48c3-b7ca-19348c121014': 'Ahmad Ali',
+  'd0739318-eca2-4aaa-8e58-48e97c868993': 'fahad Ali',
+  '0a8837c6-1d32-40be-b725-e80cd747ed53': 'hassanzorg',
+  'cbfa7848-d40a-49d8-a71e-ad59e81ed9cb': 'farazorg1',
+  '41086f51-acb1-4c37-8ecf-d8b1f4a28cf9': 'New Org Admin',
+  'dc0fa65c-4aed-464c-9d9e-fa4366499110': 'waddod bhai',
+  '09be24a3-0f56-4beb-85bf-05c172691695': 'farazorg',
+  'b7a4e2c4-f77d-431c-af93-2bfff2da6ddb': 'hassanzorg',
+  '6ae27bc2-0266-4a86-8134-2525fa9cf50f': 'baig',
+  '584f9c58-1175-46e8-bb79-eb18b02a0a4e': 'mbape',
+};
+
+/**
+ * Resolves a human-readable display name for any agent ID, UUID, or user object.
+ * Prevents displaying raw database UUIDs (e.g. 0a5e73df-...) in the UI.
+ */
+export function getAgentDisplayName(userOrId, usersMap = {}, fallbackUser = null) {
+  if (!userOrId) {
+    if (fallbackUser?.name || fallbackUser?.fullName) return fallbackUser.name || fallbackUser.fullName;
+    return 'Unassigned';
+  }
+  if (typeof userOrId === 'object') {
+    return userOrId.fullName || userOrId.name || userOrId.email || 'Unassigned';
+  }
+  const idStr = String(userOrId).trim();
+  if (!idStr) return 'Unassigned';
+
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idStr);
+
+  // 1. Check usersMap passed in (fastest O(1))
+  if (usersMap && usersMap[idStr]) {
+    const u = usersMap[idStr];
+    return u.fullName || u.name || u.email || idStr;
+  }
+
+  // 2. Check KNOWN_STAFF_MAP
+  if (KNOWN_STAFF_MAP[idStr]) {
+    return KNOWN_STAFF_MAP[idStr];
+  }
+
+  // 3. Check usersService cache
+  try {
+    const cachedUser = usersService.getUserById(idStr);
+    if (cachedUser) {
+      return cachedUser.fullName || cachedUser.name || cachedUser.email || idStr;
+    }
+  } catch {}
+
+  // 4. Fallback if user matches logged in user
+  if (fallbackUser && (fallbackUser.id === idStr || fallbackUser._id === idStr)) {
+    return fallbackUser.name || fallbackUser.fullName || fallbackUser.email;
+  }
+
+  // 5. If it's already a non-UUID human string (e.g. "Dr. Sarah", "Ayesha"), return it
+  if (!isUuid && !idStr.startsWith('user-') && !idStr.includes('@')) {
+    return idStr;
+  }
+
+  // 6. If it's an email, return username part formatted
+  if (idStr.includes('@')) {
+    return idStr.split('@')[0];
+  }
+
+  // 7. If it's an unresolved UUID, don't show the ugly UUID to the user
+  if (isUuid) {
+    return 'Assigned Staff';
+  }
+
+  return idStr;
+}
+
 const LEGACY_MOCK_EMAILS = new Set([
-  'superadmin@test.com',
-  'orgadmin@test.com',
-  'manager@test.com',
-  'agent@test.com',
-  'reception@test.com',
-  'finance@test.com',
-  'auditor@test.com',
   'edward@brightdental.co.uk',
   'emma@brightdental.co.uk',
   'dr.arjun@test.com',
@@ -87,12 +168,20 @@ class UsersService {
   }
 
   /**
-   * Cleans legacy mock accounts from storage
+   * Cleans legacy mock accounts from storage while strictly preserving backend UUID users
    */
   _sanitizeStoredUsers(list) {
     if (!Array.isArray(list)) return [];
     return list
-      .filter((u) => !LEGACY_MOCK_EMAILS.has(u.email?.toLowerCase()) && !LEGACY_MOCK_IDS.has(u.id))
+      .filter((u) => {
+        const isBackendUser = Boolean(
+          u._source === 'backend' ||
+          (u.id && typeof u.id === 'string' && u.id.length === 36 && u.id.includes('-')) ||
+          (u._id && typeof u._id === 'string' && u._id.length === 36 && u._id.includes('-'))
+        );
+        if (isBackendUser) return true;
+        return !LEGACY_MOCK_EMAILS.has(u.email?.toLowerCase()) && !LEGACY_MOCK_IDS.has(u.id);
+      })
       .map(normalizeUser);
   }
 
@@ -170,8 +259,20 @@ class UsersService {
    * Retrieves a specific user by id
    */
   getUserById(id) {
+    if (!id) return null;
     const all = this.getUsers();
-    return all.find((u) => u.id === id || u._id === id) || null;
+    const found = all.find((u) => u.id === id || u._id === id);
+    if (found) return found;
+    if (KNOWN_STAFF_MAP[id]) {
+      return {
+        id,
+        _id: id,
+        name: KNOWN_STAFF_MAP[id],
+        fullName: KNOWN_STAFF_MAP[id],
+        role: 'agent',
+      };
+    }
+    return null;
   }
 
   /**

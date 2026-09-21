@@ -52,11 +52,19 @@ export function scopeData({ resource, data = [], currentUser, selectedClinicId }
     return [];
   }
 
+  const userAssignedClinics = [
+    ...(Array.isArray(user.assigned_clinics) ? user.assigned_clinics : []),
+    ...(Array.isArray(user.assignedClinics) ? user.assignedClinics : []),
+    ...(Array.isArray(user.clinicIds) ? user.clinicIds : []),
+    ...(user.clinicId ? [user.clinicId] : []),
+    ...(user.clinic_id ? [user.clinic_id] : []),
+  ].filter(Boolean);
+
   // Active clinic scope: priority to selectedClinicId if set (and not 'all'), else user's primary clinic
   const activeClinicId =
     (selectedClinicId && selectedClinicId !== 'all')
       ? selectedClinicId
-      : (user.clinicId || (user.clinicIds && user.clinicIds[0]));
+      : (userAssignedClinics[0] || user.clinicId || (user.clinicIds && user.clinicIds[0]));
 
   return data.filter((item) => {
     if (!item) return false;
@@ -66,11 +74,6 @@ export function scopeData({ resource, data = [], currentUser, selectedClinicId }
         return true;
 
       case SCOPE_TYPES.ORGANIZATION: {
-        // For live backend leads, backend tenant isolation already applies.
-        if (resource === 'leads') {
-          return true;
-        }
-
         const itemClinicId = item.clinicId || item.clinic_id;
 
         // Respect selected clinic filter if selected
@@ -105,18 +108,25 @@ export function scopeData({ resource, data = [], currentUser, selectedClinicId }
       }
 
       case SCOPE_TYPES.CLINIC: {
-        if (resource === 'leads') return true;
-        if (!activeClinicId) return true;
-        const itemClinicId = item.clinicId || item.clinic_id;
-        if (itemClinicId) return isSameClinic(itemClinicId, activeClinicId);
-        if (item.clinic) return isSameClinic(item.clinic, activeClinicId) || item.clinic === activeClinicId || item.clinic.includes(activeClinicId);
+        const itemClinicId = item.clinicId || item.clinic_id || item.clinic;
+        if (!itemClinicId) return false;
+
+        // Clinic manager & Receptionist are strictly confined to their assigned clinic(s)
+        if (userAssignedClinics.length > 0) {
+          const matchesAssigned = userAssignedClinics.some((cId) =>
+            itemClinicId === cId || isSameClinic(itemClinicId, cId)
+          );
+          if (!matchesAssigned) return false;
+        }
+
+        if (activeClinicId && activeClinicId !== 'all') {
+          return itemClinicId === activeClinicId || isSameClinic(itemClinicId, activeClinicId);
+        }
+
         return true;
       }
 
       case SCOPE_TYPES.ASSIGNEE: {
-        // For live backend leads, backend query already isolates leads
-        if (resource === 'leads') return true;
-
         // Agent MUST NEVER see another staff member's work.
         const userId = currentUser?.id || user?.id;
         if (!userId) return false;
@@ -136,8 +146,8 @@ export function scopeData({ resource, data = [], currentUser, selectedClinicId }
 
         // If explicit clinic filter was selected (not 'all'), respect it
         const itemClinicId = item.clinicId || item.clinic_id;
-        if (selectedClinicId && selectedClinicId !== 'all' && itemClinicId) {
-          return matchesAssignee && isSameClinic(itemClinicId, selectedClinicId);
+        if (activeClinicId && activeClinicId !== 'all' && itemClinicId) {
+          return matchesAssignee && isSameClinic(itemClinicId, activeClinicId);
         }
 
         return matchesAssignee;

@@ -15,6 +15,7 @@ import { NewLeadModal } from './components/NewLeadModal';
 import { CLINICS, getClinicById, getClinicsByOrgId, isSameClinic } from '@/constants/clinics';
 import { clinicsService } from '@/services/clinicsService';
 import { organizationsService, INITIAL_ORGANIZATIONS } from '@/services/organizationsService';
+import { usersService, getAgentDisplayName } from '@/services/usersService';
 
 const STATUS_TABS = [
   { id: 'all', label: 'All' },
@@ -22,24 +23,29 @@ const STATUS_TABS = [
   { id: 'contacted', label: 'Contacted' },
   { id: 'qualified', label: 'Qualified' },
   { id: 'proposal', label: 'Proposal' },
-  { id: 'converted', label: 'Converted' },
+  { id: 'negotiation', label: 'Negotiation' },
+  { id: 'won', label: 'Won' },
   { id: 'lost', label: 'Lost' },
+  { id: 'on_hold', label: 'On Hold' },
 ];
 
 const getStatusBadgeColor = (status) => {
   switch ((status || '').toLowerCase()) {
     case 'converted':
+    case 'won':
       return 'green';
     case 'qualified':
       return 'purple';
     case 'proposal':
+    case 'negotiation':
       return 'blue';
     case 'contacted':
       return 'amber';
     case 'lost':
       return 'red';
+    case 'on_hold':
+      return 'slate';
     case 'new':
-      return 'blue';
     default:
       return 'blue';
   }
@@ -73,27 +79,18 @@ export const LeadsView = () => {
   const [currentPage, setCurrentPage] = useState(1);
 
   // Clinic Manager assigned clinic resolution
-  const managerClinicId = currentUser?.clinicId || (currentUser?.clinicIds && currentUser?.clinicIds[0]) || 'clinic-downtown';
-  const assignedClinicObj = getClinicById(managerClinicId);
-  const assignedClinicName = assignedClinicObj?.name || 'Downtown Dental Excellence';
+  const managerAssignedClinics = useMemo(() => {
+    return [
+      ...(Array.isArray(currentUser?.assigned_clinics) ? currentUser.assigned_clinics : []),
+      ...(Array.isArray(currentUser?.assignedClinics) ? currentUser.assignedClinics : []),
+      ...(Array.isArray(currentUser?.clinicIds) ? currentUser.clinicIds : []),
+      ...(currentUser?.clinicId ? [currentUser.clinicId] : []),
+      ...(currentUser?.clinic_id ? [currentUser.clinic_id] : []),
+    ].filter(Boolean);
+  }, [currentUser]);
 
-  // Org ID resolution for Org Admin & Auditor
-  const userOrgId = currentUser?.organizationId || (isOrgAdmin || isAuditor ? 'org-001' : null);
-
-  // Scoped user payload ensuring org_admin & auditor are bound to their organization
-  const scopedUser = useMemo(() => ({
-    ...currentUser,
-    role,
-    organizationId: currentUser?.organizationId || (isOrgAdmin || isAuditor ? 'org-001' : null),
-    clinicId: (isClinicManager || isAgent || isReceptionist) ? managerClinicId : currentUser?.clinicId,
-  }), [currentUser, role, isOrgAdmin, isAuditor, isClinicManager, isAgent, isReceptionist, managerClinicId]);
-
-  // Filter states
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedOrgFilter, setSelectedOrgFilter] = useState('all');
-  const [selectedClinicFilter, setSelectedClinicFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [backendClinics, setBackendClinics] = useState(() => clinicsService.getClinics() || []);
+  const [users, setUsers] = useState(() => usersService.getUsersSync() || []);
 
   useEffect(() => {
     clinicsService.fetchClinics().then((res) => {
@@ -101,7 +98,50 @@ export const LeadsView = () => {
         setBackendClinics(res.data);
       }
     }).catch(() => {});
+
+    usersService.fetchUsers().then((res) => {
+      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        setUsers(res.data);
+      }
+    }).catch(() => {});
   }, []);
+
+  const usersMap = useMemo(() => {
+    const map = {};
+    users.forEach((u) => {
+      if (u.id) map[u.id] = u;
+      if (u._id) map[u._id] = u;
+    });
+    return map;
+  }, [users]);
+
+  const managerClinicId = managerAssignedClinics[0] || currentUser?.clinicId || 'clinic-downtown';
+  const assignedClinicObj = useMemo(() => {
+    return (
+      getClinicById(managerClinicId) ||
+      backendClinics.find((c) => c.id === managerClinicId || isSameClinic(c.id, managerClinicId))
+    );
+  }, [managerClinicId, backendClinics]);
+  const assignedClinicName = assignedClinicObj?.name || 'doctor_hospital';
+
+  // Org ID resolution for Org Admin & Auditor
+  const userOrgId = currentUser?.organizationId || currentUser?.organization_id || (isOrgAdmin || isAuditor ? 'org-001' : null);
+
+  // Scoped user payload ensuring org_admin & auditor are bound to their organization
+  const scopedUser = useMemo(() => ({
+    ...currentUser,
+    role,
+    organizationId: currentUser?.organizationId || currentUser?.organization_id || (isOrgAdmin || isAuditor ? 'org-001' : null),
+    clinicId: (isClinicManager || isAgent || isReceptionist) ? managerClinicId : currentUser?.clinicId,
+    assigned_clinics: managerAssignedClinics,
+    clinicIds: managerAssignedClinics,
+  }), [currentUser, role, isOrgAdmin, isAuditor, isClinicManager, isAgent, isReceptionist, managerClinicId, managerAssignedClinics]);
+
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedOrgFilter, setSelectedOrgFilter] = useState('all');
+  const [selectedClinicFilter, setSelectedClinicFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Organizations list (for Super Admin)
   const [backendOrgs, setBackendOrgs] = useState(() => {
@@ -130,9 +170,12 @@ export const LeadsView = () => {
   const availableClinics = useMemo(() => {
     const list = [...backendClinics];
     for (const c of CLINICS) {
-      if (!c.isAlias && !list.some((b) => b.id === c.id)) {
+      if (!c.isAlias && !list.some((b) => b.id === c.id || isSameClinic(b.id, c.id))) {
         list.push(c);
       }
+    }
+    if (isClinicManager || isReceptionist) {
+      return list.filter((c) => managerAssignedClinics.some((mId) => mId === c.id || isSameClinic(mId, c.id)));
     }
     if (isOrgAdmin && userOrgId && userOrgId !== 'org-001') {
       return list.filter((c) => c.orgId === userOrgId || c.organization_id === userOrgId);
@@ -141,7 +184,7 @@ export const LeadsView = () => {
       return list.filter((c) => c.orgId === selectedOrgFilter || c.organization_id === selectedOrgFilter);
     }
     return list;
-  }, [isOrgAdmin, isSuperAdmin, userOrgId, selectedOrgFilter, backendClinics]);
+  }, [isClinicManager, isReceptionist, managerAssignedClinics, isOrgAdmin, isSuperAdmin, userOrgId, selectedOrgFilter, backendClinics]);
 
   // 1. Fetch leads strictly from live API (mock data removed)
   const [leads, setLeads] = useState(() => leadsService.getLeadsSync());
@@ -152,13 +195,18 @@ export const LeadsView = () => {
     const loadLeads = async () => {
       setIsLoading(true);
       try {
-        const orgParam = (selectedOrgFilter !== 'all' && selectedOrgFilter !== 'org-001') ? selectedOrgFilter : undefined;
-        const clinicParam = (selectedClinicFilter !== 'all' && !selectedClinicFilter.startsWith('clinic-')) ? selectedClinicFilter : undefined;
+        let orgParam = (selectedOrgFilter !== 'all' && selectedOrgFilter !== 'org-001') ? selectedOrgFilter : undefined;
+        let clinicParam = (selectedClinicFilter !== 'all' && !selectedClinicFilter.startsWith('clinic-')) ? selectedClinicFilter : undefined;
+
+        if (isClinicManager || isReceptionist) {
+          clinicParam = managerClinicId;
+          orgParam = currentUser?.organization_id || currentUser?.organizationId || undefined;
+        }
 
         const res = await leadsService.fetchLeads({
           organization_id: orgParam,
           clinic_id: clinicParam,
-        });
+        }, scopedUser);
         if (isMounted) {
           setLeads(res?.data || []);
         }
@@ -172,7 +220,7 @@ export const LeadsView = () => {
     return () => {
       isMounted = false;
     };
-  }, [selectedOrgFilter, selectedClinicFilter, refreshTrigger, isSuperAdmin, userOrgId]);
+  }, [selectedOrgFilter, selectedClinicFilter, refreshTrigger, isSuperAdmin, userOrgId, isClinicManager, isReceptionist, managerClinicId, scopedUser]);
 
   // 2. Pass through multi-tenant scoping utility
   const scopedLeads = useMemo(() => {
@@ -180,13 +228,22 @@ export const LeadsView = () => {
       resource: 'leads',
       data: leads,
       currentUser: scopedUser,
-      selectedClinicId: 'all',
+      selectedClinicId: (isClinicManager || isReceptionist || isAgent) ? managerClinicId : selectedClinicId,
     });
-  }, [leads, scopedUser]);
+  }, [leads, scopedUser, isClinicManager, isReceptionist, isAgent, managerClinicId, selectedClinicId]);
 
   // 3. Apply interactive page-level filters (Search, Org, Clinic, Status)
   const filteredLeads = useMemo(() => {
     return scopedLeads.filter((lead) => {
+      // Clinic scoping for Clinic Manager & Receptionist: STRICTLY lock to assigned clinic(s)
+      if (isClinicManager || isReceptionist) {
+        const leadClinic = lead.clinic_id || lead.clinicId;
+        const matchesManagerClinic = managerAssignedClinics.some((cId) =>
+          leadClinic === cId || isSameClinic(leadClinic, cId)
+        );
+        if (!matchesManagerClinic) return false;
+      }
+
       // Organization filter (Super Admin only)
       if (isSuperAdmin && selectedOrgFilter !== 'all') {
         const leadClinic = getClinicById(lead.clinicId) || backendClinics.find((c) => c.id === lead.clinicId);
@@ -194,15 +251,21 @@ export const LeadsView = () => {
         if (leadOrgId !== selectedOrgFilter) return false;
       }
 
-      // Clinic filter
-      if (selectedClinicFilter !== 'all') {
+      // Clinic filter (for Super Admin / Org Admin)
+      if (!isClinicManager && !isReceptionist && selectedClinicFilter !== 'all') {
         const matches = lead.clinicId === selectedClinicFilter || isSameClinic(lead.clinicId, selectedClinicFilter);
         if (!matches) return false;
       }
 
       // Status filter
       if (statusFilter !== 'all') {
-        if ((lead.status || 'new').toLowerCase() !== statusFilter.toLowerCase()) return false;
+        const leadStatus = (lead.status || 'new').toLowerCase();
+        const target = statusFilter.toLowerCase();
+        if (target === 'won' || target === 'converted') {
+          if (leadStatus !== 'won' && leadStatus !== 'converted') return false;
+        } else if (leadStatus !== target) {
+          return false;
+        }
       }
 
       // Search Query
@@ -229,7 +292,7 @@ export const LeadsView = () => {
 
       return true;
     });
-  }, [scopedLeads, isSuperAdmin, selectedOrgFilter, selectedClinicFilter, statusFilter, searchQuery, backendClinics]);
+  }, [scopedLeads, isSuperAdmin, selectedOrgFilter, selectedClinicFilter, statusFilter, searchQuery, backendClinics, isClinicManager, isReceptionist, managerAssignedClinics]);
 
   const hasActiveFilters = Boolean(
     searchQuery.trim() ||
@@ -281,12 +344,12 @@ export const LeadsView = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Leads Management</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {isReceptionist
-              ? 'Basic patient contact list for reception & appointment inquiries'
+            {isFinance
+              ? 'Read-only financial auditing view to review revenue and billing details across leads'
+              : isReceptionist || isClinicManager
+              ? `Track and manage leads for ${assignedClinicName}`
               : isAgent
               ? 'Leads assigned to your workspace pipeline'
-              : isClinicManager
-              ? `Track and manage leads for ${assignedClinicName}`
               : isOrgAdmin
               ? `Track and manage leads for ${currentOrg?.name || 'your organization'}`
               : 'Track and manage all organization & clinic leads'}
@@ -303,16 +366,30 @@ export const LeadsView = () => {
       </div>
 
       {/* Role Notice Banners */}
+      {isFinance && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="p-2 bg-emerald-600 text-white rounded-xl font-bold text-xs">FINANCE</span>
+            <p className="text-sm text-emerald-900 font-medium">
+              Financial Auditing Scope — Read-only access across leads to review revenue, invoices, and payment receipts. General lead editing is disabled.
+            </p>
+          </div>
+          <span className="text-xs font-semibold px-2.5 py-1 bg-white border border-emerald-200 text-emerald-700 rounded-full">
+            Financial Audit View
+          </span>
+        </div>
+      )}
+
       {isReceptionist && (
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="p-2 bg-blue-500 text-white rounded-xl font-bold text-xs">RECEPTIONIST</span>
             <p className="text-sm text-blue-900 font-medium">
-              Basic Contact Access Mode — Internal notes, lead values, and pipeline stage controls are hidden.
+              Assigned Clinic Scope — Managing and tracking leads for {assignedClinicName}.
             </p>
           </div>
           <span className="text-xs font-semibold px-2.5 py-1 bg-white border border-blue-200 text-blue-700 rounded-full">
-            Basic Contact Only
+            {assignedClinicName}
           </span>
         </div>
       )}
@@ -503,60 +580,20 @@ export const LeadsView = () => {
       </div>
 
       {/* Leads Table */}
-      {isReceptionist ? (
-        <Table
-          isLoading={isLoading}
-          emptyMessage="No leads found in backend database"
-          emptySubtext={hasActiveFilters ? "Try adjusting or clearing your filters" : "No leads have been registered yet"}
-          headers={['Patient Name', 'Phone', 'Email', 'Status', 'Clinic Branch', 'Date Received', 'Action']}
-          rows={displayedLeads.map((l) => {
-            const clinic = getClinicById(l.clinicId) || backendClinics.find((c) => c.id === l.clinicId);
-            const clinicName = clinic?.name || (l.clinicId === 'f0c74f65-f068-47ad-b82c-27f3413976e2' ? 'Doctor Hospital' : l.clinicId) || 'Doctor Hospital';
-            return [
-              <span key="name" className="font-semibold text-slate-900">
-                {l.patientName || l.name || 'Anonymous Patient'}
-              </span>,
-              l.phone || l.phoneNumber || '(555) 123-4567',
-              l.email || 'N/A',
-              <Badge key="badge" color={getStatusBadgeColor(l.status)}>
-                {l.status || 'new'}
-              </Badge>,
-              <div key="clinic" className="flex flex-col">
-                <span className="font-medium text-slate-800">{clinicName}</span>
-                {clinic?.city && <span className="text-[11px] text-slate-400">{clinic.city}</span>}
-              </div>,
-              l.createdAt ? new Date(l.createdAt).toLocaleDateString() : '2026-08-03',
-              <button
-                key="act"
-                onClick={() => navigate(buildRoleUrl(`/leads/${l.id}`, role))}
-                className="text-xs font-semibold text-primary hover:underline cursor-pointer"
-              >
-                View Contact
-              </button>,
-            ];
-          })}
-          footer={
-            shouldPaginate && filteredLeads.length > 0 ? (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={filteredLeads.length}
-                pageSize={PAGE_SIZE}
-                onPageChange={setCurrentPage}
-                itemLabel="leads"
-              />
-            ) : null
-          }
-        />
-      ) : (
-        <Table
+      <Table
           isLoading={isLoading}
           emptyMessage="No leads found in backend database"
           emptySubtext={hasActiveFilters ? "Try adjusting or clearing your filters" : "Click '+ New Lead' above to create a new lead in the backend"}
           headers={['Lead Name', 'Status', 'Source / Treatment', 'Assigned Agent', 'Clinic', 'Action']}
           rows={displayedLeads.map((l) => {
-            const clinic = getClinicById(l.clinicId) || backendClinics.find((c) => c.id === l.clinicId);
-            const clinicName = clinic?.name || (l.clinicId === 'f0c74f65-f068-47ad-b82c-27f3413976e2' ? 'Doctor Hospital' : l.clinicId) || 'Doctor Hospital';
+            const leadClinicId = l.clinicId || l.clinic_id;
+            const clinic = getClinicById(leadClinicId) || backendClinics.find((c) => c.id === leadClinicId || isSameClinic(c.id, leadClinicId));
+            const clinicName = clinic?.name || (leadClinicId === 'f0c74f65-f068-47ad-b82c-27f3413976e2' ? 'Doctor Hospital' : leadClinicId) || 'Doctor Hospital';
+            const agentName = getAgentDisplayName(
+              l.assigned_to || l.assignedAgentId || l.assignedAgentName,
+              usersMap,
+              isAgent ? currentUser : null
+            );
             return [
               <div key="name" className="flex flex-col">
                 <span className="font-semibold text-slate-900">{l.patientName || l.name || 'Anonymous Lead'}</span>
@@ -581,7 +618,9 @@ export const LeadsView = () => {
                   ) : null}
                 </div>
               </div>,
-              l.assignedAgentName || l.assignedAgentId || (isAgent ? currentUser?.name : 'Unassigned'),
+              <span key="agent" className="font-medium text-slate-800">
+                {agentName}
+              </span>,
               <div key="clinic" className="flex flex-col">
                 <span className="font-medium text-slate-800">{clinicName}</span>
                 {clinic?.city && <span className="text-[11px] text-slate-400">{clinic.city}</span>}
@@ -591,7 +630,7 @@ export const LeadsView = () => {
                 onClick={() => navigate(buildRoleUrl(`/leads/${l.id}`, role))}
                 className="text-xs font-semibold text-primary hover:underline cursor-pointer"
               >
-                {isAuditor ? 'View Record' : 'Manage Lead'}
+                {isAuditor ? 'View Record' : isFinance ? 'Review Billing' : 'Manage Lead'}
               </button>,
             ];
           })}
@@ -608,7 +647,6 @@ export const LeadsView = () => {
             ) : null
           }
         />
-      )}
 
       {/* New Lead Modal */}
       <NewLeadModal

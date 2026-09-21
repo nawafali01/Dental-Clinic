@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { X, UserCheck, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
 import { assignLead } from '@/services/leadsService';
 import { usersService } from '@/services/usersService';
 
 export function AssignLeadModal({ isOpen, onClose, onSuccess, leadId, currentAssignedTo, leadName }) {
+  const { currentUser } = useAuth();
+  const role = (currentUser?.role || '').toLowerCase();
   const [users, setUsers] = useState(() => usersService.getUsersSync() || []);
   const [selectedUserId, setSelectedUserId] = useState(currentAssignedTo || '');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,7 +27,7 @@ export function AssignLeadModal({ isOpen, onClose, onSuccess, leadId, currentAss
     }
   }, [isOpen, currentAssignedTo]);
 
-  if (!isOpen) return null;
+  if (!isOpen || role === 'finance' || role === 'auditor') return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,7 +38,7 @@ export function AssignLeadModal({ isOpen, onClose, onSuccess, leadId, currentAss
 
     setIsSubmitting(true);
     try {
-      const res = await assignLead(leadId, selectedUserId);
+      const res = await assignLead(leadId, selectedUserId, currentUser);
       toast.success(res?.message || 'Lead assigned successfully!');
       onSuccess?.(selectedUserId);
       onClose();

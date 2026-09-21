@@ -29,6 +29,8 @@ import { scopeData } from '../utils/scopeData';
 import { assertCanMutate } from '@/dashboard/shared/config/permissions';
 import { createSuccess, createError } from '../utils/response.util';
 import { LEAD_SOURCES, LEAD_STATUSES, LEAD_PRIORITIES } from '@/schemas/lead.schema';
+import { getAgentDisplayName } from './usersService';
+import { isSameClinic } from '@/constants/clinics';
 
 export { LEAD_SOURCES, LEAD_STATUSES, LEAD_PRIORITIES };
 
@@ -41,11 +43,12 @@ const normalise = (str = '') => str.toLowerCase().trim();
  * Normalizes lead record between backend API format and frontend UI models
  */
 export function normalizeLead(raw) {
-  if (!raw || isLegacyMockLead(raw)) return null;
+  if (!raw) return null;
+  const id = raw._id || raw.id;
+  if (!id) return null;
 
-  const id = raw.id || raw._id || `lead-${Date.now().toString(36)}`;
-  const firstName = (raw.first_name || '').trim();
-  const lastName = (raw.last_name || '').trim();
+  const firstName = (raw.first_name || raw.firstName || '').trim();
+  const lastName = (raw.last_name || raw.lastName || '').trim();
 
   let computedPatientName = [firstName, lastName].filter(Boolean).join(' ');
   if (!computedPatientName) {
@@ -60,6 +63,16 @@ export function normalizeLead(raw) {
   const orgId = raw.organization_id || raw.orgId || '';
   const assignedTo = raw.assigned_to || raw.assignedAgentId || raw.assigned_user_id || '';
   const treatment = raw.treatment_interest || raw.treatment || 'General Dentistry';
+
+  let resolvedAgentName = raw.assignedAgentName || raw.assigned_agent_name || '';
+  if (!resolvedAgentName || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedAgentName)) {
+    if (assignedTo) {
+      const nameFromId = getAgentDisplayName(assignedTo);
+      if (nameFromId && nameFromId !== 'Assigned Staff' && nameFromId !== 'Unassigned') {
+        resolvedAgentName = nameFromId;
+      }
+    }
+  }
 
   return {
     id,
@@ -77,9 +90,21 @@ export function normalizeLead(raw) {
     treatment: treatment,
     expected_revenue: Number(raw.expected_revenue ?? raw.expectedRevenue ?? 1),
     expectedRevenue: Number(raw.expected_revenue ?? raw.expectedRevenue ?? 1),
+    paid_amount: Number(raw.paid_amount ?? raw.paidAmount ?? 0),
+    paidAmount: Number(raw.paid_amount ?? raw.paidAmount ?? 0),
+    payment_status: (raw.payment_status || raw.paymentStatus || 'pending').toLowerCase(),
+    paymentStatus: (raw.payment_status || raw.paymentStatus || 'pending').toLowerCase(),
+    receipt_status: (raw.receipt_status || raw.receiptStatus || 'unissued').toLowerCase(),
+    receiptStatus: (raw.receipt_status || raw.receiptStatus || 'unissued').toLowerCase(),
+    invoice_number: raw.invoice_number || raw.invoiceNumber || (id ? `INV-${String(id).slice(-4).toUpperCase()}` : 'INV-0001'),
+    invoiceNumber: raw.invoice_number || raw.invoiceNumber || (id ? `INV-${String(id).slice(-4).toUpperCase()}` : 'INV-0001'),
+    invoice_status: (raw.invoice_status || raw.invoiceStatus || 'draft').toLowerCase(),
+    invoiceStatus: (raw.invoice_status || raw.invoiceStatus || 'draft').toLowerCase(),
+    billing_notes: raw.billing_notes || raw.billingNotes || '',
+    billingNotes: raw.billing_notes || raw.billingNotes || '',
     assigned_to: assignedTo,
     assignedAgentId: assignedTo,
-    assignedAgentName: raw.assignedAgentName || raw.assigned_agent_name || '',
+    assignedAgentName: resolvedAgentName,
     priority: (raw.priority || 'medium').toLowerCase(),
     clinic_id: clinicId,
     clinicId: clinicId,
@@ -103,6 +128,29 @@ function getCurrentUser() {
   }
 }
 
+function checkLeadClinicAccess(lead, user) {
+  if (!user || !lead) return true;
+  const role = (user.role || '').toLowerCase();
+  if (role !== 'clinic_manager' && role !== 'receptionist') return true;
+
+  const userAssignedClinics = [
+    ...(Array.isArray(user.assigned_clinics) ? user.assigned_clinics : []),
+    ...(Array.isArray(user.assignedClinics) ? user.assignedClinics : []),
+    ...(Array.isArray(user.clinicIds) ? user.clinicIds : []),
+    ...(user.clinicId ? [user.clinicId] : []),
+    ...(user.clinic_id ? [user.clinic_id] : []),
+  ].filter(Boolean);
+
+  if (userAssignedClinics.length === 0) return true;
+
+  const leadClinic = lead.clinic_id || lead.clinicId;
+  if (!leadClinic) return true;
+
+  return userAssignedClinics.some(
+    (cId) => leadClinic === cId || isSameClinic(leadClinic, cId)
+  );
+}
+
 /**
  * Public Leads Service Object
  */
@@ -112,23 +160,41 @@ export const leadsService = {
    * Fetches real leads directly from backend API with optional filtering.
    * Real backend data is cached locally; mock leads are strictly prohibited.
    */
-  async fetchLeads(params = {}) {
+  async fetchLeads(params = {}, currentUser = null) {
     try {
+      const user = currentUser || getCurrentUser();
+      const role = (user?.role || '').toLowerCase();
+      const isSuperAdmin = role === 'super_admin';
+
+      const userAssignedClinics = [
+        ...(Array.isArray(user?.assigned_clinics) ? user.assigned_clinics : []),
+        ...(Array.isArray(user?.assignedClinics) ? user.assignedClinics : []),
+        ...(Array.isArray(user?.clinicIds) ? user.clinicIds : []),
+        ...(user?.clinicId ? [user.clinicId] : []),
+        ...(user?.clinic_id ? [user.clinic_id] : []),
+      ].filter(Boolean);
+
       const queryParams = { page: params.page || 1, limit: params.limit || 100 };
       if (params.clinic_id && params.clinic_id !== 'all' && !params.clinic_id.startsWith('clinic-')) {
         queryParams.clinic_id = params.clinic_id;
+      } else if ((role === 'clinic_manager' || role === 'receptionist') && userAssignedClinics[0]) {
+        queryParams.clinic_id = userAssignedClinics[0];
       }
+
       if (params.organization_id && params.organization_id !== 'all' && params.organization_id !== 'org-001') {
         queryParams.organization_id = params.organization_id;
+      } else if (!isSuperAdmin && (user?.organization_id || user?.organizationId)) {
+        queryParams.organization_id = user.organization_id || user.organizationId;
       }
+
       if (params.status && params.status !== 'all') {
         queryParams.status = params.status;
       }
 
       let rawData = [];
 
-      // If a specific organization_id is requested, fetch directly for that org
-      if (queryParams.organization_id) {
+      // If a specific organization_id or clinic_id is requested (or user is scoped), fetch directly
+      if (queryParams.organization_id || queryParams.clinic_id || !isSuperAdmin) {
         const response = await apiClient.get('/api/v1/leads/', { params: queryParams });
         if (Array.isArray(response.data)) {
           rawData = response.data;
@@ -138,74 +204,51 @@ export const leadsService = {
           rawData = response.data.items;
         }
       } else {
-        // Multi-org or global fetch:
-        // When organization_id is omitted, FastAPI scopes the query by current_user.organization_id.
-        // For Super Admin (or global multi-tenant views), this excludes leads from other organizations
-        // (such as Aga Khan Health Services). We fetch all organizations and query them in parallel.
-        const user = getCurrentUser();
-        const isSuperAdmin = !user || !user.role || user.role === 'super_admin';
-
-        if (isSuperAdmin) {
-          try {
-            const orgsRes = await apiClient.get('/api/v1/organizations/');
-            let orgs = [];
-            if (Array.isArray(orgsRes.data)) {
-              orgs = orgsRes.data;
-            } else if (Array.isArray(orgsRes.data?.data)) {
-              orgs = orgsRes.data.data;
-            } else if (Array.isArray(orgsRes.data?.items)) {
-              orgs = orgsRes.data.items;
-            }
-
-            const validOrgs = orgs.filter((o) => o?.id && !String(o.id).startsWith('org-00'));
-            if (validOrgs.length > 0) {
-              const orgLeadsArrays = await Promise.all(
-                validOrgs.map(async (org) => {
-                  try {
-                    const orgParams = { ...queryParams, organization_id: org.id };
-                    const resp = await apiClient.get('/api/v1/leads/', { params: orgParams });
-                    if (Array.isArray(resp.data)) return resp.data;
-                    if (Array.isArray(resp.data?.data)) return resp.data.data;
-                    if (Array.isArray(resp.data?.items)) return resp.data.items;
-                    return [];
-                  } catch (e) {
-                    console.warn(`[leadsService] Failed to fetch leads for org ${org.id}:`, e.message);
-                    return [];
-                  }
-                })
-              );
-              rawData = orgLeadsArrays.flat();
-            } else {
-              const response = await apiClient.get('/api/v1/leads/', { params: queryParams });
-              if (Array.isArray(response.data)) {
-                rawData = response.data;
-              } else if (Array.isArray(response.data?.data)) {
-                rawData = response.data.data;
-              } else if (Array.isArray(response.data?.items)) {
-                rawData = response.data.items;
-              }
-            }
-          } catch (orgErr) {
-            console.warn('[leadsService] Multi-org fetch failed, falling back to direct request:', orgErr.message);
-            const response = await apiClient.get('/api/v1/leads/', { params: queryParams });
-            if (Array.isArray(response.data)) {
-              rawData = response.data;
-            } else if (Array.isArray(response.data?.data)) {
-              rawData = response.data.data;
-            } else if (Array.isArray(response.data?.items)) {
-              rawData = response.data.items;
-            }
+        // Multi-org global fetch for super_admin
+        try {
+          const orgsRes = await apiClient.get('/api/v1/organizations/');
+          let orgs = [];
+          if (Array.isArray(orgsRes.data)) {
+            orgs = orgsRes.data;
+          } else if (Array.isArray(orgsRes.data?.data)) {
+            orgs = orgsRes.data.data;
+          } else if (Array.isArray(orgsRes.data?.items)) {
+            orgs = orgsRes.data.items;
           }
-        } else {
-          // Regular scoped user (org_admin, clinic_manager, etc.)
+
+          const validOrgs = orgs.filter((o) => o?.id && !String(o.id).startsWith('org-00'));
+          if (validOrgs.length > 0) {
+            const orgLeadsArrays = await Promise.all(
+              validOrgs.map(async (org) => {
+                try {
+                  const orgParams = { ...queryParams, organization_id: org.id };
+                  const resp = await apiClient.get('/api/v1/leads/', { params: orgParams });
+                  if (Array.isArray(resp.data)) return resp.data;
+                  if (Array.isArray(resp.data?.data)) return resp.data.data;
+                  if (Array.isArray(resp.data?.items)) return resp.data.items;
+                  return [];
+                } catch (e) {
+                  console.warn(`[leadsService] Failed to fetch leads for org ${org.id}:`, e.message);
+                  return [];
+                }
+              })
+            );
+            rawData = orgLeadsArrays.flat();
+          }
+        } catch (orgErr) {
+          console.warn('[leadsService] Multi-org fetch failed, falling back to direct request:', orgErr.message);
+        }
+
+        // Direct fetch fallback or supplemental fetch
+        try {
           const response = await apiClient.get('/api/v1/leads/', { params: queryParams });
-          if (Array.isArray(response.data)) {
-            rawData = response.data;
-          } else if (Array.isArray(response.data?.data)) {
-            rawData = response.data.data;
-          } else if (Array.isArray(response.data?.items)) {
-            rawData = response.data.items;
-          }
+          let direct = [];
+          if (Array.isArray(response.data)) direct = response.data;
+          else if (Array.isArray(response.data?.data)) direct = response.data.data;
+          else if (Array.isArray(response.data?.items)) direct = response.data.items;
+          rawData = [...rawData, ...direct];
+        } catch (directErr) {
+          console.warn('[leadsService] Direct leads fetch notice:', directErr.message);
         }
       }
 
@@ -213,9 +256,10 @@ export const leadsService = {
       const seen = new Set();
       const uniqueRaw = [];
       for (const item of rawData) {
-        if (item?.id) {
-          if (!seen.has(item.id)) {
-            seen.add(item.id);
+        const id = item?.id || item?._id;
+        if (id) {
+          if (!seen.has(id)) {
+            seen.add(id);
             uniqueRaw.push(item);
           }
         } else if (item) {
@@ -223,14 +267,80 @@ export const leadsService = {
         }
       }
 
-      const normalized = uniqueRaw.map(normalizeLead).filter(Boolean);
+      // Preserve any newly created leads in storage that haven't synced yet
+      const stored = (storageService.get(LEADS_KEY) || []).map(normalizeLead).filter(Boolean);
+      for (const item of stored) {
+        const id = item?.id || item?._id;
+        if (id && !seen.has(id)) {
+          seen.add(id);
+          uniqueRaw.push(item);
+        }
+      }
+
+      let finalRaw = uniqueRaw;
+      if (role === 'clinic_manager' || role === 'receptionist') {
+        if (userAssignedClinics.length > 0) {
+          finalRaw = uniqueRaw.filter((lead) => {
+            const lClinic = lead.clinic_id || lead.clinicId;
+            return userAssignedClinics.some((cId) => lClinic === cId || isSameClinic(lClinic, cId));
+          });
+        }
+      } else if (role === 'agent') {
+        finalRaw = uniqueRaw.filter((lead) => {
+          const assigned = lead.assigned_to || lead.assignedAgentId || lead.assigned_user_id || lead.assignedTo;
+          return assigned && user?.id && String(assigned) === String(user.id);
+        });
+      }
+
+      const normalized = finalRaw.map(normalizeLead).filter(Boolean);
       storageService.set(LEADS_KEY, normalized);
       return createSuccess(normalized, 'Leads fetched successfully from backend.');
     } catch (err) {
       console.warn('[leadsService.fetchLeads] API error, falling back to cache:', err.message);
-      const cached = (storageService.get(LEADS_KEY) || []).map(normalizeLead).filter(Boolean);
+      let cached = (storageService.get(LEADS_KEY) || []).map(normalizeLead).filter(Boolean);
+      const user = currentUser || getCurrentUser();
+      const role = (user?.role || '').toLowerCase();
+      if (role === 'clinic_manager' || role === 'receptionist') {
+        const userAssignedClinics = [
+          ...(Array.isArray(user?.assigned_clinics) ? user.assigned_clinics : []),
+          ...(Array.isArray(user?.assignedClinics) ? user.assignedClinics : []),
+          ...(Array.isArray(user?.clinicIds) ? user.clinicIds : []),
+          ...(user?.clinicId ? [user.clinicId] : []),
+          ...(user?.clinic_id ? [user.clinic_id] : []),
+        ].filter(Boolean);
+        if (userAssignedClinics.length > 0) {
+          cached = cached.filter((lead) => {
+            const lClinic = lead.clinic_id || lead.clinicId;
+            return userAssignedClinics.some((cId) => lClinic === cId || isSameClinic(lClinic, cId));
+          });
+        }
+      } else if (role === 'agent') {
+        cached = cached.filter((lead) => {
+          const assigned = lead.assigned_to || lead.assignedAgentId || lead.assigned_user_id || lead.assignedTo;
+          return assigned && user?.id && String(assigned) === String(user.id);
+        });
+      }
       return createSuccess(cached, 'Leads loaded from cache.');
     }
+  },
+
+  /**
+   * Synchronous accessor for local cached leads
+   */
+  getLeadsSync(currentUser = null) {
+    try {
+      const cached = storageService.get(storageService.KEYS.LEADS) || [];
+      return (Array.isArray(cached) ? cached : []).map((l) => normalizeLead(l));
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * Alias for getLeadsSync
+   */
+  getLeads(currentUser = null) {
+    return this.getLeadsSync(currentUser);
   },
 
   /**
@@ -239,6 +349,54 @@ export const leadsService = {
    */
   async createLead(leadData, currentUser = null) {
     assertCanMutate('leads', 'create', currentUser);
+
+    const user = currentUser || getCurrentUser();
+    const role = (user?.role || '').toLowerCase();
+    if (role === 'clinic_manager' || role === 'receptionist') {
+      const userAssignedClinics = [
+        ...(Array.isArray(user?.assigned_clinics) ? user.assigned_clinics : []),
+        ...(Array.isArray(user?.assignedClinics) ? user.assignedClinics : []),
+        ...(Array.isArray(user?.clinicIds) ? user.clinicIds : []),
+        ...(user?.clinicId ? [user.clinicId] : []),
+        ...(user?.clinic_id ? [user.clinic_id] : []),
+      ].filter(Boolean);
+
+      const targetClinic = leadData.clinic_id || leadData.clinicId;
+      if (userAssignedClinics.length > 0 && targetClinic) {
+        const matches = userAssignedClinics.some(
+          (cId) => targetClinic === cId || isSameClinic(targetClinic, cId)
+        );
+        if (!matches) {
+          throw new Error('Access Denied: You can only create leads for your assigned clinic(s).');
+        }
+      } else if (userAssignedClinics.length > 0 && !targetClinic) {
+        leadData.clinic_id = userAssignedClinics[0];
+      }
+    } else if (role === 'agent') {
+      const userAssignedClinics = [
+        ...(Array.isArray(user?.assigned_clinics) ? user.assigned_clinics : []),
+        ...(Array.isArray(user?.assignedClinics) ? user.assignedClinics : []),
+        ...(Array.isArray(user?.clinicIds) ? user.clinicIds : []),
+        ...(user?.clinicId ? [user.clinicId] : []),
+        ...(user?.clinic_id ? [user.clinic_id] : []),
+      ].filter(Boolean);
+
+      const targetClinic = leadData.clinic_id || leadData.clinicId;
+      if (userAssignedClinics.length > 0 && targetClinic) {
+        const matches = userAssignedClinics.some(
+          (cId) => targetClinic === cId || isSameClinic(targetClinic, cId)
+        );
+        if (!matches) {
+          throw new Error('Access Denied: Agents can only create leads for their assigned clinic(s).');
+        }
+      } else if (userAssignedClinics.length > 0 && !targetClinic) {
+        leadData.clinic_id = userAssignedClinics[0];
+      }
+
+      // Auto-assigned to self
+      leadData.assigned_to = user?.id;
+      leadData.assignedAgentName = user?.fullName || user?.name || user?.email || 'Agent';
+    }
 
     let firstName = (leadData.first_name || '').trim();
     let lastName = (leadData.last_name || '').trim();
@@ -263,7 +421,7 @@ export const leadsService = {
       notes: (leadData.notes || '').trim() || null,
       treatment_interest: (leadData.treatment_interest || leadData.treatment || '').trim() || null,
       expected_revenue: Number(leadData.expected_revenue ?? leadData.expectedRevenue ?? 1),
-      assigned_to: leadData.assigned_to || leadData.assignedAgentId || null,
+      assigned_to: role === 'agent' ? (user?.id || null) : (leadData.assigned_to || leadData.assignedAgentId || null),
       priority: (leadData.priority || 'medium').toLowerCase(),
       clinic_id: leadData.clinic_id || leadData.clinicId || null,
       organization_id: leadData.organization_id || leadData.orgId || null,
@@ -346,8 +504,33 @@ export const leadsService = {
    *   "clinic_id": ""
    * }
    */
+  /**
+   * PUT /api/v1/leads/{lead_id}
+   * Full update of a lead matching LeadUpdate schema
+   */
   async updateLead(leadId, leadData, currentUser = null) {
     assertCanMutate('leads', 'edit', currentUser);
+
+    const user = currentUser || getCurrentUser();
+    const role = (user?.role || '').toLowerCase();
+    const existingLead = this.getLeadById(leadId);
+    if (existingLead && !checkLeadClinicAccess(existingLead, user)) {
+      throw new Error('Access Denied: You can only update leads for your assigned clinic(s).');
+    }
+
+    if (role === 'finance') {
+      throw new Error('Access Denied: Finance role cannot edit general customer information. Use billing updates.');
+    }
+
+    if (role === 'agent') {
+      const assigned = existingLead?.assigned_to || existingLead?.assignedAgentId || existingLead?.assigned_user_id || existingLead?.assignedTo;
+      if (assigned && user?.id && String(assigned) !== String(user.id)) {
+        throw new Error('Access Denied: Agents can only update leads assigned to them.');
+      }
+      if (String(leadData.status || '').toLowerCase() === 'won') {
+        throw new Error('Access Denied: Agents are not authorized to mark lead status as WON.');
+      }
+    }
 
     let firstName = (leadData.first_name || '').trim();
     let lastName = (leadData.last_name || '').trim();
@@ -362,19 +545,24 @@ export const leadsService = {
       lastName = parts.slice(1).join(' ') || '';
     }
 
+    const cleanEmail = (leadData.email || '').trim();
+    const cleanPhone = (leadData.phone || leadData.phoneNumber || '').trim();
+    const cleanAssignedTo = (leadData.assigned_to || leadData.assignedAgentId || '').trim();
+    const cleanClinicId = (leadData.clinic_id || leadData.clinicId || '').trim();
+
     const apiPayload = {
-      first_name: firstName || undefined,
-      last_name: lastName || undefined,
-      email: (leadData.email || '').trim() || null,
-      phone: (leadData.phone || leadData.phoneNumber || '').trim() || undefined,
-      source: leadData.source ? String(leadData.source).toLowerCase() : undefined,
-      status: leadData.status ? String(leadData.status).toLowerCase() : undefined,
-      notes: (leadData.notes || '').trim() || null,
-      treatment_interest: (leadData.treatment_interest || leadData.treatment || '').trim() || null,
+      first_name: firstName || '',
+      last_name: lastName || '',
+      email: cleanEmail ? cleanEmail : null,
+      phone: cleanPhone ? cleanPhone : null,
+      source: (leadData.source || 'website').toLowerCase(),
+      status: (leadData.status || 'new').toLowerCase(),
+      notes: leadData.notes || '',
+      treatment_interest: leadData.treatment_interest || leadData.treatment || '',
       expected_revenue: Number(leadData.expected_revenue ?? leadData.expectedRevenue ?? 1),
-      assigned_to: leadData.assigned_to || leadData.assignedAgentId || null,
-      priority: leadData.priority ? String(leadData.priority).toLowerCase() : undefined,
-      clinic_id: leadData.clinic_id || leadData.clinicId || null,
+      assigned_to: cleanAssignedTo ? cleanAssignedTo : null,
+      priority: (leadData.priority || 'medium').toLowerCase(),
+      clinic_id: cleanClinicId ? cleanClinicId : null,
     };
 
     try {
@@ -402,6 +590,202 @@ export const leadsService = {
   },
 
   /**
+   * PATCH /api/v1/leads/{lead_id}
+   * Partial update of a lead matching LeadUpdate schema
+   */
+  async patchLead(leadId, patchData, currentUser = null) {
+    assertCanMutate('leads', 'edit', currentUser);
+
+    const user = currentUser || getCurrentUser();
+    const role = (user?.role || '').toLowerCase();
+    const existingLead = this.getLeadById(leadId);
+    if (existingLead && !checkLeadClinicAccess(existingLead, user)) {
+      throw new Error('Access Denied: You can only update leads for your assigned clinic(s).');
+    }
+
+    if (role === 'finance') {
+      const generalFields = ['first_name', 'last_name', 'email', 'phone', 'source', 'status', 'notes', 'treatment_interest', 'assigned_to', 'clinic_id', 'priority'];
+      const attemptedGeneral = Object.keys(patchData).filter((k) => generalFields.includes(k));
+      if (attemptedGeneral.length > 0) {
+        throw new Error('Access Denied: Finance role cannot edit general customer information. Use billing updates.');
+      }
+    }
+
+    if (role === 'agent') {
+      const assigned = existingLead?.assigned_to || existingLead?.assignedAgentId || existingLead?.assigned_user_id || existingLead?.assignedTo;
+      if (assigned && user?.id && String(assigned) !== String(user.id)) {
+        throw new Error('Access Denied: Agents can only update leads assigned to them.');
+      }
+      if (String(patchData.status || '').toLowerCase() === 'won') {
+        throw new Error('Access Denied: Agents are not authorized to mark lead status as WON.');
+      }
+    }
+
+    const apiPayload = {};
+    if (patchData.first_name !== undefined) apiPayload.first_name = (patchData.first_name || '').trim();
+    if (patchData.last_name !== undefined) apiPayload.last_name = (patchData.last_name || '').trim();
+    if (patchData.email !== undefined) {
+      const email = (patchData.email || '').trim();
+      apiPayload.email = email ? email : null;
+    }
+    if (patchData.phone !== undefined) {
+      const phone = (patchData.phone || '').trim();
+      apiPayload.phone = phone ? phone : null;
+    }
+    if (patchData.source !== undefined) apiPayload.source = (patchData.source || 'website').toLowerCase();
+    if (patchData.status !== undefined) apiPayload.status = (patchData.status || 'new').toLowerCase();
+    if (patchData.notes !== undefined) apiPayload.notes = patchData.notes || '';
+    if (patchData.treatment_interest !== undefined) apiPayload.treatment_interest = patchData.treatment_interest || '';
+    if (patchData.expected_revenue !== undefined) apiPayload.expected_revenue = Number(patchData.expected_revenue) || 1;
+    if (patchData.assigned_to !== undefined) {
+      const assigned = (patchData.assigned_to || '').trim();
+      apiPayload.assigned_to = assigned ? assigned : null;
+    }
+    if (patchData.priority !== undefined) apiPayload.priority = (patchData.priority || 'medium').toLowerCase();
+    if (patchData.clinic_id !== undefined) {
+      const clinic = (patchData.clinic_id || '').trim();
+      apiPayload.clinic_id = clinic ? clinic : null;
+    }
+    if (patchData.paid_amount !== undefined) apiPayload.paid_amount = Number(patchData.paid_amount) || 0;
+    if (patchData.paidAmount !== undefined) apiPayload.paid_amount = Number(patchData.paidAmount) || 0;
+    if (patchData.payment_status !== undefined) apiPayload.payment_status = patchData.payment_status;
+    if (patchData.paymentStatus !== undefined) apiPayload.payment_status = patchData.paymentStatus;
+    if (patchData.receipt_status !== undefined) apiPayload.receipt_status = patchData.receipt_status;
+    if (patchData.receiptStatus !== undefined) apiPayload.receipt_status = patchData.receiptStatus;
+    if (patchData.invoice_number !== undefined) apiPayload.invoice_number = patchData.invoice_number;
+    if (patchData.invoiceNumber !== undefined) apiPayload.invoice_number = patchData.invoiceNumber;
+    if (patchData.invoice_status !== undefined) apiPayload.invoice_status = patchData.invoice_status;
+    if (patchData.invoiceStatus !== undefined) apiPayload.invoice_status = patchData.invoiceStatus;
+    if (patchData.billing_notes !== undefined) apiPayload.billing_notes = patchData.billing_notes;
+    if (patchData.billingNotes !== undefined) apiPayload.billing_notes = patchData.billingNotes;
+
+    try {
+      const response = await apiClient.patch(`/api/v1/leads/${leadId}`, apiPayload);
+      const updated = normalizeLead(response.data || { ...apiPayload, ...patchData, id: leadId });
+      const existing = (storageService.get(LEADS_KEY) || []).map(normalizeLead);
+      const updatedList = existing.map((l) => (String(l.id) === String(leadId) ? { ...l, ...updated } : l));
+      storageService.set(LEADS_KEY, updatedList);
+      return createSuccess(updated, 'Lead updated successfully via PATCH.');
+    } catch (apiErr) {
+      console.warn('[leadsService.patchLead] API patch failed, saving to local fallback:', apiErr.message);
+      const existing = (storageService.get(LEADS_KEY) || []).map(normalizeLead);
+      const current = existing.find((l) => String(l.id) === String(leadId)) || {};
+      const fallback = normalizeLead({
+        ...current,
+        ...apiPayload,
+        ...patchData,
+        id: leadId,
+        updated_at: new Date().toISOString(),
+      });
+      const updatedList = existing.map((l) => (String(l.id) === String(leadId) ? fallback : l));
+      storageService.set(LEADS_KEY, updatedList);
+      return createSuccess(fallback, 'Lead updated successfully (offline mode).');
+    }
+  },
+
+  /**
+   * Updates billing, invoice, and payment receipt status on a lead
+   * Authorized for: finance, org_admin, super_admin
+   */
+  async updateLeadBilling(leadId, billingData, currentUser = null) {
+    const user = currentUser || getCurrentUser();
+    const role = (user?.role || '').toLowerCase();
+    if (!['finance', 'org_admin', 'super_admin'].includes(role)) {
+      throw new Error('Access Denied: Only Finance and Administrators can update lead billing details.');
+    }
+
+    const existingLead = this.getLeadById(leadId);
+    if (!existingLead) {
+      throw new Error(`Lead #${leadId} not found.`);
+    }
+
+    const paidAmount = billingData.paid_amount !== undefined ? Number(billingData.paid_amount) : Number(billingData.paidAmount ?? existingLead.paid_amount ?? 0);
+    const paymentStatus = (billingData.payment_status || billingData.paymentStatus || existingLead.payment_status || 'pending').toLowerCase();
+    const receiptStatus = (billingData.receipt_status || billingData.receiptStatus || existingLead.receipt_status || 'unissued').toLowerCase();
+    const invoiceNumber = (billingData.invoice_number || billingData.invoiceNumber || existingLead.invoice_number || `INV-${String(leadId).slice(-4).toUpperCase()}`).trim();
+    const invoiceStatus = (billingData.invoice_status || billingData.invoiceStatus || existingLead.invoice_status || 'draft').toLowerCase();
+    const billingNotes = billingData.billing_notes !== undefined ? billingData.billing_notes : (billingData.billingNotes !== undefined ? billingData.billingNotes : (existingLead.billing_notes || ''));
+
+    const updatedFields = {
+      paid_amount: paidAmount,
+      paidAmount: paidAmount,
+      payment_status: paymentStatus,
+      paymentStatus: paymentStatus,
+      receipt_status: receiptStatus,
+      receiptStatus: receiptStatus,
+      invoice_number: invoiceNumber,
+      invoiceNumber: invoiceNumber,
+      invoice_status: invoiceStatus,
+      invoiceStatus: invoiceStatus,
+      billing_notes: billingNotes,
+      billingNotes: billingNotes,
+      updated_at: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      last_activity: `Billing updated by ${user?.fullName || user?.name || role}: ${paymentStatus.toUpperCase()} (${invoiceNumber})`,
+      lastActivity: `Billing updated by ${user?.fullName || user?.name || role}: ${paymentStatus.toUpperCase()} (${invoiceNumber})`,
+      lastActivityDate: new Date().toISOString(),
+    };
+
+    const updatedLead = {
+      ...existingLead,
+      ...updatedFields,
+    };
+
+    // Update leads cache
+    const existing = (storageService.get(LEADS_KEY) || []).map(normalizeLead);
+    const updatedList = existing.map((l) => (String(l.id) === String(leadId) ? updatedLead : l));
+    storageService.set(LEADS_KEY, updatedList);
+
+    // Sync to revenue storage
+    try {
+      const allRevenue = storageService.get(storageService.KEYS.REVENUE) || [];
+      const revIndex = allRevenue.findIndex((r) => String(r.leadId) === String(leadId) || (r.patientName && r.patientName.toLowerCase() === (updatedLead.patientName || '').toLowerCase()));
+
+      const revRecord = {
+        id: revIndex >= 0 ? allRevenue[revIndex].id : `rev-${Date.now().toString(36)}`,
+        leadId: leadId,
+        patientName: updatedLead.patientName,
+        treatment: updatedLead.treatment_interest || updatedLead.treatment || 'Dental Treatment',
+        clinicId: updatedLead.clinic_id || updatedLead.clinicId || 'clinic-downtown',
+        amount: Number(updatedLead.expected_revenue ?? updatedLead.expectedRevenue ?? 1),
+        revenue: paidAmount > 0 ? paidAmount : Number(updatedLead.expected_revenue ?? 1),
+        paidAmount: paidAmount,
+        status: paymentStatus === 'paid' ? 'paid' : paymentStatus === 'partially_paid' || paymentStatus === 'partial' ? 'deposit received' : 'pending',
+        receiptStatus: receiptStatus,
+        invoiceNumber: invoiceNumber,
+        invoiceStatus: invoiceStatus,
+        method: revIndex >= 0 ? (allRevenue[revIndex].method || 'Credit Card') : 'Credit Card',
+        date: revIndex >= 0 ? (allRevenue[revIndex].date || new Date().toISOString().split('T')[0]) : new Date().toISOString().split('T')[0],
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (revIndex >= 0) {
+        allRevenue[revIndex] = { ...allRevenue[revIndex], ...revRecord };
+      } else {
+        allRevenue.unshift(revRecord);
+      }
+      storageService.set(storageService.KEYS.REVENUE, allRevenue);
+    } catch (e) {
+      console.warn('[leadsService.updateLeadBilling] Error syncing to revenue storage:', e);
+    }
+
+    // Attempt background API patch
+    try {
+      await apiClient.patch(`/api/v1/leads/${leadId}`, {
+        paid_amount: paidAmount,
+        payment_status: paymentStatus,
+        receipt_status: receiptStatus,
+        invoice_number: invoiceNumber,
+        invoice_status: invoiceStatus,
+      });
+    } catch (apiErr) {
+      console.warn('[leadsService.updateLeadBilling] Background API patch note:', apiErr.message);
+    }
+
+    return createSuccess(updatedLead, 'Lead billing and invoice details updated successfully.');
+  },
+
+  /**
    * Returns a lead by ID
    */
   getLeadById(id) {
@@ -410,12 +794,28 @@ export const leadsService = {
   },
 
   /**
-   * Updates lead status
+   * Updates lead status via PATCH /api/v1/leads/{lead_id}
    */
   updateLeadStatus(leadId, newStatus, currentUser = null) {
     assertCanMutate('leads', 'edit', currentUser);
+    const user = currentUser || getCurrentUser();
+    const role = (user?.role || '').toLowerCase();
     const leads = this.getLeadsSync();
     const current = leads.find((l) => String(l.id) === String(leadId));
+
+    if (role === 'finance') {
+      throw new Error('Access Denied: Finance role cannot change lead status. Status is managed by clinical and front-desk staff.');
+    }
+
+    if (role === 'agent') {
+      const assigned = current?.assigned_to || current?.assignedAgentId || current?.assigned_user_id || current?.assignedTo;
+      if (assigned && user?.id && String(assigned) !== String(user.id)) {
+        throw new Error('Access Denied: Agents can only update leads assigned to them.');
+      }
+      if (String(newStatus || '').toLowerCase() === 'won') {
+        throw new Error('Access Denied: Agents are not authorized to mark lead status as WON.');
+      }
+    }
     const updated = leads.map((l) =>
       String(l.id) === String(leadId)
         ? { ...l, status: newStatus, updatedAt: new Date().toISOString() }
@@ -423,12 +823,10 @@ export const leadsService = {
     );
     storageService.set(LEADS_KEY, updated);
 
-    // Background sync via PUT /api/v1/leads/{lead_id}
-    if (current) {
-      this.updateLead(leadId, { ...current, status: newStatus }, currentUser).catch((e) =>
-        console.warn('[leadsService.updateLeadStatus] Background API sync failed:', e.message)
-      );
-    }
+    // Background sync via PATCH /api/v1/leads/{lead_id}
+    this.patchLead(leadId, { status: newStatus }, currentUser).catch((e) =>
+      console.warn('[leadsService.updateLeadStatus] Background API sync failed:', e.message)
+    );
     return updated.find((l) => String(l.id) === String(leadId));
   },
 
@@ -436,9 +834,14 @@ export const leadsService = {
    * POST /api/v1/leads/{lead_id}/assign?user_id={user_id}
    * Assigns a lead to a user/agent.
    */
-  async assignLead(leadId, userId) {
+  async assignLead(leadId, userId, currentUser = null) {
     if (!leadId) return createError('Lead ID is required.');
     if (!userId) return createError('User ID is required.');
+    const user = currentUser || getCurrentUser();
+    const role = (user?.role || '').toLowerCase();
+    if (role === 'agent' || role === 'finance' || role === 'auditor') {
+      return createError('Access Denied: You do not have permission to assign leads.');
+    }
     try {
       const response = await apiClient.post(
         `/api/v1/leads/${leadId}/assign`,
@@ -461,14 +864,34 @@ export const leadsService = {
   },
 
   /**
-   * Deletes a lead
+   * DELETE /api/v1/leads/{lead_id}
+   * Deletes a lead by ID from the backend database and only removes from local storage on success.
    */
-  deleteLead(leadId) {
-    assertCanMutate('leads', 'delete');
-    const leads = this.getLeadsSync();
-    const filtered = leads.filter((l) => l.id !== leadId);
-    storageService.set(LEADS_KEY, filtered);
-    return true;
+  async deleteLead(leadId, currentUser = null) {
+    assertCanMutate('leads', 'delete', currentUser);
+
+    const user = currentUser || getCurrentUser();
+    const existingLead = this.getLeadById(leadId);
+    if (existingLead && !checkLeadClinicAccess(existingLead, user)) {
+      throw new Error('Access Denied: You can only delete leads for your assigned clinic(s).');
+    }
+    try {
+      const response = await apiClient.delete(`/api/v1/leads/${leadId}`);
+      // Remove from local storage ONLY after backend responds with success (200 / 204)
+      const leads = this.getLeadsSync();
+      const filtered = leads.filter((l) => String(l.id) !== String(leadId));
+      storageService.set(LEADS_KEY, filtered);
+      return createSuccess(true, response?.data?.message || 'Lead deleted successfully from database.');
+    } catch (apiErr) {
+      console.error(`[leadsService.deleteLead] Backend DELETE /api/v1/leads/${leadId} failed:`, apiErr);
+      const message =
+        apiErr.response?.data?.error?.message ||
+        apiErr.response?.data?.detail ||
+        apiErr.response?.data?.message ||
+        apiErr.message ||
+        'Failed to delete lead from database.';
+      throw new Error(`Database delete failed: ${message}`);
+    }
   },
 };
 
@@ -613,14 +1036,17 @@ export function sanitizeLeadForReceptionist(lead) {
  */
 export function getLeadByIdScoped(id, currentUser, selectedClinicId) {
   const allLeads = leadsService.getLeadsSync();
+  const role = (currentUser?.role || '').toLowerCase();
+
+  // Finance role: Direct lead ID viewing is accessible
+  if (role === 'finance') {
+    return allLeads.find((l) => String(l.id) === String(id)) || null;
+  }
+
   const scopedLeads = scopeData({ resource: 'leads', data: allLeads, currentUser, selectedClinicId });
   const lead = scopedLeads.find((l) => String(l.id) === String(id));
 
   if (!lead) return null;
-
-  if (currentUser?.role === 'receptionist') {
-    return sanitizeLeadForReceptionist(lead);
-  }
 
   return lead;
 }
@@ -682,10 +1108,27 @@ export async function updateLead(leadId, leadData, currentUser = null) {
 }
 
 /**
- * Deletes a lead by ID
+ * Partially updates an existing lead via PATCH /api/v1/leads/{lead_id}
  */
-export function deleteLead(leadId) {
-  return leadsService.deleteLead(leadId);
+export async function patchLead(leadId, patchData, currentUser = null) {
+  const res = await leadsService.patchLead(leadId, patchData, currentUser);
+  return res.data || res;
+}
+
+/**
+ * Updates billing and invoice details on a lead via leadsService.updateLeadBilling
+ */
+export async function updateLeadBilling(leadId, billingData, currentUser = null) {
+  const res = await leadsService.updateLeadBilling(leadId, billingData, currentUser);
+  return res.data || res;
+}
+
+/**
+ * Deletes a lead by ID via DELETE /api/v1/leads/{lead_id}
+ */
+export async function deleteLead(leadId, currentUser = null) {
+  const res = await leadsService.deleteLead(leadId, currentUser);
+  return res.data || res;
 }
 
 /**

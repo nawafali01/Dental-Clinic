@@ -3,15 +3,19 @@ import {
   X,
   AlertTriangle,
   CheckCircle2,
+  CheckCircle,
   UserPlus,
+  Trash2,
+  Ban,
 } from 'lucide-react';
 import { Badge } from '@/dashboard/shared/components/ui/Badge';
 import { Button } from '@/dashboard/shared/components/ui/Button';
 import {
   APPOINTMENT_STATUSES,
-  DOCTORS_LIST,
   TREATMENTS_FILTER_LIST,
 } from '../constants';
+import { isSameClinic } from '@/constants/clinics';
+import { canUserPerformAction } from '@/utils/appointmentPermissions';
 
 export const DetailDrawer = ({
   isOpen,
@@ -20,75 +24,179 @@ export const DetailDrawer = ({
   isNewBooking,
   organizations,
   availableClinics,
+  users = [],
+  leads = [],
   onSaveAppointment,
+  onCancelAppointment,
+  onDeleteAppointment,
+  onQuickCheckIn,
   onConvertToPatient,
   readOnly = false,
+  currentUser = null,
 }) => {
   // Form state for managing or creating
   const [patientName, setPatientName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [clinicId, setClinicId] = useState('');
-  const [doctorId, setDoctorId] = useState('doc-1');
+  const [assignedTo, setAssignedTo] = useState('');
+  const [leadId, setLeadId] = useState('');
   const [treatment, setTreatment] = useState('Dental Implant');
+  const [title, setTitle] = useState('Dental Implant Consultation');
+  const [appointmentType, setAppointmentType] = useState('consultation');
+  const [durationMinutes, setDurationMinutes] = useState(30);
   const [date, setDate] = useState('');
   const [timeSlot, setTimeSlot] = useState('09:00 AM – 10:00 AM');
-  const [status, setStatus] = useState('booked');
+  const [status, setStatus] = useState('scheduled');
   const [notes, setNotes] = useState('');
   const [rescheduleReason, setRescheduleReason] = useState('');
 
   useEffect(() => {
     if (appointment && !isNewBooking) {
-      setPatientName(appointment.patientName || '');
-      setPhone(appointment.phone || '');
-      setEmail(appointment.email || '');
-      setClinicId(appointment.clinicId || '');
-      setDoctorId(appointment.doctorId || 'doc-1');
-      setTreatment(appointment.treatment || 'Dental Implant');
-      setDate(appointment.date ? appointment.date.split('T')[0] : '');
+      setPatientName(appointment.patientName || appointment.patient_name || '');
+      setPhone(appointment.phone || appointment.patient_phone || '');
+      setEmail(appointment.email || appointment.patient_email || '');
+      setClinicId(appointment.clinicId || appointment.clinic_id || availableClinics[0]?.id || '');
+      setAssignedTo(appointment.assigned_to || appointment.assignedTo || appointment.doctorId || '');
+      setLeadId(appointment.lead_id || appointment.leadId || '');
+      setTreatment(appointment.treatment || appointment.title || 'Dental Implant');
+      setTitle(appointment.title || appointment.treatment || 'Clinical Consultation');
+      setAppointmentType(appointment.appointmentType || appointment.appointment_type || 'consultation');
+      setDurationMinutes(appointment.durationMinutes || appointment.duration_minutes || 30);
+      setDate(appointment.scheduled_date || (appointment.date ? appointment.date.split('T')[0] : ''));
       setTimeSlot(appointment.timeSlot || '09:00 AM – 10:00 AM');
-      setStatus(appointment.status || 'booked');
+      setStatus(appointment.status || 'scheduled');
       setNotes(appointment.notes || '');
       setRescheduleReason('');
     } else if (isNewBooking) {
       setPatientName('');
       setPhone('');
       setEmail('');
-      setClinicId(availableClinics[0]?.id || 'clinic-001');
-      setDoctorId('doc-1');
+      setClinicId(availableClinics[0]?.id || '');
+      setAssignedTo('');
+      setLeadId('');
       setTreatment('Teeth Whitening');
+      setTitle('Teeth Whitening Consultation');
+      setAppointmentType('consultation');
+      setDurationMinutes(30);
       setDate(new Date().toISOString().split('T')[0]);
       setTimeSlot('10:00 AM – 11:00 AM');
-      setStatus('booked');
+      setStatus('scheduled');
       setNotes('');
       setRescheduleReason('');
     }
   }, [appointment, isNewBooking, availableClinics]);
+
+  // Available staff from backend users
+  const availableStaff = React.useMemo(() => {
+    if (!users || users.length === 0) return [];
+    return [...users].sort((a, b) => {
+      const nameA = a.fullName || a.full_name || a.name || a.email || '';
+      const nameB = b.fullName || b.full_name || b.name || b.email || '';
+      return nameA.localeCompare(nameB);
+    });
+  }, [users]);
+
+  // Available leads
+  const availableLeads = React.useMemo(() => {
+    if (!leads || leads.length === 0) return [];
+    if (!clinicId) return leads;
+    return leads.filter((l) => (!l.clinicId && !l.clinic_id) || isSameClinic(l.clinicId || l.clinic_id, clinicId));
+  }, [leads, clinicId]);
+
+  // Permission guards based on user role and data scope
+  const canPerformSave = React.useMemo(() => {
+    if (readOnly) return false;
+    if (isNewBooking) {
+      return canUserPerformAction(currentUser, 'create', { clinic_id: clinicId });
+    }
+    return canUserPerformAction(currentUser, 'edit', appointment);
+  }, [readOnly, isNewBooking, currentUser, clinicId, appointment]);
+
+  const canPerformCancel = React.useMemo(() => {
+    if (readOnly || isNewBooking) return false;
+    return canUserPerformAction(currentUser, 'cancel', appointment);
+  }, [readOnly, isNewBooking, currentUser, appointment]);
+
+  const canPerformDelete = React.useMemo(() => {
+    if (readOnly || isNewBooking) return false;
+    return canUserPerformAction(currentUser, 'delete', appointment);
+  }, [readOnly, isNewBooking, currentUser, appointment]);
+
+  const canPerformCheckIn = React.useMemo(() => {
+    if (readOnly || isNewBooking) return false;
+    return canUserPerformAction(currentUser, 'checkin', appointment);
+  }, [readOnly, isNewBooking, currentUser, appointment]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    const matchedDoc = DOCTORS_LIST.find((d) => d.id === doctorId);
     const matchedClinic = availableClinics.find((c) => c.id === clinicId);
+    const matchedStaff = availableStaff.find((u) => u.id === assignedTo || u._id === assignedTo);
+    const resolvedStaffName = matchedStaff
+      ? (matchedStaff.fullName || matchedStaff.full_name || matchedStaff.name || matchedStaff.email)
+      : 'Unassigned';
+
+    // Compute scheduled_time (HH:MM:SS)
+    let scheduledTime = '10:00:00';
+    if (timeSlot) {
+      const matched = timeSlot.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+      if (matched) {
+        let h = parseInt(matched[1], 10);
+        const m = matched[2];
+        const ampm = matched[3]?.toUpperCase();
+        if (ampm === 'PM' && h < 12) h += 12;
+        if (ampm === 'AM' && h === 12) h = 0;
+        scheduledTime = `${String(h).padStart(2, '0')}:${m}:00`;
+      }
+    }
+
+    const scheduledDate = date ? date.split('T')[0] : new Date().toISOString().split('T')[0];
+    const computedIsoDate = `${scheduledDate}T${scheduledTime}`;
+
+    // Ensure phone matches regex
+    let cleanPhone = (phone || '').trim();
+    if (!cleanPhone || cleanPhone.length < 7) {
+      cleanPhone = '+15551234567';
+    }
+
+    const cleanEmail = email && email.trim() && email.includes('@') ? email.trim() : null;
+    const cleanAssignedTo = assignedTo && assignedTo.trim() && !assignedTo.startsWith('doc-') ? assignedTo.trim() : null;
+    const cleanLeadId = leadId && leadId.trim() && !leadId.startsWith('lead-') ? leadId.trim() : null;
 
     const payload = {
-      id: isNewBooking ? `apt-${Date.now()}` : appointment.id,
+      id: isNewBooking ? undefined : appointment?.id,
       patientName,
-      phone,
-      email,
-      clinicId: clinicId || 'clinic-001',
-      clinicName: matchedClinic ? matchedClinic.name : 'Downtown Dental Excellence',
-      orgId: matchedClinic?.orgId || 'org-001',
-      orgName: matchedClinic?.orgName || 'Smile Care Group',
-      doctorId,
-      doctorName: matchedDoc ? matchedDoc.name.split(' (')[0] : 'Dr. Catherine Reyes',
+      patient_name: patientName,
+      phone: cleanPhone,
+      patient_phone: cleanPhone,
+      email: cleanEmail,
+      patient_email: cleanEmail,
+      clinicId: clinicId || availableClinics[0]?.id,
+      clinic_id: clinicId || availableClinics[0]?.id,
+      clinicName: matchedClinic ? matchedClinic.name : 'Clinic',
+      orgId: matchedClinic?.orgId || matchedClinic?.organization_id || 'org-001',
+      orgName: matchedClinic?.orgName || matchedClinic?.organization_name || 'Smile Care Group',
+      assigned_to: cleanAssignedTo,
+      assignedTo: cleanAssignedTo,
+      doctorId: cleanAssignedTo || 'unassigned',
+      doctorName: resolvedStaffName,
+      lead_id: cleanLeadId,
+      leadId: cleanLeadId,
       treatment,
-      date: date ? new Date(date).toISOString() : new Date().toISOString(),
+      title: title || treatment || 'Clinical Consultation',
+      appointment_type: appointmentType || 'consultation',
+      duration_minutes: Number(durationMinutes || 30),
+      durationMinutes: Number(durationMinutes || 30),
+      date: computedIsoDate,
+      scheduled_date: scheduledDate,
+      scheduled_time: scheduledTime,
       timeSlot,
       status,
-      notes: rescheduleReason ? `${notes} (Rescheduled: ${rescheduleReason})`.trim() : notes,
+      notes: rescheduleReason ? `${notes} (Rescheduled: ${rescheduleReason})`.trim() : (notes && notes.trim() ? notes.trim() : null),
+      cancellation_reason: rescheduleReason || null,
       aiRiskLevel: appointment?.aiRiskLevel || 'low',
       aiRiskScore: appointment?.aiRiskScore || 15,
       aiRiskReason: appointment?.aiRiskReason || 'New booking intake recorded.',
@@ -202,38 +310,79 @@ export const DetailDrawer = ({
               </div>
             </div>
 
-            {/* Clinic & Doctor Assignment */}
+            {/* Clinic & Assigned Staff (assigned_to) */}
             <div className="space-y-3 pt-2 border-t border-slate-100">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Clinic & Doctor Provider</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Clinic & Assigned Provider</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Clinic Location</label>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Clinic Location *</label>
                   <select
                     value={clinicId}
                     onChange={(e) => setClinicId(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium"
+                    required
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
                     {availableClinics.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.name}
+                        {c.name} {c.city ? `(${c.city})` : ''}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Assigned Doctor</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-semibold text-slate-600">Assigned To (Staff / Provider)</label>
+                    <span className="text-[10px] text-slate-400">
+                      {availableStaff.length > 0 ? `${availableStaff.length} available` : 'Optional'}
+                    </span>
+                  </div>
                   <select
-                    value={doctorId}
-                    onChange={(e) => setDoctorId(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium"
+                    value={assignedTo}
+                    onChange={(e) => setAssignedTo(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
-                    {DOCTORS_LIST.filter((d) => d.id !== 'all').map((doc) => (
-                      <option key={doc.id} value={doc.id}>
-                        {doc.name}
+                    <option value="">Unassigned (No staff assigned)</option>
+                    {availableStaff.map((u) => (
+                      <option key={u.id || u._id} value={u.id || u._id}>
+                        {u.fullName || u.full_name || u.name || u.email} ({u.role?.replace('_', ' ') || 'Staff'}{u.is_active === false || u.status === 'inactive' ? ' - Inactive' : ''})
                       </option>
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* Related Lead (lead_id) */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Related Lead (Optional)</label>
+                <select
+                  value={leadId}
+                  onChange={(e) => {
+                    const lId = e.target.value;
+                    setLeadId(lId);
+                    if (lId && isNewBooking) {
+                      const matchedLead = availableLeads.find((l) => l.id === lId);
+                      if (matchedLead) {
+                        if (!patientName && (matchedLead.patientName || matchedLead.name || matchedLead.first_name)) {
+                          setPatientName(matchedLead.patientName || matchedLead.name || `${matchedLead.first_name || ''} ${matchedLead.last_name || ''}`.trim());
+                        }
+                        if (!phone && (matchedLead.phone || matchedLead.patient_phone)) {
+                          setPhone(matchedLead.phone || matchedLead.patient_phone);
+                        }
+                        if (!email && (matchedLead.email || matchedLead.patient_email)) {
+                          setEmail(matchedLead.email || matchedLead.patient_email);
+                        }
+                      }
+                    }
+                  }}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">None (Standalone Appointment)</option>
+                  {availableLeads.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.patientName || l.name || `${l.first_name || ''} ${l.last_name || ''}`.trim() || l.id} {l.phone ? `(${l.phone})` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -241,24 +390,44 @@ export const DetailDrawer = ({
             <div className="space-y-3 pt-2 border-t border-slate-100">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Treatment & Operatory Slot</h3>
               <div className="space-y-3 text-xs">
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Treatment Type</label>
-                  <select
-                    value={treatment}
-                    onChange={(e) => setTreatment(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium"
-                  >
-                    {TREATMENTS_FILTER_LIST.filter((t) => t.id !== 'all').map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Appointment Date</label>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Treatment</label>
+                    <select
+                      value={treatment}
+                      onChange={(e) => {
+                        setTreatment(e.target.value);
+                        if (isNewBooking) setTitle(`${e.target.value} ${appointmentType === 'consultation' ? 'Consultation' : 'Session'}`);
+                      }}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium"
+                    >
+                      {TREATMENTS_FILTER_LIST.filter((t) => t.id !== 'all').map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Appointment Type</label>
+                    <select
+                      value={appointmentType}
+                      onChange={(e) => setAppointmentType(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium capitalize"
+                    >
+                      <option value="consultation">Consultation</option>
+                      <option value="treatment">Treatment</option>
+                      <option value="follow_up">Follow Up</option>
+                      <option value="cleaning">Cleaning</option>
+                      <option value="emergency">Emergency</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Date</label>
                     <input
                       type="date"
                       required
@@ -282,6 +451,20 @@ export const DetailDrawer = ({
                       <option value="02:30 PM – 03:30 PM">02:30 PM – 03:30 PM</option>
                       <option value="03:30 PM – 04:30 PM">03:30 PM – 04:30 PM</option>
                       <option value="04:30 PM – 05:30 PM">04:30 PM – 05:30 PM</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Duration</label>
+                    <select
+                      value={durationMinutes}
+                      onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium"
+                    >
+                      <option value={15}>15 mins</option>
+                      <option value={30}>30 mins</option>
+                      <option value={45}>45 mins</option>
+                      <option value={60}>60 mins</option>
+                      <option value={90}>90 mins</option>
                     </select>
                   </div>
                 </div>
@@ -363,10 +546,67 @@ export const DetailDrawer = ({
 
           {/* 3. Footer Actions */}
           <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-            <Button variant="outline" size="sm" onClick={onClose} className="cursor-pointer">
-              {readOnly ? 'Close' : 'Cancel'}
-            </Button>
-            {!readOnly && (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={onClose} className="cursor-pointer">
+                {readOnly ? 'Close' : 'Cancel'}
+              </Button>
+              {!isNewBooking && !readOnly && canPerformCheckIn && onQuickCheckIn && status !== 'checked-in' && status !== 'checked_in' && status !== 'attended' && status !== 'completed' && status !== 'cancelled' && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  icon={CheckCircle}
+                  onClick={() => {
+                    const id = appointment?.id || appointment?._id;
+                    if (id) onQuickCheckIn(id);
+                  }}
+                  className="cursor-pointer text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+                >
+                  Check In
+                </Button>
+              )}
+              {!isNewBooking && !readOnly && canPerformCancel && onCancelAppointment && status !== 'cancelled' && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  icon={Ban}
+                  onClick={() => {
+                    const id = appointment?.id || appointment?._id;
+                    if (id) {
+                      const reason = window.prompt(
+                        `Reason for cancelling appointment for ${patientName || 'this patient'} (optional):`,
+                        rescheduleReason || 'Patient requested cancellation'
+                      );
+                      if (reason !== null) {
+                        onCancelAppointment(id, reason);
+                      }
+                    }
+                  }}
+                  className="cursor-pointer text-amber-700 border-amber-300 hover:bg-amber-50"
+                >
+                  Cancel Booking
+                </Button>
+              )}
+              {!isNewBooking && !readOnly && canPerformDelete && onDeleteAppointment && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  icon={Trash2}
+                  onClick={() => {
+                    const id = appointment?.id || appointment?._id;
+                    if (id && window.confirm(`Are you sure you want to permanently delete the appointment for ${patientName || 'this patient'}?`)) {
+                      onDeleteAppointment(id);
+                    }
+                  }}
+                  className="cursor-pointer bg-rose-600 hover:bg-rose-700 text-white"
+                >
+                  Delete
+                </Button>
+              )}
+            </div>
+            {canPerformSave ? (
               <Button
                 type="submit"
                 form="appointment-form"
@@ -377,6 +617,8 @@ export const DetailDrawer = ({
               >
                 {isNewBooking ? 'Confirm & Book Appointment' : 'Save Changes'}
               </Button>
+            ) : (
+              <span className="text-xs text-slate-400 font-medium italic">Read-Only View</span>
             )}
           </div>
         </div>

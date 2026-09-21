@@ -128,9 +128,10 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_NOTIFICATIONS,
   ],
 
-  // ── Receptionist — front-desk operations only ────────────────
+  // ── Receptionist — front-desk & clinic operations ───────────
   receptionist: [
     PERMISSIONS.VIEW_LEADS,
+    PERMISSIONS.MANAGE_LEADS,
     PERMISSIONS.VIEW_APPOINTMENTS,
     PERMISSIONS.MANAGE_APPOINTMENTS,
     PERMISSIONS.VIEW_PATIENTS,
@@ -266,8 +267,8 @@ export const RESOURCE_PERMISSIONS = {
     org_admin:      RESOURCE_ACCESS.ALL_ORG,
     clinic_manager: RESOURCE_ACCESS.OWN_CLINIC,
     agent:          RESOURCE_ACCESS.ASSIGNED_ONLY,
-    receptionist:   RESOURCE_ACCESS.VIEW,
-    finance:        RESOURCE_ACCESS.LIMITED,
+    receptionist:   RESOURCE_ACCESS.OWN_CLINIC,
+    finance:        RESOURCE_ACCESS.VIEW,
     auditor:        RESOURCE_ACCESS.VIEW,
   },
   appointments: {
@@ -382,13 +383,13 @@ export const getResourceAccess = (roleId, resource) => {
 // ─────────────────────────────────────────────────────────────
 export const ACTION_PERMISSIONS = {
   leads: {
-    view:    ['org_admin', 'clinic_manager', 'agent', 'receptionist', 'auditor'],
-    create:  ['org_admin', 'clinic_manager', 'agent'],
-    edit:    ['org_admin', 'clinic_manager', 'agent'],
-    delete:  ['org_admin', 'clinic_manager'],
-    approve: ['org_admin', 'clinic_manager'],
-    assign:  ['org_admin', 'clinic_manager'],
-    export:  ['org_admin', 'clinic_manager'],
+    view:    ['org_admin', 'clinic_manager', 'agent', 'receptionist', 'finance', 'auditor'],
+    create:  ['org_admin', 'clinic_manager', 'agent', 'receptionist'],
+    edit:    ['org_admin', 'clinic_manager', 'agent', 'receptionist', 'finance'],
+    delete:  ['org_admin', 'clinic_manager', 'receptionist'],
+    approve: ['org_admin', 'clinic_manager', 'receptionist'],
+    assign:  ['org_admin', 'clinic_manager', 'receptionist'],
+    export:  ['org_admin', 'clinic_manager', 'receptionist'],
     import:  ['org_admin'],
   },
   appointments: {
@@ -521,7 +522,7 @@ export const RESOURCE_SCOPES = {
     clinic_manager: SCOPE_TYPES.CLINIC,
     agent:          SCOPE_TYPES.ASSIGNEE,
     receptionist:   SCOPE_TYPES.CLINIC,
-    finance:        SCOPE_TYPES.NONE,
+    finance:        SCOPE_TYPES.ORGANIZATION,
     auditor:        SCOPE_TYPES.ORGANIZATION,
   },
   appointments: {

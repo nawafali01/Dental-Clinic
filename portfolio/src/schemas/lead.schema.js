@@ -2,13 +2,14 @@ import { z } from 'zod';
 
 export const LEAD_SOURCES = [
   'website',
-  'google_ads',
-  'instagram',
-  'whatsapp',
+  'phone_call',
+  'walk_in',
   'referral',
-  'walk-in',
-  'phone',
-  'facebook',
+  'social_media',
+  'google_ads',
+  'facebook_ads',
+  'instagram',
+  'email_campaign',
   'other',
 ];
 
@@ -17,8 +18,10 @@ export const LEAD_STATUSES = [
   'contacted',
   'qualified',
   'proposal',
-  'converted',
+  'negotiation',
+  'won',
   'lost',
+  'on_hold',
 ];
 
 export const LEAD_PRIORITIES = ['low', 'medium', 'high', 'urgent'];

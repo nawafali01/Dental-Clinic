@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, DollarSign, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createLead, assignLead, LEAD_SOURCES, LEAD_STATUSES, LEAD_PRIORITIES } from '@/services/leadsService';
 import { clinicsService } from '@/services/clinicsService';
 import { usersService } from '@/services/usersService';
+import { isSameClinic } from '@/constants/clinics';
 
 export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selectedClinicId }) {
   const [clinics, setClinics] = useState(() => clinicsService.getClinics() || []);
   const [users, setUsers] = useState(() => usersService.getUsersSync() || []);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -25,6 +27,30 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
     assigned_to: '',
     notes: '',
   });
+
+  const userAssignedClinics = useMemo(() => {
+    return [
+      ...(Array.isArray(currentUser?.assigned_clinics) ? currentUser.assigned_clinics : []),
+      ...(Array.isArray(currentUser?.assignedClinics) ? currentUser.assignedClinics : []),
+      ...(Array.isArray(currentUser?.clinicIds) ? currentUser.clinicIds : []),
+      ...(currentUser?.clinicId ? [currentUser.clinicId] : []),
+      ...(currentUser?.clinic_id ? [currentUser.clinic_id] : []),
+    ].filter(Boolean);
+  }, [currentUser]);
+
+  const role = (currentUser?.role || '').toLowerCase();
+  const isAgent = role === 'agent';
+  const isClinicScoped = role === 'clinic_manager' || role === 'receptionist' || isAgent;
+
+  const displayedClinics = useMemo(() => {
+    if (isClinicScoped && userAssignedClinics.length > 0) {
+      const filtered = clinics.filter((c) =>
+        userAssignedClinics.some((cId) => c.id === cId || isSameClinic(c.id, cId))
+      );
+      return filtered.length > 0 ? filtered : clinics;
+    }
+    return clinics;
+  }, [clinics, isClinicScoped, userAssignedClinics]);
 
   useEffect(() => {
     if (isOpen) {
@@ -49,16 +75,25 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
 
         // Set default clinic_id if not chosen or currently invalid
         if (loadedClinics.length > 0) {
+          const validClinics = (isClinicScoped && userAssignedClinics.length > 0)
+            ? loadedClinics.filter((c) => userAssignedClinics.some((cId) => c.id === cId || isSameClinic(c.id, cId)))
+            : loadedClinics;
+          const choices = validClinics.length > 0 ? validClinics : loadedClinics;
+
           setFormData((prev) => {
-            const hasMatch = loadedClinics.some((c) => c.id === prev.clinic_id);
+            const hasMatch = choices.some((c) => c.id === prev.clinic_id);
             if (!hasMatch || !prev.clinic_id) {
               const matchedSelected = selectedClinicId && selectedClinicId !== 'all'
-                ? loadedClinics.find((c) => c.id === selectedClinicId)
+                ? choices.find((c) => c.id === selectedClinicId)
                 : null;
               return {
                 ...prev,
-                clinic_id: matchedSelected ? matchedSelected.id : loadedClinics[0].id,
+                clinic_id: matchedSelected ? matchedSelected.id : choices[0].id,
+                ...(isAgent && currentUser?.id ? { assigned_to: currentUser.id } : {}),
               };
+            }
+            if (isAgent && currentUser?.id) {
+              return { ...prev, assigned_to: currentUser.id };
             }
             return prev;
           });
@@ -69,7 +104,110 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
         setIsLoadingData(false);
       });
     }
-  }, [isOpen, selectedClinicId, currentUser]);
+  }, [isOpen, selectedClinicId, currentUser, isClinicScoped, userAssignedClinics]);
+
+  // Fetch users specifically assigned to the selected clinic whenever clinic_id changes
+  useEffect(() => {
+    if (!isOpen || !formData.clinic_id) return;
+
+    let isMounted = true;
+    setIsLoadingAgents(true);
+
+    usersService
+      .fetchUsers({ clinic_id: formData.clinic_id })
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data)) {
+          setUsers((prev) => {
+            const userMap = new Map();
+            prev.forEach((u) => userMap.set(u.id, u));
+            res.data.forEach((u) => userMap.set(u.id, u));
+            return Array.from(userMap.values());
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn('[NewLeadModal] Error fetching clinic-specific users:', err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingAgents(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, formData.clinic_id]);
+
+  // Helper to check if a user is assigned to the target clinic
+  const isUserAssignedToClinic = (user, targetClinicId) => {
+    if (!user || !targetClinicId) return false;
+
+    const targetClinicObj = clinics.find(
+      (c) => c.id === targetClinicId || c._id === targetClinicId
+    );
+    const targetClinicName = (targetClinicObj?.name || '').trim().toLowerCase();
+
+    const userClinics = [
+      ...(Array.isArray(user.assigned_clinics) ? user.assigned_clinics : []),
+      ...(Array.isArray(user.assignedClinics) ? user.assignedClinics : []),
+      ...(Array.isArray(user.clinicIds) ? user.clinicIds : []),
+      ...(user.clinicId ? [user.clinicId] : []),
+    ].filter(Boolean);
+
+    return userClinics.some((cId) => {
+      if (typeof cId !== 'string') return false;
+      const cleanId = cId.trim();
+
+      if (cleanId === targetClinicId) return true;
+      if (targetClinicObj && (cleanId === targetClinicObj.id || cleanId === targetClinicObj._id)) return true;
+      if (targetClinicName && cleanId.toLowerCase() === targetClinicName) return true;
+      if (isSameClinic(cleanId, targetClinicId)) return true;
+
+      return false;
+    });
+  };
+
+  // Only show agents / staff assigned to the selected clinic branch
+  const availableAgents = useMemo(() => {
+    if (!formData.clinic_id) return [];
+
+    const filtered = users.filter((u) => {
+      // Must be active
+      if (u.is_active === false || u.status === 'disabled' || u.status === 'inactive') return false;
+
+      // Exclude platform management roles that do not take client leads
+      const role = (u.role || '').toLowerCase();
+      if (['super_admin', 'org_admin', 'finance', 'auditor'].includes(role)) {
+        return false;
+      }
+
+      return isUserAssignedToClinic(u, formData.clinic_id);
+    });
+
+    // Prioritize agents first, then other front-line staff (reception / manager)
+    return filtered.sort((a, b) => {
+      const aIsAgent = (a.role || '').toLowerCase() === 'agent' ? 0 : 1;
+      const bIsAgent = (b.role || '').toLowerCase() === 'agent' ? 0 : 1;
+      if (aIsAgent !== bIsAgent) return aIsAgent - bIsAgent;
+      const nameA = a.fullName || a.name || a.email || '';
+      const nameB = b.fullName || b.name || b.email || '';
+      return nameA.localeCompare(nameB);
+    });
+  }, [users, formData.clinic_id, clinics]);
+
+  const handleClinicChange = (newClinicId) => {
+    setFormData((prev) => {
+      const isAssignedStillValid = users.some(
+        (u) => u.id === prev.assigned_to && isUserAssignedToClinic(u, newClinicId)
+      );
+
+      return {
+        ...prev,
+        clinic_id: newClinicId,
+        assigned_to: isAssignedStillValid ? prev.assigned_to : '',
+      };
+    });
+  };
 
   if (!isOpen) return null;
 
@@ -91,27 +229,32 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
       const resolvedOrgId = selectedClinic?.organization_id || selectedClinic?.orgId || currentUser?.organization_id || 'f7e07406-f91f-49be-adeb-8d03bcac1dfd';
       const assignedUser = users.find((u) => u.id === formData.assigned_to);
 
+      const finalAssignedTo = isAgent ? (currentUser?.id || '') : (formData.assigned_to || '');
+      const finalAssignedName = isAgent
+        ? (currentUser?.fullName || currentUser?.name || currentUser?.email || 'Agent')
+        : (assignedUser?.fullName || assignedUser?.name || '');
+
       const leadPayload = {
         first_name: formData.first_name.trim(),
         last_name: formData.last_name.trim(),
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         source: formData.source || 'website',
-        status: formData.status || 'new',
+        status: isAgent && formData.status === 'won' ? 'new' : (formData.status || 'new'),
         notes: formData.notes.trim(),
         treatment_interest: formData.treatment_interest.trim() || 'General Dentistry',
         expected_revenue: Number(formData.expected_revenue) || 1,
-        assigned_to: formData.assigned_to || '',
+        assigned_to: finalAssignedTo,
         priority: formData.priority || 'medium',
         clinic_id: formData.clinic_id,
         organization_id: resolvedOrgId,
-        assignedAgentName: assignedUser?.fullName || assignedUser?.name || '',
+        assignedAgentName: finalAssignedName,
       };
 
       const res = await createLead(leadPayload, currentUser);
       const created = res?.data || res;
       if (created) {
-        if (formData.assigned_to && created.id) {
+        if (!isAgent && formData.assigned_to && created.id) {
           try {
             await assignLead(created.id, formData.assigned_to);
           } catch {}
@@ -130,6 +273,8 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
       setIsSubmitting(false);
     }
   };
+
+  if (!isOpen || role === 'finance' || role === 'auditor') return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -283,11 +428,12 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
               </div>
               <select
                 value={formData.clinic_id}
-                onChange={(e) => setFormData({ ...formData, clinic_id: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all cursor-pointer font-medium"
+                onChange={(e) => handleClinicChange(e.target.value)}
+                disabled={displayedClinics.length <= 1}
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all cursor-pointer font-medium disabled:opacity-75 disabled:cursor-not-allowed"
                 required
               >
-                {clinics.map((c) => (
+                {displayedClinics.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name || c.id} {c.city ? `(${c.city})` : ''}
                   </option>
@@ -295,19 +441,41 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Assigned Agent / Staff</label>
-              <select
-                value={formData.assigned_to}
-                onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all cursor-pointer"
-              >
-                <option value="">Unassigned</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.fullName || u.name || u.email} ({u.role?.replace('_', ' ') || 'Staff'})
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">Assigned Agent / Staff</label>
+                {isLoadingAgents ? (
+                  <span className="text-[10px] text-primary flex items-center gap-1 font-medium">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Loading agents...
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-slate-400 font-normal">
+                    {availableAgents.length} {availableAgents.length === 1 ? 'agent available' : 'agents available'}
+                  </span>
+                )}
+              </div>
+              {isAgent ? (
+                <div className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 flex items-center justify-between">
+                  <span>{currentUser?.fullName || currentUser?.name || currentUser?.email || 'You'} (Self)</span>
+                  <span className="text-[10px] uppercase font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">Auto-assigned</span>
+                </div>
+              ) : (
+                <select
+                  value={formData.assigned_to}
+                  onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all cursor-pointer"
+                >
+                  <option value="">
+                    {availableAgents.length === 0
+                      ? 'Unassigned (No agents in this branch)'
+                      : 'Unassigned'}
                   </option>
-                ))}
-              </select>
+                  {availableAgents.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.fullName || u.name || u.email} ({u.role?.replace('_', ' ') || 'Agent'})
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 
@@ -319,7 +487,7 @@ export function NewLeadModal({ isOpen, onClose, onSuccess, currentUser, selected
               onChange={(e) => setFormData({ ...formData, status: e.target.value })}
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all cursor-pointer uppercase"
             >
-              {LEAD_STATUSES.map((s) => (
+              {LEAD_STATUSES.filter((s) => !isAgent || s !== 'won').map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>

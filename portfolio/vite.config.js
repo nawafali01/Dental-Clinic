@@ -30,14 +30,14 @@ export default defineConfig({
       // 2. Real Dental CRM FastAPI backend (LocalTunnel)
       // Handles /api/v1/auth/login, /api/v1/users, and other CRM endpoints
       '/api/v1': {
-        target: 'https://neat-sheep-accept.loca.lt',
+        target: 'https://small-flies-fix.loca.lt',
         changeOrigin: true,
         secure: false,
         headers: { 'bypass-tunnel-reminder': 'true' },
       },
       // Fallback for any other /api route
       '/api': {
-        target: 'https://neat-sheep-accept.loca.lt',
+        target: 'https://small-flies-fix.loca.lt',
         changeOrigin: true,
         secure: false,
         headers: { 'bypass-tunnel-reminder': 'true' },

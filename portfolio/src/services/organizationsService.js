@@ -110,6 +110,13 @@ class OrganizationsService {
   }
 
   /**
+   * Alias for getOrganizations
+   */
+  async fetchOrganizations() {
+    return this.getOrganizations();
+  }
+
+  /**
    * Synchronous accessor for fast initial renders
    */
   getOrganizationsSync() {

@@ -5,9 +5,18 @@ import { userService } from '../services/user.service';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const raw = typeof window !== 'undefined'
+        ? (localStorage.getItem('dental_crm_current_user') || localStorage.getItem('auth_current_user'))
+        : null;
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(currentUser));
+  const [loading, setLoading] = useState(false);
 
   // Initialize session on mount.
   // Restores user from localStorage (no API call).
@@ -15,13 +24,12 @@ export const AuthProvider = ({ children }) => {
   //       with a real /me call so we can validate the token and get a fresh user object.
   useEffect(() => {
     const initializeAuth = async () => {
-      setLoading(true);
       const res = await authService.getCurrentUser();
 
       if (res.success && res.data) {
         setCurrentUser(res.data);
         setIsAuthenticated(true);
-      } else {
+      } else if (!currentUser) {
         setCurrentUser(null);
         setIsAuthenticated(false);
       }

@@ -251,6 +251,7 @@ export const FINANCE_NAVIGATION = [
     title: 'CRM',
     items: [
       { name: 'Dashboard',  path: '/finance/dashboard', icon: LayoutDashboard },
+      { name: 'Leads',      path: '/finance/leads',     icon: Users, badge: 'Auditing', badgeColor: 'bg-emerald-100 text-emerald-800' },
       { name: 'Revenue',    path: '/finance/revenue',   icon: DollarSign },
       { name: 'Payments',   path: '/finance/payments',  icon: CreditCard },
       { name: 'Reports',    path: '/finance/reports',   icon: BarChart3 },
