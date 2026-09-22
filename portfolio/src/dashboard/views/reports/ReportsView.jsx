@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   FileText,
   Download,
@@ -23,6 +23,10 @@ import {
   deleteReport,
   exportReportAsCSV,
   exportReportAsJSON,
+  generateReport,
+  getRevenueReport,
+  getLeadReport,
+  getAppointmentReport,
   REPORT_TYPES,
 } from '@/services/reportsService';
 import { Badge, StatCard, PageHeader } from '../components/ViewComponents';
@@ -42,22 +46,84 @@ export const ReportsView = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTagFilter, setSelectedTagFilter] = useState('ALL');
 
+  // Auto-fetch & generate live database reports on initial load
+  useEffect(() => {
+    let cancelled = false;
+    async function initLiveDatabaseReports() {
+      try {
+        console.log('[ReportsView] Syncing backend reports APIs...');
+        // Query backend database reports in parallel on every page load / clinic change
+        await Promise.allSettled([
+          getRevenueReport({ clinic_id: selectedClinicId }, currentUser),
+          getLeadReport({ clinic_id: selectedClinicId }, currentUser),
+          getAppointmentReport({ clinic_id: selectedClinicId }, currentUser),
+        ]);
+
+        if (cancelled) return;
+
+        const freshExisting = getGeneratedReports() || [];
+        if (freshExisting.length === 0) {
+          // Auto-generate live database report entries if archive is empty
+          await generateReport({
+            type: 'revenue',
+            period: '30d',
+            clinicId: selectedClinicId || 'all',
+            generatedBy: currentUser?.fullName || currentUser?.name || 'System Administrator',
+            currentUser,
+          });
+          await generateReport({
+            type: 'leads',
+            period: '30d',
+            clinicId: selectedClinicId || 'all',
+            generatedBy: currentUser?.fullName || currentUser?.name || 'System Administrator',
+            currentUser,
+          });
+          await generateReport({
+            type: 'appointments',
+            period: '30d',
+            clinicId: selectedClinicId || 'all',
+            generatedBy: currentUser?.fullName || currentUser?.name || 'System Administrator',
+            currentUser,
+          });
+        }
+
+        if (cancelled) return;
+        setReportsHistory(getGeneratedReports());
+      } catch (err) {
+        console.error('[ReportsView] Error loading live DB reports:', err);
+      }
+    }
+
+    initLiveDatabaseReports();
+    return () => { cancelled = true; };
+  }, [selectedClinicId, currentUser]);
+
   // Handle template card click to quick generate
-  const handleQuickGenerate = (template) => {
-    // Map template tag or title to report type
+  const handleQuickGenerate = async (template) => {
     let targetType = 'revenue';
     const tag = (template.tag || '').toLowerCase();
     const title = (template.title || '').toLowerCase();
 
-    if (tag.includes('crm') || title.includes('lead')) targetType = 'leads';
+    if (tag.includes('staff') || title.includes('staff') || title.includes('team') || tag.includes('performance')) targetType = 'staff';
+    else if (tag.includes('crm') || title.includes('lead')) targetType = 'leads';
     else if (tag.includes('operations') || title.includes('appointment')) targetType = 'appointments';
     else if (tag.includes('clinic') || title.includes('branch')) targetType = 'clinics';
     else if (tag.includes('ai') || title.includes('ai')) targetType = 'ai';
     else if (tag.includes('patient')) targetType = 'patients';
     else targetType = 'revenue';
 
-    setPreselectedType(targetType);
-    setIsGenerateModalOpen(true);
+    // Direct live generation from DB data
+    const report = await generateReport({
+      type: targetType,
+      period: '30d',
+      clinicId: selectedClinicId || 'all',
+      generatedBy: currentUser?.fullName || currentUser?.name || 'System Administrator',
+      currentUser,
+    });
+
+    setReportsHistory(getGeneratedReports());
+    setPreviewReport(report);
+    toast.success(`Live database report "${report.title}" generated!`);
   };
 
   // Callback when report is generated

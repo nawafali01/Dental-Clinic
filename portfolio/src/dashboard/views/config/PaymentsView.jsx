@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Filter, RotateCcw, Building2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useClinic } from '@/context/ClinicContext';
@@ -6,6 +6,7 @@ import { storageService } from '@/services/storage.service';
 import { scopeData } from '@/utils/scopeData';
 import { clinicsService } from '@/services/clinicsService';
 import { getClinicById, isSameClinic } from '@/constants/clinics';
+import { getRevenues } from '@/services/revenueService';
 import { Badge, StatCard, PageHeader, Table } from '../components/ViewComponents';
 import { useRole } from '@/dashboard/shared/context/RoleContext';
 import { RecordPaymentModal } from './components/RecordPaymentModal';
@@ -33,6 +34,7 @@ export const PaymentsView = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [rawRev, setRawRev] = useState([]);
 
   // Filters State
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,9 +44,19 @@ export const PaymentsView = () => {
   const [selectedMethodFilter, setSelectedMethodFilter] = useState('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all');
 
-  const rawRev = useMemo(() => {
-    return storageService.get(storageService.KEYS.REVENUE) || [];
-  }, [refreshTrigger]);
+  useEffect(() => {
+    let active = true;
+    async function loadRevenues() {
+      try {
+        const data = await getRevenues({}, currentUser);
+        if (active) setRawRev(data || []);
+      } catch (err) {
+        console.warn('PaymentsView fetch error:', err);
+      }
+    }
+    loadRevenues();
+    return () => { active = false; };
+  }, [currentUser, refreshTrigger]);
 
   const scopedPayments = useMemo(() => {
     return scopeData({
@@ -239,7 +251,7 @@ export const PaymentsView = () => {
           return [
             <div key="payee" className="flex flex-col">
               <span className="font-semibold text-slate-900">{r.patientName || r.clinicId || 'Downtown Dental'}</span>
-              {r.notes && <span className="text-xs text-slate-400 italic">{r.notes}</span>}
+              {r.notes && <span className="text-xs text-slate-400">{r.notes}</span>}
             </div>,
             <div key="clinic" className="flex flex-col">
               <span className="text-slate-900 font-medium">{clinicDisplayName}</span>

@@ -57,14 +57,16 @@ const RevenueDispatcher = () => {
 
 const ReportsDispatcher = () => {
   const { currentUser } = useAuth();
-  const role = normalizeRole(currentUser?.role);
-  if (role === 'agent') {
+  const rawRole = (currentUser?.role || '').toLowerCase();
+  const role = normalizeRole(rawRole);
+  
+  if (role === 'agent' || role === 'staff' || role === 'doctor' || rawRole === 'staff' || rawRole === 'doctor' || rawRole === 'agent' || rawRole === 'user') {
     return <AgentReportsView />;
   }
-  if (role === 'receptionist') {
+  if (role === 'receptionist' || role === 'reception' || rawRole === 'receptionist' || rawRole === 'reception') {
     return <ReceptionistReportsView />;
   }
-  if (role === 'finance') {
+  if (role === 'finance' || rawRole === 'finance') {
     return <FinanceReportsView />;
   }
   return <ReportsView />;

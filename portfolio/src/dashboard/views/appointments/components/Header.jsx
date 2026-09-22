@@ -42,11 +42,17 @@ export const Header = ({
 
   const sortedUsers = React.useMemo(() => {
     if (!users || users.length === 0) return [];
-    return [...users].sort((a, b) => {
-      const nameA = a.fullName || a.full_name || a.name || a.email || '';
-      const nameB = b.fullName || b.full_name || b.name || b.email || '';
-      return nameA.localeCompare(nameB);
-    });
+    return [...users]
+      .filter((u) => {
+        const role = u.role ? String(u.role).toLowerCase() : '';
+        if (role === 'super_admin' || role === 'superadmin' || role === 'org_admin' || role === 'orgadmin') return false;
+        return u.is_active !== false && u.status !== 'inactive' && u.isActive !== false;
+      })
+      .sort((a, b) => {
+        const nameA = a.fullName || a.full_name || a.name || a.email || '';
+        const nameB = b.fullName || b.full_name || b.name || b.email || '';
+        return nameA.localeCompare(nameB);
+      });
   }, [users]);
 
   const getViewIcon = (id) => {
@@ -131,7 +137,7 @@ export const Header = ({
       </div>
 
       {/* Multi-Tenant Global Filters Bar */}
-      <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-2xs flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-2xs flex flex-wrap items-center justify-between gap-3 max-w-full">
         {/* Search input */}
         <div className="relative flex-1 min-w-[240px]">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />

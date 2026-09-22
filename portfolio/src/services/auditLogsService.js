@@ -5,6 +5,7 @@
  * severity metrics, and CSV export capabilities.
  */
 
+import apiClient from '@/lib/api';
 import { storageService } from './storage.service';
 
 const AUDIT_LOGS_KEY = 'dental_audit_logs';
@@ -25,175 +26,49 @@ export const AUDIT_SEVERITIES = {
   CRITICAL: 'critical',
 };
 
-export const INITIAL_AUDIT_LOGS = [
-  {
-    id: 'aud-001',
-    timestamp: '2026-09-08T16:45:00.000Z',
-    actor: 'admin@dental.com',
-    actorName: 'Dr. John Doe',
-    role: 'org_admin',
-    action: 'USER_ROLE_UPDATED',
-    entity: 'User',
-    entityId: 'usr-005',
-    details: 'Changed role for staff member Sarah Jenkins to clinic_manager',
-    category: AUDIT_CATEGORIES.SECURITY,
-    severity: AUDIT_SEVERITIES.WARNING,
-    orgId: 'org-001',
-    clinicId: 'clinic-downtown',
-    ipAddress: '192.168.1.104',
-  },
-  {
-    id: 'aud-002',
-    timestamp: '2026-09-08T15:20:00.000Z',
-    actor: 'finance@test.com',
-    actorName: 'Emma Vance',
-    role: 'finance',
-    action: 'PAYMENT_RECORDED',
-    entity: 'Revenue',
-    entityId: 'rev-8092',
-    details: 'Recorded recognized revenue payment of $1,850.00 for Dental Implants',
-    category: AUDIT_CATEGORIES.REVENUE,
-    severity: AUDIT_SEVERITIES.INFO,
-    orgId: 'org-001',
-    clinicId: 'clinic-downtown',
-    ipAddress: '192.168.1.112',
-  },
-  {
-    id: 'aud-003',
-    timestamp: '2026-09-08T14:10:00.000Z',
-    actor: 'manager@test.com',
-    actorName: 'Marcus Reynolds',
-    role: 'clinic_manager',
-    action: 'APPOINTMENT_RESCHEDULED',
-    entity: 'Appointment',
-    entityId: 'apt-304',
-    details: 'Rescheduled patient appointment from 10:00 AM to 02:30 PM (Dr. Emily White)',
-    category: AUDIT_CATEGORIES.APPOINTMENTS,
-    severity: AUDIT_SEVERITIES.INFO,
-    orgId: 'org-001',
-    clinicId: 'clinic-downtown',
-    ipAddress: '192.168.1.108',
-  },
-  {
-    id: 'aud-004',
-    timestamp: '2026-09-08T12:05:00.000Z',
-    actor: 'receptionist@test.com',
-    actorName: 'Chloe Bennett',
-    role: 'receptionist',
-    action: 'PATIENT_CHECKED_IN',
-    entity: 'Patient',
-    entityId: 'apt-201',
-    details: 'Checked in patient Michael Brown for Orthodontics Consultation',
-    category: AUDIT_CATEGORIES.APPOINTMENTS,
-    severity: AUDIT_SEVERITIES.INFO,
-    orgId: 'org-001',
-    clinicId: 'clinic-west',
-    ipAddress: '192.168.1.115',
-  },
-  {
-    id: 'aud-005',
-    timestamp: '2026-09-08T10:30:00.000Z',
-    actor: 'system@platform.security',
-    actorName: 'Security Sentinel',
-    role: 'system',
-    action: 'FAILED_LOGIN_ATTEMPT',
-    entity: 'Session',
-    entityId: 'ses-unknown',
-    details: 'Multiple failed password attempts detected from IP 45.33.32.156 for agent@test.com',
-    category: AUDIT_CATEGORIES.SECURITY,
-    severity: AUDIT_SEVERITIES.CRITICAL,
-    orgId: 'org-001',
-    clinicId: 'clinic-downtown',
-    ipAddress: '45.33.32.156',
-  },
-  {
-    id: 'aud-006',
-    timestamp: '2026-09-08T09:15:00.000Z',
-    actor: 'agent@test.com',
-    actorName: 'Alex Morgan',
-    role: 'agent',
-    action: 'LEAD_STATUS_CHANGED',
-    entity: 'Lead',
-    entityId: 'lead-102',
-    details: 'Lead status progressed from "contacted" to "qualified" after consultation call',
-    category: AUDIT_CATEGORIES.PATIENTS,
-    severity: AUDIT_SEVERITIES.INFO,
-    orgId: 'org-001',
-    clinicId: 'clinic-downtown',
-    ipAddress: '192.168.1.120',
-  },
-  {
-    id: 'aud-007',
-    timestamp: '2026-09-07T18:00:00.000Z',
-    actor: 'admin@dental.com',
-    actorName: 'Dr. John Doe',
-    role: 'org_admin',
-    action: 'CLINIC_BRANCH_UPDATED',
-    entity: 'Clinic',
-    entityId: 'clinic-north',
-    details: 'Operating hours updated to 08:00 AM - 08:00 PM',
-    category: AUDIT_CATEGORIES.CLINICS,
-    severity: AUDIT_SEVERITIES.INFO,
-    orgId: 'org-001',
-    clinicId: 'clinic-north',
-    ipAddress: '192.168.1.104',
-  },
-  {
-    id: 'aud-008',
-    timestamp: '2026-09-07T14:22:00.000Z',
-    actor: 'finance@test.com',
-    actorName: 'Emma Vance',
-    role: 'finance',
-    action: 'REFUND_PROCESSED',
-    entity: 'Revenue',
-    entityId: 'rev-7041',
-    details: 'Processed refund authorization of $350.00 for cancelled procedure',
-    category: AUDIT_CATEGORIES.REVENUE,
-    severity: AUDIT_SEVERITIES.WARNING,
-    orgId: 'org-001',
-    clinicId: 'clinic-south',
-    ipAddress: '192.168.1.112',
-  },
-  {
-    id: 'aud-009',
-    timestamp: '2026-09-07T11:05:00.000Z',
-    actor: 'auditor@test.com',
-    actorName: 'Robert Vance',
-    role: 'auditor',
-    action: 'AUDIT_EXPORT_GENERATED',
-    entity: 'Report',
-    entityId: 'rep-compliance-01',
-    details: 'Exported quarterly financial reconciliation report (CSV)',
-    category: AUDIT_CATEGORIES.SECURITY,
-    severity: AUDIT_SEVERITIES.INFO,
-    orgId: 'org-001',
-    clinicId: 'clinic-west',
-    ipAddress: '192.168.1.130',
-  },
-  {
-    id: 'aud-010',
-    timestamp: '2026-09-06T16:50:00.000Z',
-    actor: 'superadmin@system.com',
-    actorName: 'Platform Root',
-    role: 'super_admin',
-    action: 'ORGANIZATION_CREATED',
-    entity: 'Organization',
-    entityId: 'org-002',
-    details: 'Provisioned new tenant organization: Dental Care Partners (org-002)',
-    category: AUDIT_CATEGORIES.SYSTEM,
-    severity: AUDIT_SEVERITIES.WARNING,
-    orgId: 'org-002',
-    clinicId: 'clinic-005',
-    ipAddress: '10.0.0.1',
-  },
-];
+export function normalizeAuditLog(raw) {
+  if (!raw) return null;
+  const id = raw.id || raw._id || `aud-${Date.now()}`;
+  const timestamp = raw.created_at || raw.timestamp || new Date().toISOString();
+  const actor = raw.user_email || raw.email || raw.actor || 'system@platform.security';
+  const actorName = raw.user_name || raw.actorName || raw.user_email?.split('@')[0] || 'System Operator';
+  const role = raw.user_role || raw.role || 'system';
+  const action = raw.action || 'ACTION_LOGGED';
+  const entity = raw.entity_type || raw.entity || 'System';
+  const entityId = raw.entity_id || raw.entityId || 'general';
+  const details = raw.description || raw.details || (raw.changes ? JSON.stringify(raw.changes) : 'System activity logged.');
+  const category = raw.category || (action.includes('SECURITY') || action.includes('LOGIN') ? AUDIT_CATEGORIES.SECURITY : AUDIT_CATEGORIES.SYSTEM);
+  const severity = raw.severity || (action.includes('FAILED') || action.includes('CRITICAL') ? AUDIT_SEVERITIES.CRITICAL : (action.includes('UPDATE') ? AUDIT_SEVERITIES.WARNING : AUDIT_SEVERITIES.INFO));
+  const orgId = raw.organization_id || raw.orgId || 'org-001';
+  const clinicId = raw.clinic_id || raw.clinicId || 'clinic-downtown';
+  const ipAddress = raw.ip_address || raw.ipAddress || '127.0.0.1';
+
+  return {
+    ...raw,
+    id,
+    timestamp,
+    actor,
+    actorName,
+    role,
+    action,
+    entity,
+    entityId,
+    details,
+    category,
+    severity,
+    orgId,
+    clinicId,
+    ipAddress,
+  };
+}
+
+export const INITIAL_AUDIT_LOGS = [];
 
 class AuditLogsService {
   _getStorage() {
     let logs = storageService.get(AUDIT_LOGS_KEY);
-    if (!logs || !Array.isArray(logs) || logs.length === 0) {
-      storageService.set(AUDIT_LOGS_KEY, INITIAL_AUDIT_LOGS);
-      return INITIAL_AUDIT_LOGS;
+    if (!logs || !Array.isArray(logs)) {
+      return [];
     }
     return logs;
   }
@@ -309,6 +184,138 @@ class AuditLogsService {
   }
 
   /**
+   * API Method: Fetch audit logs for a specific entity
+   * GET /api/v1/audit/entity/{entity_type}/{entity_id}
+   */
+  async getEntityLogs(entityType, entityId, limit = 100) {
+    try {
+      const response = await apiClient.get(`/v1/audit/entity/${entityType}/${entityId}`, {
+        params: { limit },
+      });
+      const data = response.data?.data || response.data || [];
+      return Array.isArray(data) ? data.map(normalizeAuditLog) : [];
+    } catch (error) {
+      console.warn(`[AuditLogsService] API getEntityLogs failed for ${entityType}:${entityId}, falling back:`, error);
+      const all = this._getStorage();
+      return all
+        .filter((l) => (l.entity_type || l.entity || '').toLowerCase() === entityType.toLowerCase() && (l.entity_id || l.entityId) === entityId)
+        .slice(0, limit)
+        .map(normalizeAuditLog);
+    }
+  }
+
+  /**
+   * API Method: Fetch audit logs for a specific user
+   * GET /api/v1/audit/user/{user_id}
+   */
+  async getUserLogs(userId, limit = 100) {
+    try {
+      const response = await apiClient.get(`/v1/audit/user/${userId}`, {
+        params: { limit },
+      });
+      const data = response.data?.data || response.data || [];
+      return Array.isArray(data) ? data.map(normalizeAuditLog) : [];
+    } catch (error) {
+      console.warn(`[AuditLogsService] API getUserLogs failed for user ${userId}, falling back:`, error);
+      const all = this._getStorage();
+      return all
+        .filter((l) => (l.user_id || l.actor || '').includes(userId))
+        .slice(0, limit)
+        .map(normalizeAuditLog);
+    }
+  }
+
+  /**
+   * API Method: Fetch organization-wide audit logs
+   * GET /api/v1/audit/organization/{org_id}
+   */
+  async getOrganizationLogs(orgId, limit = 100) {
+    try {
+      const response = await apiClient.get(`/v1/audit/organization/${orgId}`, {
+        params: { limit },
+      });
+      const data = response.data?.data || response.data || [];
+      return Array.isArray(data) ? data.map(normalizeAuditLog) : [];
+    } catch (error) {
+      console.warn(`[AuditLogsService] API getOrganizationLogs failed for org ${orgId}, falling back:`, error);
+      const all = this._getStorage();
+      return all
+        .filter((l) => (l.organization_id || l.orgId) === orgId)
+        .slice(0, limit)
+        .map(normalizeAuditLog);
+    }
+  }
+
+  /**
+   * API Method: Fetch security audit logs (Super Admin restricted)
+   * GET /api/v1/audit/security
+   */
+  async getSecurityLogs(limit = 100) {
+    try {
+      const response = await apiClient.get('/v1/audit/security', {
+        params: { limit },
+      });
+      const data = response.data?.data || response.data || [];
+      return Array.isArray(data) ? data.map(normalizeAuditLog) : [];
+    } catch (error) {
+      console.warn('[AuditLogsService] API getSecurityLogs failed, falling back:', error);
+      const all = this._getStorage();
+      return all
+        .filter((l) => {
+          const act = (l.action || '').toUpperCase();
+          const cat = (l.category || '').toUpperCase();
+          return act.includes('SECURITY') || act.includes('LOGIN') || act.includes('ROLE') || cat.includes('SECURITY');
+        })
+        .slice(0, limit)
+        .map(normalizeAuditLog);
+    }
+  }
+
+  /**
+   * Comprehensive fetch function with live API integration and local storage fallback
+   */
+  async fetchLogs(options = {}) {
+    const {
+      currentUser,
+      searchQuery = '',
+      category = 'all',
+      severity = 'all',
+      clinicId = 'all',
+      orgId = null,
+      securityOnly = false,
+      limit = 100,
+    } = options;
+
+    try {
+      let remoteLogs = null;
+      if (securityOnly) {
+        remoteLogs = await this.getSecurityLogs(limit);
+      } else if (orgId && orgId !== 'all') {
+        remoteLogs = await this.getOrganizationLogs(orgId, limit);
+      }
+
+      if (remoteLogs && Array.isArray(remoteLogs) && remoteLogs.length > 0) {
+        // Apply client filters over remote results
+        return remoteLogs.filter((log) => {
+          if (clinicId && clinicId !== 'all' && log.clinicId && log.clinicId !== clinicId) return false;
+          if (category && category !== 'all' && log.category !== category) return false;
+          if (severity && severity !== 'all' && log.severity !== severity) return false;
+          if (searchQuery && searchQuery.trim()) {
+            const q = searchQuery.toLowerCase().trim();
+            const text = `${log.actor} ${log.actorName} ${log.action} ${log.entity} ${log.details}`.toLowerCase();
+            if (!text.includes(q)) return false;
+          }
+          return true;
+        });
+      }
+    } catch (err) {
+      console.warn('[AuditLogsService] Remote fetch error, defaulting to local logs:', err);
+    }
+
+    return this.getLogs({ currentUser, searchQuery, category, severity, clinicId, orgId });
+  }
+
+  /**
    * Generates a CSV file and triggers a browser download.
    */
   exportToCSV(logs, filename = 'audit_trail_export.csv') {
@@ -367,3 +374,4 @@ class AuditLogsService {
 }
 
 export const auditLogsService = new AuditLogsService();
+

@@ -38,13 +38,14 @@ export const ClinicProvider = ({ children }) => {
   }, []);
 
   const allAvailableClinics = useMemo(() => {
-    const list = [...backendClinics];
-    for (const c of CLINICS) {
-      if (!c.isAlias && !list.some((b) => b.id === c.id || (b.name && b.name.toLowerCase() === c.name.toLowerCase()))) {
-        list.push(c);
-      }
+    if (backendClinics && backendClinics.length > 0) {
+      return backendClinics;
     }
-    return list;
+    const stored = storageService.get(storageService.KEYS.CLINICS) || [];
+    if (stored && stored.length > 0) {
+      return stored;
+    }
+    return CLINICS.filter((c) => !c.isAlias);
   }, [backendClinics]);
 
   /**

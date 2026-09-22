@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Filter, RotateCcw, Building2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useClinic } from '@/context/ClinicContext';
@@ -6,6 +6,7 @@ import { storageService } from '@/services/storage.service';
 import { scopeData } from '@/utils/scopeData';
 import { clinicsService } from '@/services/clinicsService';
 import { getClinicById, isSameClinic } from '@/constants/clinics';
+import { getRevenues } from '@/services/revenueService';
 import { StatCard, DevBanner, PageHeader, Table } from '../components/ViewComponents';
 
 import { useRole } from '@/dashboard/shared/context/RoleContext';
@@ -36,10 +37,21 @@ export const RevenueView = () => {
     isClinicManager ? managerClinicId : 'all'
   );
   const [selectedMonthFilter, setSelectedMonthFilter] = useState('all');
+  const [rawRev, setRawRev] = useState([]);
 
-  const rawRev = useMemo(() => {
-    return storageService.get(storageService.KEYS.REVENUE) || [];
-  }, []);
+  useEffect(() => {
+    let active = true;
+    async function loadRevenues() {
+      try {
+        const data = await getRevenues({}, currentUser);
+        if (active) setRawRev(data || []);
+      } catch (err) {
+        console.warn('RevenueView fetch error:', err);
+      }
+    }
+    loadRevenues();
+    return () => { active = false; };
+  }, [currentUser]);
 
   const scopedRev = useMemo(() => {
     return scopeData({
@@ -69,7 +81,8 @@ export const RevenueView = () => {
   const availableMonths = useMemo(() => {
     const months = new Set();
     scopedRev.forEach((r) => {
-      if (r.month) months.add(r.month);
+      const m = r.month || (r.created_at ? r.created_at.slice(0, 7) : null);
+      if (m) months.add(m);
     });
     return Array.from(months).sort().reverse();
   }, [scopedRev]);
@@ -79,21 +92,24 @@ export const RevenueView = () => {
     return scopedRev.filter((r) => {
       // Clinic Filter
       if (!isClinicManager && selectedClinicFilter !== 'all') {
-        if (!isSameClinic(r.clinicId, selectedClinicFilter)) {
+        if (!isSameClinic(r.clinicId || r.clinic_id, selectedClinicFilter)) {
           return false;
         }
       }
 
       // Month Filter
-      if (selectedMonthFilter !== 'all' && r.month !== selectedMonthFilter) {
-        return false;
+      if (selectedMonthFilter !== 'all') {
+        const m = r.month || (r.created_at ? r.created_at.slice(0, 7) : '');
+        if (m !== selectedMonthFilter) {
+          return false;
+        }
       }
 
       // Search Query
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
-        const clinicName = (getClinicById(r.clinicId)?.name || r.clinicId || '').toLowerCase();
-        const month = (r.month || '').toLowerCase();
+        const clinicName = (getClinicById(r.clinicId || r.clinic_id)?.name || r.clinicId || r.clinic_id || '').toLowerCase();
+        const month = (r.month || (r.created_at ? r.created_at.slice(0, 7) : '')).toLowerCase();
 
         return clinicName.includes(query) || month.includes(query);
       }
@@ -110,8 +126,8 @@ export const RevenueView = () => {
     setSelectedMonthFilter('all');
   };
 
-  const totalAmount = filteredRev.reduce((acc, r) => acc + (r.revenue || 0), 0);
-  const totalConversions = filteredRev.reduce((acc, r) => acc + (r.conversions || 0), 0);
+  const totalAmount = filteredRev.reduce((acc, r) => acc + (r.revenue || r.total_amount || 0), 0);
+  const totalConversions = filteredRev.reduce((acc, r) => acc + (r.conversions !== undefined ? r.conversions : (Number(r.revenue || r.total_amount) > 0 ? 1 : 0)), 0);
   const formattedTotal = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(totalAmount);
   const avgAmount = filteredRev.length > 0 ? totalAmount / filteredRev.length : 0;
   const formattedAvg = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(avgAmount);
@@ -200,24 +216,26 @@ export const RevenueView = () => {
       <Table
         headers={["Clinic Branch", "Month", "Revenue", "Conversions", "Conv. Rate"]}
         rows={filteredRev.map(r => {
-          const clinicObj = getClinicById(r.clinicId);
-          const clinicDisplayName = clinicObj?.name || r.clinicId || 'Downtown Dental';
+          const clinicObj = getClinicById(r.clinicId || r.clinic_id);
+          const clinicDisplayName = clinicObj?.name || r.clinicId || r.clinic_id || 'Downtown Dental';
+          const monthStr = r.month || (r.created_at ? r.created_at.slice(0, 7) : '2026-09');
+          const conversionsVal = r.conversions !== undefined ? r.conversions : (Number(r.revenue || r.total_amount) > 0 ? 1 : 0);
+          const rateVal = r.conversionRate !== undefined ? r.conversionRate : (conversionsVal > 0 ? 100 : 0);
 
           return [
             <div key="clinic" className="flex flex-col">
               <span className="font-semibold text-slate-900">{clinicDisplayName}</span>
               {clinicObj?.city && <span className="text-[11px] text-slate-400">{clinicObj.city}</span>}
             </div>,
-            r.month,
+            monthStr,
             <span key="rev" className="font-semibold text-emerald-600">
-              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(r.revenue)}
+              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(r.revenue || r.total_amount || 0)}
             </span>,
-            r.conversions,
-            `${r.conversionRate}%`
+            conversionsVal,
+            `${rateVal}%`
           ];
         })}
       />
-      <DevBanner text="Full Revenue Dashboard is under development" />
     </div>
   );
 };

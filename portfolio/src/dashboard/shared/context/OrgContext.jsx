@@ -37,7 +37,8 @@ export const OrgProvider = ({ children }) => {
     }
   }, [userRole, organizations, selectedOrgId]);
 
-  const currentOrg = organizations.find((o) => o.id === selectedOrgId) || organizations[0] || null;
+  const defaultOrg = { id: 'all', name: 'All Organizations', isGlobal: true, badgeText: 'Enterprise' };
+  const currentOrg = organizations.find((o) => o.id === selectedOrgId) || organizations[0] || defaultOrg;
 
   return (
     <OrgContext.Provider

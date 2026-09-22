@@ -1,10 +1,10 @@
 import { lazy, Suspense } from 'react';
 import {
-  AppointmentsView,
   PipelineView,
   TasksView,
   MessagesView
 } from '../views/PlaceholderViews';
+import AppointmentsView from '@/dashboard/views/appointments/AppointmentsView';
 
 const ManagerDashboardView = lazy(() => import('../views/ManagerDashboardView'));
 

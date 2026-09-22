@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   DollarSign,
   Search,
@@ -25,15 +25,18 @@ import { storageService } from '@/services/storage.service';
 import { clinicsService } from '@/services/clinicsService';
 import { getClinicById, isSameClinic } from '@/constants/clinics';
 import {
+  getRevenues,
   isRevenueRecognized,
   getRecognizedAmount,
 } from '@/services/revenueService';
 import { RecordPaymentModal } from '@/dashboard/views/config/components/RecordPaymentModal';
+import { RefundModal } from '@/dashboard/finance/components/RefundModal';
 
 export default function FinanceRevenueView({ readOnly = false }) {
   const { currentUser } = useAuth();
   const isAuditor = currentUser?.role === 'auditor' || readOnly;
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [revenueList, setRevenueList] = useState([]);
 
   // Filters State
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,6 +44,22 @@ export default function FinanceRevenueView({ readOnly = false }) {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [prefilledPatient, setPrefilledPatient] = useState(null);
+  const [refundModal, setRefundModal] = useState({ open: false, record: null });
+
+  // Live Fetch Revenue Records
+  useEffect(() => {
+    let active = true;
+    async function fetchRevenues() {
+      try {
+        const data = await getRevenues({}, currentUser);
+        if (active) setRevenueList(data || []);
+      } catch (err) {
+        console.warn('FinanceRevenueView fetch error:', err);
+      }
+    }
+    fetchRevenues();
+    return () => { active = false; };
+  }, [currentUser, refreshTrigger]);
 
   // Fetch all clinics for the user's organization
   const clinicsList = useMemo(() => {
@@ -54,33 +73,32 @@ export default function FinanceRevenueView({ readOnly = false }) {
     }
   }, [currentUser]);
 
-  // Load raw revenue records
+  // Scoped revenue records
   const allRevenueRecords = useMemo(() => {
-    const raw = storageService.get(storageService.KEYS.REVENUE) || [];
     const orgId = currentUser?.organizationId || 'org-001';
 
     // Filter by organization scope
-    return raw.filter((r) => {
+    return revenueList.filter((r) => {
       if (!r) return false;
-      const clinic = clinicsList.find((c) => isSameClinic(c.id, r.clinicId));
+      const clinic = clinicsList.find((c) => isSameClinic(c.id, r.clinicId || r.clinic_id));
       if (clinic && clinic.orgId && clinic.orgId !== orgId) return false;
       return true;
     });
-  }, [currentUser, clinicsList, refreshTrigger]);
+  }, [currentUser, clinicsList, revenueList]);
 
   // Apply in-page filters
   const filteredRecords = useMemo(() => {
     return allRevenueRecords.filter((record) => {
       // Clinic Filter
       if (selectedClinicFilter !== 'all') {
-        if (!isSameClinic(record.clinicId, selectedClinicFilter)) {
+        if (!isSameClinic(record.clinicId || record.clinic_id, selectedClinicFilter)) {
           return false;
         }
       }
 
       // Status Filter
       if (selectedStatusFilter !== 'all') {
-        const s = (record.status || '').toLowerCase();
+        const s = (record.status || record.payment_status || '').toLowerCase();
         if (s !== selectedStatusFilter.toLowerCase()) {
           return false;
         }
@@ -89,11 +107,11 @@ export default function FinanceRevenueView({ readOnly = false }) {
       // Search Query
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
-        const patient = (record.patientName || '').toLowerCase();
-        const treatment = (record.treatment || record.treatmentCategory || record.notes || '').toLowerCase();
-        const clinicObj = getClinicById(record.clinicId);
+        const patient = (record.patientName || record.patient_name || '').toLowerCase();
+        const treatment = (record.treatment || record.treatment_name || record.notes || '').toLowerCase();
+        const clinicObj = getClinicById(record.clinicId || record.clinic_id);
         const clinicName = (clinicObj?.name || '').toLowerCase();
-        const method = (record.method || '').toLowerCase();
+        const method = (record.method || record.payment_type || '').toLowerCase();
         const id = (record.id || '').toLowerCase();
 
         return (
@@ -117,13 +135,13 @@ export default function FinanceRevenueView({ readOnly = false }) {
     let refunds = 0;
 
     filteredRecords.forEach((r) => {
-      const status = (r.status || '').toLowerCase();
+      const status = (r.status || r.payment_status || '').toLowerCase();
       const amount = getRecognizedAmount(r);
 
       if (isRevenueRecognized(r)) {
         recognized += amount;
         if (status.includes('deposit')) {
-          deposits += (r.deposit !== undefined ? Number(r.deposit) : amount);
+          deposits += (r.deposit_amount !== undefined ? Number(r.deposit_amount) : amount);
         }
       } else if (status === 'refunded') {
         refunds += amount;
@@ -150,31 +168,14 @@ export default function FinanceRevenueView({ readOnly = false }) {
 
   const hasActiveFilters = searchQuery !== '' || selectedClinicFilter !== 'all' || selectedStatusFilter !== 'all';
 
-  // Refund handler
+  // Refund handler — opens RefundModal
   const handleIssueRefund = (recordId) => {
     if (isAuditor) {
       toast.error('Unauthorized: Auditor role has read-only access');
       return;
     }
-    if (!window.confirm('Are you sure you want to issue a refund for this transaction? This action will update the status to Refunded.')) {
-      return;
-    }
-
-    const all = storageService.get(storageService.KEYS.REVENUE) || [];
-    const updated = all.map((r) => {
-      if (r.id === recordId) {
-        return {
-          ...r,
-          status: 'Refunded',
-          refundedAt: new Date().toISOString(),
-        };
-      }
-      return r;
-    });
-
-    storageService.set(storageService.KEYS.REVENUE, updated);
-    setRefreshTrigger((prev) => prev + 1);
-    toast.success('Transaction marked as Refunded successfully.');
+    const recObj = allRevenueRecords.find((r) => r.id === recordId);
+    setRefundModal({ open: true, record: recObj || { id: recordId } });
   };
 
   // Helper for Status Badge
@@ -454,7 +455,7 @@ export default function FinanceRevenueView({ readOnly = false }) {
                       {!isAuditor && (
                         <td className="py-3.5 px-4 text-center">
                           <div className="flex items-center justify-center gap-1.5">
-                            {isRecognized && !isRefunded && (
+                            {isRecognized && !isRefunded && (currentUser?.role || '').toLowerCase() === 'finance' && (
                               <button
                                 onClick={() => handleIssueRefund(r.id)}
                                 className="px-2.5 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-50 rounded-lg border border-rose-200 transition-colors cursor-pointer"
@@ -496,6 +497,17 @@ export default function FinanceRevenueView({ readOnly = false }) {
           selectedClinicId={selectedClinicFilter !== 'all' ? selectedClinicFilter : undefined}
         />
       )}
+
+      <RefundModal
+        isOpen={refundModal.open}
+        record={refundModal.record}
+        currentUser={currentUser}
+        onClose={() => setRefundModal({ open: false, record: null })}
+        onSuccess={() => {
+          setRefundModal({ open: false, record: null });
+          setRefreshTrigger((prev) => prev + 1);
+        }}
+      />
     </div>
   );
 }

@@ -1,14 +1,5 @@
 import { ROLES } from '../constants/permissions';
-import {
-  ORG_001_ID,
-  ORG_001_NAME,
-  SMILE_CARE_PATIENTS,
-  SMILE_CARE_LEADS,
-  SMILE_CARE_CALLS,
-  SMILE_CARE_TASKS,
-  SMILE_CARE_PAYMENTS,
-} from '../constants/orgAdminSeedData';
-import { SEED_USERS } from '../dashboard/super-admin/mock-data/usersData';
+import { ORG_001_ID, ORG_001_NAME } from '../constants/orgAdminSeedData';
 
 /**
  * STORAGE SERVICE
@@ -26,7 +17,7 @@ import { SEED_USERS } from '../dashboard/super-admin/mock-data/usersData';
 // so that existing localStorage sessions are cleared and re-seeded
 // with the updated data structure.
 // ─────────────────────────────────────────────────────────────
-const DB_VERSION = '5.2'; // v5.2: Live API integration for leads, mock leads eliminated
+const DB_VERSION = '6.0'; // v6.0: Purged all legacy seed mock datasets across storage
 
 export const LEGACY_MOCK_LEAD_IDS = new Set([
   'lead-001', 'lead-002', 'lead-003', 'lead-004', 'lead-005', 'lead-006',
@@ -95,35 +86,9 @@ const STORAGE_KEYS = {
   DB_VERSION:      'dental_crm_db_version',   // schema version check
 };
 
-// ─────────────────────────────────────────────────────────────
-// Fixed clinic IDs — predictable strings instead of UUIDs so
-// roleAccess config and tests can reference them statically.
-// ─────────────────────────────────────────────────────────────
-const CLINIC_IDS = {
-  DOWNTOWN: 'clinic-downtown',
-  CENTRAL:  'clinic-central',
-  WEST:     'clinic-west',
-  EAST:     'clinic-east',
-};
-
-/**
- * Validates that an array contains active canonical data for Smile Care Group (org-001).
- * Prevents stale data from legacy versions from persisting in the user's browser.
- */
-function isSmileCareData(arr) {
-  if (!Array.isArray(arr) || arr.length === 0) return false;
-  return arr.some((item) => {
-    if (!item) return false;
-    const org = item.orgId || item.organizationId;
-    if (org === ORG_001_ID) return true;
-    const cl = item.clinicId || item.id;
-    return cl === 'clinic-downtown' || cl === 'clinic-west' || cl === 'clinic-003' || cl === 'clinic-004';
-  });
-}
-
 class StorageService {
   /**
-   * Retrieves parsed JSON from LocalStorage safely with canonical fallback.
+   * Retrieves parsed JSON from LocalStorage safely without mock data fallbacks.
    */
   get(key) {
     try {
@@ -147,48 +112,26 @@ class StorageService {
       }
 
       if (parsed !== null && parsed !== undefined) {
-        if (Array.isArray(parsed) && parsed.length === 0) {
-          // Empty array in storage — fall through to canonical seed fallback
-        } else {
-          // Check if domain arrays actually contain org-001 data
-          if (
-            (key === STORAGE_KEYS.PATIENTS ||
-              key === STORAGE_KEYS.CALLS ||
-              key === STORAGE_KEYS.TASKS ||
-              key === STORAGE_KEYS.REVENUE) &&
-            !isSmileCareData(parsed)
-          ) {
-            // Stale or non-org dataset — fall through to canonical overwrite
-          } else {
-            return parsed;
-          }
+        if (Array.isArray(parsed)) {
+          return parsed;
         }
+        return parsed;
       }
 
-      // Canonical fallbacks ensuring tables always receive data (excluding leads)
+      // Strict real data default (empty array or null)
       switch (key) {
         case STORAGE_KEYS.PATIENTS:
-          this.set(STORAGE_KEYS.PATIENTS, SMILE_CARE_PATIENTS);
-          return SMILE_CARE_PATIENTS;
         case STORAGE_KEYS.LEADS:
-          return [];
         case STORAGE_KEYS.CALLS:
-          this.set(STORAGE_KEYS.CALLS, SMILE_CARE_CALLS);
-          return SMILE_CARE_CALLS;
         case STORAGE_KEYS.TASKS:
-          this.set(STORAGE_KEYS.TASKS, SMILE_CARE_TASKS);
-          return SMILE_CARE_TASKS;
         case STORAGE_KEYS.REVENUE:
-          this.set(STORAGE_KEYS.REVENUE, SMILE_CARE_PAYMENTS);
-          return SMILE_CARE_PAYMENTS;
+        case STORAGE_KEYS.APPOINTMENTS:
+        case STORAGE_KEYS.REPORTS:
+          return [];
         case STORAGE_KEYS.USERS:
-          this.set(STORAGE_KEYS.USERS, SEED_USERS);
-          return SEED_USERS;
-        case STORAGE_KEYS.CURRENT_USER: {
-          const defaultUser = SEED_USERS.find((u) => u.role === ROLES.ORG_ADMIN) || SEED_USERS[1];
-          this.set(STORAGE_KEYS.CURRENT_USER, defaultUser);
-          return defaultUser;
-        }
+          return [];
+        case STORAGE_KEYS.CURRENT_USER:
+          return null;
         default:
           return parsed;
       }
@@ -221,7 +164,7 @@ class StorageService {
   }
 
   /**
-   * Seeds demo data if it doesn't already exist or when DB_VERSION updates.
+   * Cleans stale mock data if DB_VERSION updates or legacy mock datasets exist.
    */
   seed() {
     const storedVersion = window.localStorage.getItem(STORAGE_KEYS.DB_VERSION)
@@ -229,12 +172,12 @@ class StorageService {
       : null;
 
     if (storedVersion !== DB_VERSION) {
-      console.log(`DB schema changed (${storedVersion} → ${DB_VERSION}). Reseeding…`);
+      console.log(`DB schema changed (${storedVersion} → ${DB_VERSION}). Purging legacy mock datasets…`);
       const keysToWipe = [
         STORAGE_KEYS.USERS, STORAGE_KEYS.ORGS, STORAGE_KEYS.CLINICS,
         STORAGE_KEYS.PATIENTS, STORAGE_KEYS.APPOINTMENTS,
         STORAGE_KEYS.LEADS, STORAGE_KEYS.TASKS, STORAGE_KEYS.CALLS,
-        STORAGE_KEYS.REVENUE, STORAGE_KEYS.CURRENT_USER,
+        STORAGE_KEYS.REVENUE, STORAGE_KEYS.CURRENT_USER, STORAGE_KEYS.REPORTS,
       ];
       keysToWipe.forEach((k) => this.remove(k));
       this.set(STORAGE_KEYS.DB_VERSION, DB_VERSION);
@@ -254,25 +197,6 @@ class StorageService {
       }
     }
 
-    const currentPatients = this.get(STORAGE_KEYS.PATIENTS);
-    if (!isSmileCareData(currentPatients)) {
-      this.set(STORAGE_KEYS.PATIENTS, SMILE_CARE_PATIENTS);
-    }
-
-    const currentCalls = this.get(STORAGE_KEYS.CALLS);
-    if (!isSmileCareData(currentCalls)) {
-      this.set(STORAGE_KEYS.CALLS, SMILE_CARE_CALLS);
-    }
-
-    const currentTasks = this.get(STORAGE_KEYS.TASKS);
-    if (!isSmileCareData(currentTasks)) {
-      this.set(STORAGE_KEYS.TASKS, SMILE_CARE_TASKS);
-    }
-
-    const currentRevenue = this.get(STORAGE_KEYS.REVENUE);
-    if (!isSmileCareData(currentRevenue)) {
-      this.set(STORAGE_KEYS.REVENUE, SMILE_CARE_PAYMENTS);
-    }
 
     let currentUsers = this.get(STORAGE_KEYS.USERS);
     const LEGACY_MOCK_EMAILS = new Set([

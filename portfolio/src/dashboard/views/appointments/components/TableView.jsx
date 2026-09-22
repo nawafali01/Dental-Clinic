@@ -90,9 +90,9 @@ export const TableView = ({
         </div>
       ) : (
         <div>
-          {/* Responsive table without horizontal overflow slider */}
-          <div className="w-full">
-            <table className="w-full text-sm">
+          {/* Responsive table contained inside card */}
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-sm min-w-[650px]">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/70 text-slate-500 text-xs">
                   <th className="py-3 px-3.5 text-left font-semibold uppercase tracking-wider">Patient Details</th>

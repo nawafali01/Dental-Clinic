@@ -15,7 +15,7 @@ import {
   TREATMENTS_FILTER_LIST,
 } from '../constants';
 import { isSameClinic } from '@/constants/clinics';
-import { canUserPerformAction } from '@/utils/appointmentPermissions';
+import { canUserPerformAction, isClinicAssigned } from '@/utils/appointmentPermissions';
 
 export const DetailDrawer = ({
   isOpen,
@@ -34,6 +34,16 @@ export const DetailDrawer = ({
   readOnly = false,
   currentUser = null,
 }) => {
+  // Filter clinics based on user role scope (e.g. Clinic Manager strictly sees their assigned clinic)
+  const displayClinics = React.useMemo(() => {
+    const isScopedRole = currentUser?.role === 'clinic_manager' || currentUser?.role === 'agent' || currentUser?.role === 'receptionist';
+    if (isScopedRole && currentUser) {
+      const scoped = availableClinics.filter((c) => isClinicAssigned(currentUser, c.id));
+      return scoped.length > 0 ? scoped : availableClinics;
+    }
+    return availableClinics;
+  }, [availableClinics, currentUser]);
+
   // Form state for managing or creating
   const [patientName, setPatientName] = useState('');
   const [phone, setPhone] = useState('');
@@ -52,11 +62,12 @@ export const DetailDrawer = ({
   const [rescheduleReason, setRescheduleReason] = useState('');
 
   useEffect(() => {
+    const defaultClinicId = displayClinics[0]?.id || availableClinics[0]?.id || '';
     if (appointment && !isNewBooking) {
       setPatientName(appointment.patientName || appointment.patient_name || '');
       setPhone(appointment.phone || appointment.patient_phone || '');
       setEmail(appointment.email || appointment.patient_email || '');
-      setClinicId(appointment.clinicId || appointment.clinic_id || availableClinics[0]?.id || '');
+      setClinicId(appointment.clinicId || appointment.clinic_id || defaultClinicId);
       setAssignedTo(appointment.assigned_to || appointment.assignedTo || appointment.doctorId || '');
       setLeadId(appointment.lead_id || appointment.leadId || '');
       setTreatment(appointment.treatment || appointment.title || 'Dental Implant');
@@ -72,7 +83,7 @@ export const DetailDrawer = ({
       setPatientName('');
       setPhone('');
       setEmail('');
-      setClinicId(availableClinics[0]?.id || '');
+      setClinicId(defaultClinicId);
       setAssignedTo('');
       setLeadId('');
       setTreatment('Teeth Whitening');
@@ -85,17 +96,40 @@ export const DetailDrawer = ({
       setNotes('');
       setRescheduleReason('');
     }
-  }, [appointment, isNewBooking, availableClinics]);
+  }, [appointment, isNewBooking, availableClinics, displayClinics]);
 
-  // Available staff from backend users
+  // Available staff filtered strictly by selected clinic or clinic manager assigned clinic & active staff only (excluding super_admin & org_admin)
   const availableStaff = React.useMemo(() => {
     if (!users || users.length === 0) return [];
-    return [...users].sort((a, b) => {
-      const nameA = a.fullName || a.full_name || a.name || a.email || '';
-      const nameB = b.fullName || b.full_name || b.name || b.email || '';
-      return nameA.localeCompare(nameB);
-    });
-  }, [users]);
+    const targetClinicId = clinicId || displayClinics[0]?.id || currentUser?.clinicId || (currentUser?.clinicIds && currentUser?.clinicIds[0]);
+
+    return [...users]
+      .filter((u) => {
+        // Exclude super_admin & org_admin roles from provider dropdown
+        const role = u.role ? String(u.role).toLowerCase() : '';
+        if (role === 'super_admin' || role === 'superadmin' || role === 'org_admin' || role === 'orgadmin') {
+          const isCurrentlyAssigned = assignedTo && (u.id === assignedTo || u._id === assignedTo);
+          if (!isCurrentlyAssigned) return false;
+        }
+
+        // Exclude inactive users / roles
+        const isInactive = u.is_active === false || u.status === 'inactive' || u.isActive === false;
+        if (isInactive) {
+          const isCurrentlyAssigned = assignedTo && (u.id === assignedTo || u._id === assignedTo);
+          if (!isCurrentlyAssigned) return false;
+        }
+
+        if (!targetClinicId || targetClinicId === 'all') return true;
+        // Always include currently assigned staff to avoid breaking selection when editing
+        if (assignedTo && (u.id === assignedTo || u._id === assignedTo)) return true;
+        return isClinicAssigned(u, targetClinicId);
+      })
+      .sort((a, b) => {
+        const nameA = a.fullName || a.full_name || a.name || a.email || '';
+        const nameB = b.fullName || b.full_name || b.name || b.email || '';
+        return nameA.localeCompare(nameB);
+      });
+  }, [users, clinicId, displayClinics, currentUser, assignedTo]);
 
   // Available leads
   const availableLeads = React.useMemo(() => {
@@ -322,7 +356,7 @@ export const DetailDrawer = ({
                     required
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
-                    {availableClinics.map((c) => (
+                    {displayClinics.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name} {c.city ? `(${c.city})` : ''}
                       </option>
@@ -431,6 +465,7 @@ export const DetailDrawer = ({
                     <input
                       type="date"
                       required
+                      min={new Date().toISOString().split('T')[0]}
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"

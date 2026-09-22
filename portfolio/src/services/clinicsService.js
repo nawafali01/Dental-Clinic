@@ -108,49 +108,10 @@ export const clinicsService = {
   getClinics() {
     let storedClinics = storageService.get(storageService.KEYS.CLINICS) || [];
     if (Array.isArray(storedClinics) && storedClinics.length > 0) {
-      const hasBackendClinics = storedClinics.some((c) => c.id && c.id.length > 20);
-      if (hasBackendClinics) {
-        return storedClinics.map((c) => this._enrichWithManager(normalizeClinic(c)));
-      }
+      return storedClinics.map((c) => this._enrichWithManager(normalizeClinic(c)));
     }
-
     const primaryClinics = CLINICS.filter((c) => !c.isAlias);
-    const storedMap = new Map((storedClinics || []).map((c) => [c.id, c]));
-    const isOutOfSync =
-      !storedClinics ||
-      storedClinics.length < primaryClinics.length ||
-      primaryClinics.some((pc) => !storedMap.has(pc.id) || !storedMap.get(pc.id)?.orgId);
-
-    if (isOutOfSync) {
-      const unifiedClinics = primaryClinics.map((pc, idx) => {
-        const existing = storedMap.get(pc.id);
-        return normalizeClinic({
-          id: pc.id,
-          orgId: pc.orgId,
-          organization_id: pc.orgId,
-          name: pc.name,
-          city: pc.city || 'Riyadh',
-          address: existing?.address || `${pc.city || 'Central'} Medical District, Suite ${100 + idx * 10}`,
-          phone: existing?.phone || `+1 (555) 020-00${String(idx + 1).padStart(2, '0')}`,
-          email: existing?.email || `contact@${pc.id}.com`,
-          status: existing?.status || pc.status || 'active',
-          operatingHours: existing?.operatingHours || '08:00 AM - 08:00 PM',
-          chairsCount: existing?.chairsCount || (idx % 2 === 0 ? 5 : 4),
-          createdAt: existing?.createdAt || '2026-01-15T00:00:00.000Z',
-          updatedAt: existing?.updatedAt || '2026-01-15T00:00:00.000Z',
-        });
-      });
-
-      const userAdded = (storedClinics || [])
-        .filter((sc) => !primaryClinics.some((pc) => pc.id === sc.id))
-        .map(normalizeClinic);
-
-      const finalClinics = [...unifiedClinics, ...userAdded];
-      storageService.set(storageService.KEYS.CLINICS, finalClinics);
-      return finalClinics.map((c) => this._enrichWithManager(c));
-    }
-
-    return (storedClinics || []).map((c) => this._enrichWithManager(normalizeClinic(c)));
+    return primaryClinics.map((c) => this._enrichWithManager(normalizeClinic(c)));
   },
 
   /**

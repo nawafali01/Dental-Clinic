@@ -33,7 +33,7 @@ const DashboardShell = () => {
 
   return (
     <div
-      className="min-h-screen bg-white text-slate-900 flex flex-col font-sans"
+      className="min-h-screen bg-white text-slate-900 flex flex-col font-sans overflow-x-hidden max-w-full"
       style={{ backgroundColor: '#ffffff', color: '#111827' }}
     >
       <Sidebar />
@@ -42,12 +42,12 @@ const DashboardShell = () => {
       <NotificationsDrawer />
       
       <main
-        className={`flex-1 transition-all duration-300 p-4 sm:p-6 lg:p-8 bg-white ${
+        className={`flex-1 min-w-0 max-w-full transition-all duration-300 p-4 sm:p-6 lg:p-8 bg-white ${
           isSidebarCollapsed ? 'lg:pl-24' : 'lg:pl-68'
         }`}
         style={{ backgroundColor: '#ffffff', color: '#111827' }}
       >
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="max-w-7xl mx-auto space-y-6 w-full min-w-0">
           <Outlet />
         </div>
       </main>

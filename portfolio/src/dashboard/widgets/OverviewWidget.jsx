@@ -1,23 +1,51 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { getUserResourceAccess } from '../../utils/hasPermission';
 import { getScopeLabel } from '../../utils/dashboardUtils';
 import { OVERVIEW_STATS_CONFIG } from '../../constants/dashboardWidgetConstants';
+import { getDashboardReport } from '@/services/reportsService';
 
 /**
  * OverviewWidget
  * System / organisation overview — shown to super_admin and org_admin only.
- * Calls getUserResourceAccess('organizations') with ZERO role parameters!
+ * Connected to live FastAPI backend API: GET /api/v1/reports/dashboard
  */
 const OverviewWidget = () => {
   const accessLevel = getUserResourceAccess('organizations');
   const scopeLabel  = getScopeLabel('organizations', accessLevel) || 'Overview';
+  const [dashboardData, setDashboardData] = useState(null);
 
-  const stats = OVERVIEW_STATS_CONFIG.map((s) => ({
-    label: s.label,
-    icon:  s.icon,
-    color: s.color,
-    value: accessLevel === 'all' ? s.allValue : s.scopedValue,
-  }));
+  useEffect(() => {
+    let cancelled = false;
+    getDashboardReport()
+      .then((data) => {
+        if (!cancelled && data) {
+          setDashboardData(data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const stats = OVERVIEW_STATS_CONFIG.map((s) => {
+    let liveVal = accessLevel === 'all' ? s.allValue : s.scopedValue;
+    if (dashboardData) {
+      if (s.label.toLowerCase().includes('lead') && dashboardData.total_leads) {
+        liveVal = `${dashboardData.total_leads}`;
+      } else if (s.label.toLowerCase().includes('appointment') && dashboardData.total_appointments) {
+        liveVal = `${dashboardData.total_appointments}`;
+      } else if (s.label.toLowerCase().includes('revenue') && dashboardData.total_revenue) {
+        liveVal = `$${Number(dashboardData.total_revenue).toLocaleString()}`;
+      }
+    }
+    return {
+      label: s.label,
+      icon: s.icon,
+      color: s.color,
+      value: liveVal,
+    };
+  });
 
   return (
     <section className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">

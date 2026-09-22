@@ -1,17 +1,32 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, TrendingDown, BarChart2 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, Tooltip } from 'recharts';
 import { useAuth } from '@/context/AuthContext';
 import { useClinic } from '@/context/ClinicContext';
 import { storageService } from '@/services/storage.service';
 import { scopeData } from '@/utils/scopeData';
+import { getRevenues } from '@/services/revenueService';
 import { REVENUE_SPARKLINE_DATA } from '../../constants/dashboardWidgetConstants';
 
 const RevenueWidget = () => {
   const { currentUser } = useAuth();
   const { selectedClinicId } = useClinic();
+  const [rawRev, setRawRev] = useState([]);
 
-  const rawRev = storageService.get(storageService.KEYS.REVENUE) || [];
+  useEffect(() => {
+    let active = true;
+    async function fetchRevenues() {
+      try {
+        const data = await getRevenues({}, currentUser);
+        if (active) setRawRev(data || []);
+      } catch (err) {
+        console.warn('RevenueWidget fetch error:', err);
+      }
+    }
+    fetchRevenues();
+    return () => { active = false; };
+  }, [currentUser]);
+
   const rev = scopeData({ resource: 'revenue', data: rawRev, currentUser, selectedClinicId });
 
   const totalAmount = rev.reduce((acc, r) => acc + (r.revenue || 0), 0);

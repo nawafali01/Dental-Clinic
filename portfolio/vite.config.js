@@ -27,20 +27,18 @@ export default defineConfig({
       '/api/ai':           { target: 'http://localhost:5000', changeOrigin: true, secure: false },
       '/api/health':       { target: 'http://localhost:5000', changeOrigin: true, secure: false },
 
-      // 2. Real Dental CRM FastAPI backend (LocalTunnel)
+      // 2. Real Dental CRM FastAPI backend (Direct Local IP / Tunnel fallback)
       // Handles /api/v1/auth/login, /api/v1/users, and other CRM endpoints
       '/api/v1': {
-        target: 'https://small-flies-fix.loca.lt',
+        target: 'http://192.168.18.195:8000',
         changeOrigin: true,
         secure: false,
-        headers: { 'bypass-tunnel-reminder': 'true' },
       },
       // Fallback for any other /api route
       '/api': {
-        target: 'https://small-flies-fix.loca.lt',
+        target: 'http://192.168.18.195:8000',
         changeOrigin: true,
         secure: false,
-        headers: { 'bypass-tunnel-reminder': 'true' },
       },
     },
   },

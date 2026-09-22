@@ -20,6 +20,7 @@ import { MultiClinicPerformanceTable } from './components/MultiClinicPerformance
 
 import { useOrg } from '@/dashboard/shared/context/OrgContext';
 import { useClinic } from '@/context/ClinicContext';
+import { getDashboardReport } from '@/services/reportsService';
 
 export default function DashboardOverviewView() {
   // ── Global Filter State (Connected to shared layout Contexts) ────
@@ -28,12 +29,38 @@ export default function DashboardOverviewView() {
   const [selectedDateRange, setSelectedDateRange] = useState('Last 30 Days');
   const [activeChartTab, setActiveChartTab] = useState('timeline'); // 'timeline' | 'treatment'
 
-  // ── Simulated Loading State ──────────────────────────────────────
+  // ── Live API & Loading State ──────────────────────────────────────
   const [isLoading, setIsLoading] = useState(true);
+  const [apiDashboardReport, setApiDashboardReport] = useState(null);
 
   // ── Table Local Pagination ───────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
+
+  // ── Fetch /api/v1/reports/dashboard live data ───────────────────
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+
+    async function syncDashboardApi() {
+      try {
+        const data = await getDashboardReport({
+          clinic_id: selectedClinicId,
+          organization_id: selectedOrgId,
+        });
+        if (!cancelled && data) {
+          setApiDashboardReport(data);
+        }
+      } catch (err) {
+        console.warn('[DashboardOverviewView] Failed to sync /api/v1/reports/dashboard:', err?.message);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    syncDashboardApi();
+    return () => { cancelled = true; };
+  }, [selectedDateRange, selectedOrgId, selectedClinicId]);
 
   // ── Organizations & Clinics Retrieval ────────────────────────────
   const organizations = useMemo(() => {
@@ -84,15 +111,6 @@ export default function DashboardOverviewView() {
   // Reset pagination when any filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedDateRange, selectedOrgId, selectedClinicId]);
-
-  // ── Simulated Loading Effect (250ms) ─────────────────────────────
-  useEffect(() => {
-    setIsLoading(true);
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 250);
-    return () => clearTimeout(timer);
   }, [selectedDateRange, selectedOrgId, selectedClinicId]);
 
   // ── Date Range Multipliers & Temporal Scope ──────────────────────
@@ -158,13 +176,29 @@ export default function DashboardOverviewView() {
     });
   }, [organizations, dateScale, selectedOrgId, selectedClinicId]);
 
-  // ── Derived Dashboard Metrics ────────────────────────────────────
+  // ── Derived Dashboard Metrics (Enriched from live /api/v1/reports/dashboard API) ──
   const derivedMetrics = useMemo(() => {
-    const totalLeads = multiClinicData.reduce((acc, c) => acc + c.leads, 0);
-    const totalBookings = multiClinicData.reduce((acc, c) => acc + c.bookings, 0);
-    const totalAttended = multiClinicData.reduce((acc, c) => acc + c.attended, 0);
-    const totalConversions = multiClinicData.reduce((acc, c) => acc + c.conversions, 0);
-    const totalRevenue = multiClinicData.reduce((acc, c) => acc + c.revenue, 0);
+    const calcLeads = multiClinicData.reduce((acc, c) => acc + c.leads, 0);
+    const calcBookings = multiClinicData.reduce((acc, c) => acc + c.bookings, 0);
+    const calcAttended = multiClinicData.reduce((acc, c) => acc + c.attended, 0);
+    const calcConversions = multiClinicData.reduce((acc, c) => acc + c.conversions, 0);
+    const calcRevenue = multiClinicData.reduce((acc, c) => acc + c.revenue, 0);
+
+    const totalLeads = apiDashboardReport?.total_leads !== undefined && apiDashboardReport.total_leads > 0
+      ? apiDashboardReport.total_leads
+      : calcLeads;
+    const totalBookings = apiDashboardReport?.total_appointments !== undefined && apiDashboardReport.total_appointments > 0
+      ? apiDashboardReport.total_appointments
+      : calcBookings;
+    const totalAttended = apiDashboardReport?.completed_appointments !== undefined && apiDashboardReport.completed_appointments > 0
+      ? apiDashboardReport.completed_appointments
+      : calcAttended;
+    const totalConversions = apiDashboardReport?.converted_leads !== undefined && apiDashboardReport.converted_leads > 0
+      ? apiDashboardReport.converted_leads
+      : calcConversions;
+    const totalRevenue = apiDashboardReport?.total_revenue !== undefined && apiDashboardReport.total_revenue > 0
+      ? apiDashboardReport.total_revenue
+      : calcRevenue;
 
     const attendanceRateStr = safePct(totalAttended, totalBookings);
     const conversionRateStr = safePct(totalConversions, totalLeads);

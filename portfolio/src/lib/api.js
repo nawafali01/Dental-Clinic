@@ -102,8 +102,11 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    // Only retry on 401 (token expired/invalid) — NOT on 403 (permission denied)
+    // Retrying a 403 with a different token would just replace the user's real
+    // token with the superadmin fallback, breaking role-based access.
     if (
-      (error.response?.status === 401 || error.response?.status === 403) &&
+      error.response?.status === 401 &&
       originalRequest &&
       !originalRequest._retry &&
       !originalRequest.url?.includes('/auth/login')

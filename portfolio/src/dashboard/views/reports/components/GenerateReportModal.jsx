@@ -67,13 +67,14 @@ export function GenerateReportModal({
       setGenerationStep('Formatting executive report output...');
       await new Promise((res) => setTimeout(res, 300));
 
-      const report = generateReport({
+      const report = await generateReport({
         type: selectedType,
         period,
         clinicId,
         format,
         includeCharts,
-        generatedBy: currentUser?.fullName || 'System Administrator',
+        generatedBy: currentUser?.fullName || currentUser?.name || 'System Administrator',
+        currentUser,
       });
 
       toast.success(`Report "${report.title}" generated successfully!`, {

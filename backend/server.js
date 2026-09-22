@@ -16,6 +16,7 @@ import v1UsersRoutes from "./routes/v1Users.js";
 import v1AuthRoutes from "./routes/v1Auth.js";
 import v1OrganizationsRoutes from "./routes/v1Organizations.js";
 import v1ClinicsRoutes from "./routes/v1Clinics.js";
+import v1AuditRoutes from "./routes/v1Audit.js";
 
 // Initialize config
 dotenv.config();
@@ -48,6 +49,7 @@ app.use("/api/v1/auth", v1AuthRoutes);                   // Auth: login / logout
 app.use("/api/v1/users", v1UsersRoutes);                 // User CRUD (MongoDB)
 app.use("/api/v1/organizations", v1OrganizationsRoutes); // Organizations CRUD (MongoDB)
 app.use("/api/v1/clinics", v1ClinicsRoutes);             // Clinics CRUD (MongoDB)
+app.use("/api/v1/audit", v1AuditRoutes);                 // Audit Logs (API v1)
 
 // Root route
 app.get("/", (req, res) => {

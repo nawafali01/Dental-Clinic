@@ -98,7 +98,7 @@ export const CalendarView = ({
         title="Weekly Operatory Board"
         subtitle="7-day synchronized appointments across all active doctors"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3 pt-2 overflow-x-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 pt-2">
           {DAYS.map((day, dIdx) => {
             const dayAppts = appointments.filter((_, idx) => idx % 7 === dIdx || (dIdx === 0 && idx === 0));
 

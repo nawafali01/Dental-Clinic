@@ -36,6 +36,7 @@ import { useAuth } from '@/context/AuthContext';
 import { storageService } from '@/services/storage.service';
 import { getClinicById } from '@/constants/clinics';
 import {
+  getRevenues,
   getOrgRevenueStats,
   getClinicRevenueBreakdown,
   getTreatmentRevenueBreakdown,
@@ -80,6 +81,22 @@ export default function FinanceDashboardView() {
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [hoveredCategory, setHoveredCategory] = useState(null);
+  const [revenueList, setRevenueList] = useState([]);
+
+  // Live Fetch Revenue Records
+  useEffect(() => {
+    let active = true;
+    async function loadData() {
+      try {
+        const data = await getRevenues({}, currentUser);
+        if (active) setRevenueList(data || []);
+      } catch (err) {
+        console.warn('FinanceDashboardView fetch error:', err);
+      }
+    }
+    loadData();
+    return () => { active = false; };
+  }, [currentUser, refreshTrigger]);
 
   // Greeting
   const greeting = getGreeting();
@@ -88,17 +105,17 @@ export default function FinanceDashboardView() {
   // ── Financial Stats ──────────────────────────────────────────────
   const stats = useMemo(() => {
     return getOrgRevenueStats(orgId, period);
-  }, [orgId, period, refreshTrigger]);
+  }, [orgId, period, refreshTrigger, revenueList]);
 
   // ── Clinic Breakdown ─────────────────────────────────────────────
   const clinicData = useMemo(() => {
     return getClinicRevenueBreakdown(orgId);
-  }, [orgId, refreshTrigger]);
+  }, [orgId, refreshTrigger, revenueList]);
 
   // ── Treatment Breakdown ──────────────────────────────────────────
   const treatmentData = useMemo(() => {
     return getTreatmentRevenueBreakdown(orgId);
-  }, [orgId, refreshTrigger]);
+  }, [orgId, refreshTrigger, revenueList]);
 
   const totalTreatmentRevenue = useMemo(() => {
     return treatmentData.reduce((acc, t) => acc + (t.revenue || 0), 0);
@@ -106,13 +123,12 @@ export default function FinanceDashboardView() {
 
   // ── Recent Payments Stream ───────────────────────────────────────
   const recentPayments = useMemo(() => {
-    const all = storageService.get(storageService.KEYS.REVENUE) || [];
-    const orgRecords = all.filter((r) => !orgId || r.orgId === orgId || !r.orgId);
+    const orgRecords = revenueList.filter((r) => !orgId || r.orgId === orgId || !r.orgId);
     return orgRecords
       .slice()
-      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+      .sort((a, b) => new Date(b.created_at || b.date || 0) - new Date(a.created_at || a.date || 0))
       .slice(0, 6);
-  }, [orgId, refreshTrigger]);
+  }, [orgId, revenueList]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
