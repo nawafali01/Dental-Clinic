@@ -28,16 +28,22 @@ import {
 } from '@/services/auditLogsService';
 import { CLINICS } from '@/constants/clinics';
 
+import { useClinic } from '@/context/ClinicContext';
+import { useOrg } from '@/dashboard/shared/context/OrgContext';
+
 export default function AuditLogsView() {
   const { currentUser } = useAuth();
+  const orgCtx = useOrg();
+  const clinicCtx = useClinic();
   const role = currentUser?.role || 'auditor';
   const isSuperAdmin = role === 'super_admin';
-  const userOrgId = currentUser?.organizationId || 'org-001';
+  const userOrgId = currentUser?.organizationId || '';
 
   // Filters & View State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSeverity, setSelectedSeverity] = useState('all');
+  const [selectedOrg, setSelectedOrg] = useState('all');
   const [selectedClinic, setSelectedClinic] = useState('all');
   const [securityOnly, setSecurityOnly] = useState(false);
   const [entityFilter, setEntityFilter] = useState({ type: '', id: '' });
@@ -48,11 +54,19 @@ export default function AuditLogsView() {
   const [selectedLogDetail, setSelectedLogDetail] = useState(null);
   const [isLiveApi, setIsLiveApi] = useState(false);
 
-  // Available branches for current user
+  // Real organizations fetched from backend database
+  const realOrganizations = useMemo(() => {
+    return orgCtx?.organizations || [];
+  }, [orgCtx?.organizations]);
+
+  // Available branches dynamically fetched from real backend API
   const availableClinics = useMemo(() => {
-    if (isSuperAdmin) return CLINICS.filter((c) => !c.isAlias);
-    return CLINICS.filter((c) => !c.isAlias && c.orgId === userOrgId);
-  }, [isSuperAdmin, userOrgId]);
+    const all = clinicCtx?.allAvailableClinics || [];
+    if (selectedOrg && selectedOrg !== 'all') {
+      return all.filter((c) => (c.orgId || c.organization_id) === selectedOrg);
+    }
+    return all;
+  }, [clinicCtx?.allAvailableClinics, selectedOrg]);
 
   // Async load logs from backend API with fallback
   const loadLogs = async () => {
@@ -69,7 +83,7 @@ export default function AuditLogsView() {
           category: selectedCategory,
           severity: selectedSeverity,
           clinicId: selectedClinic,
-          orgId: isSuperAdmin ? null : userOrgId,
+          orgId: selectedOrg !== 'all' ? selectedOrg : null,
           securityOnly,
           limit: 100,
         });
@@ -85,7 +99,7 @@ export default function AuditLogsView() {
         category: selectedCategory,
         severity: selectedSeverity,
         clinicId: selectedClinic,
-        orgId: isSuperAdmin ? null : userOrgId,
+        orgId: selectedOrg !== 'all' ? selectedOrg : null,
       });
       setLogs(local);
       setIsLiveApi(false);
@@ -101,6 +115,7 @@ export default function AuditLogsView() {
     searchQuery,
     selectedCategory,
     selectedSeverity,
+    selectedOrg,
     selectedClinic,
     securityOnly,
     entityFilter.type,
@@ -125,7 +140,7 @@ export default function AuditLogsView() {
     try {
       auditLogsService.exportToCSV(
         logs,
-        `smile_care_group_audit_logs_${new Date().toISOString().split('T')[0]}.csv`
+        `audit_logs_${new Date().toISOString().split('T')[0]}.csv`
       );
       toast.success('Audit trail exported to CSV successfully.');
     } catch (err) {
@@ -137,6 +152,7 @@ export default function AuditLogsView() {
     setSearchQuery('');
     setSelectedCategory('all');
     setSelectedSeverity('all');
+    setSelectedOrg('all');
     setSelectedClinic('all');
     setSecurityOnly(false);
     setEntityFilter({ type: '', id: '' });
@@ -146,6 +162,7 @@ export default function AuditLogsView() {
     searchQuery !== '' ||
     selectedCategory !== 'all' ||
     selectedSeverity !== 'all' ||
+    selectedOrg !== 'all' ||
     selectedClinic !== 'all' ||
     securityOnly ||
     (entityFilter.type && entityFilter.id);
@@ -177,7 +194,7 @@ export default function AuditLogsView() {
           </div>
           <h1 className="text-2xl font-bold text-slate-900 mt-1">Audit Logs & Activity Trail</h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Immutable system-wide event trail across Smile Care Group branches. Verifies authentication, operations, financial events, and RBAC changes.
+            Immutable system-wide event trail across organization branches. Verifies authentication, operations, financial events, and RBAC changes.
           </p>
         </div>
 
@@ -283,7 +300,27 @@ export default function AuditLogsView() {
               </button>
             )}
 
-            {/* Branch filter */}
+            {/* Organization filter */}
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-600">
+              <Layers className="w-3.5 h-3.5 text-slate-400" />
+              <select
+                value={selectedOrg}
+                onChange={(e) => {
+                  setSelectedOrg(e.target.value);
+                  setSelectedClinic('all');
+                }}
+                className="bg-transparent border-none outline-none font-medium text-slate-700 cursor-pointer"
+              >
+                <option value="all">All Organizations ({realOrganizations.length})</option>
+                {realOrganizations.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Clinic filter */}
             <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-600">
               <Building2 className="w-3.5 h-3.5 text-slate-400" />
               <select
@@ -291,7 +328,7 @@ export default function AuditLogsView() {
                 onChange={(e) => setSelectedClinic(e.target.value)}
                 className="bg-transparent border-none outline-none font-medium text-slate-700 cursor-pointer"
               >
-                <option value="all">All Branches ({availableClinics.length})</option>
+                <option value="all">All Clinics ({availableClinics.length})</option>
                 {availableClinics.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}

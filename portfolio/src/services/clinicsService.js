@@ -85,33 +85,43 @@ export const clinicsService = {
    */
   async fetchClinics(orgId = null) {
     try {
-      const params = orgId && orgId !== 'all' && orgId !== 'org-001' ? { organization_id: orgId } : {};
-      const res = await apiClient.get('/api/v1/clinics/', { params });
+      let res;
+      if (orgId && orgId !== 'all') {
+        try {
+          res = await apiClient.get(`/api/v1/clinics/organization/${orgId}`);
+        } catch {
+          res = await apiClient.get('/api/v1/clinics/', { params: { organization_id: orgId } });
+        }
+      } else {
+        res = await apiClient.get('/api/v1/clinics/');
+      }
+
       let rawList = [];
       if (Array.isArray(res.data)) {
         rawList = res.data;
+      } else if (Array.isArray(res.data?.clinics)) {
+        rawList = res.data.clinics;
       } else if (Array.isArray(res.data?.data)) {
         rawList = res.data.data;
       }
-      if (rawList.length > 0) {
+      if (Array.isArray(rawList)) {
         const normalized = rawList.map(normalizeClinic);
         storageService.set(storageService.KEYS.CLINICS, normalized);
         return createSuccess(normalized.map((c) => this._enrichWithManager(c)));
       }
       return createSuccess(this.getClinics());
     } catch (err) {
-      console.warn('[clinicsService.fetchClinics] API fallback to local:', err.message);
+      console.warn('[clinicsService.fetchClinics] API error:', err.message);
       return createSuccess(this.getClinics());
     }
   },
 
   getClinics() {
     let storedClinics = storageService.get(storageService.KEYS.CLINICS) || [];
-    if (Array.isArray(storedClinics) && storedClinics.length > 0) {
+    if (Array.isArray(storedClinics)) {
       return storedClinics.map((c) => this._enrichWithManager(normalizeClinic(c)));
     }
-    const primaryClinics = CLINICS.filter((c) => !c.isAlias);
-    return primaryClinics.map((c) => this._enrichWithManager(normalizeClinic(c)));
+    return [];
   },
 
   /**

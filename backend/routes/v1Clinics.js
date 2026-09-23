@@ -70,6 +70,39 @@ router.get("/", resolveAuth, async (req, res) => {
 });
 
 /**
+ * GET /api/v1/clinics/organization/:orgId
+ */
+router.get("/organization/:orgId", resolveAuth, async (req, res) => {
+  try {
+    const { orgId } = req.params;
+    let filter = {};
+    if (orgId && orgId !== "all") {
+      filter.organization_id = orgId;
+    }
+
+    const clinics = await Clinic.find(filter).sort({ created_at: -1 });
+    const formatted = clinics.map((c) => ({
+      id: c._id.toString(),
+      name: c.name,
+      description: c.description,
+      contact_email: c.contact_email,
+      contact_phone: c.contact_phone,
+      address: c.address,
+      timezone: c.timezone,
+      working_hours: c.working_hours,
+      organization_id: c.organization_id,
+      is_active: c.is_active,
+      created_at: c.created_at,
+      updated_at: c.updated_at,
+    }));
+    res.json({ clinics: formatted, data: formatted });
+  } catch (err) {
+    console.error("[GET /api/v1/clinics/organization/:orgId]", err.message);
+    res.status(500).json({ success: false, error: { message: err.message } });
+  }
+});
+
+/**
  * POST /api/v1/clinics/
  *
  * Payload:

@@ -16,29 +16,30 @@ class AuditModel:
     _records: List[Dict[str, Any]] = []
 
     @classmethod
-    def create(cls, data: Dict[str, Any]) -> AuditLog:
+    async def create(cls, data: Dict[str, Any] = None, **kwargs) -> AuditLog:
         """Persist a new audit log entry safely."""
+        payload = data or kwargs
         record = {
-            "id": str(data.get("id") or f"aud-{uuid4().hex[:8]}"),
-            "created_at": data.get("created_at") or datetime.utcnow(),
-            "action": str(data.get("action")),
-            "entity_type": str(data.get("entity_type")),
-            "entity_id": str(data.get("entity_id")),
-            "description": data.get("description"),
-            "changes": data.get("changes") or {},
-            "user_id": data.get("user_id"),
-            "user_email": data.get("user_email"),
-            "user_role": data.get("user_role"),
-            "organization_id": data.get("organization_id"),
-            "clinic_id": data.get("clinic_id"),
-            "ip_address": data.get("ip_address"),
-            "user_agent": data.get("user_agent"),
+            "id": str(payload.get("id") or f"aud-{uuid4().hex[:8]}"),
+            "created_at": payload.get("created_at") or datetime.utcnow(),
+            "action": str(payload.get("action").value if hasattr(payload.get("action"), "value") else payload.get("action")),
+            "entity_type": str(payload.get("entity_type") or ""),
+            "entity_id": str(payload.get("entity_id") or ""),
+            "description": payload.get("description") or "",
+            "changes": payload.get("changes") or {},
+            "user_id": payload.get("user_id") or "",
+            "user_email": payload.get("user_email") or "",
+            "user_role": payload.get("user_role") or "system",
+            "organization_id": payload.get("organization_id") or "",
+            "clinic_id": payload.get("clinic_id") or "",
+            "ip_address": payload.get("ip_address") or "127.0.0.1",
+            "user_agent": payload.get("user_agent") or "",
         }
         cls._records.insert(0, record)
         return AuditLog.model_validate(record)
 
     @classmethod
-    def query(
+    async def query(
         cls,
         entity_type: Optional[str] = None,
         entity_id: Optional[str] = None,
@@ -56,7 +57,7 @@ class AuditModel:
                 continue
             if user_id and r.get("user_id") != user_id:
                 continue
-            if organization_id and r.get("organization_id") != organization_id:
+            if organization_id and organization_id != "all" and r.get("organization_id") != organization_id:
                 continue
             if is_security_only:
                 act = str(r.get("action", ""))
@@ -67,3 +68,23 @@ class AuditModel:
             if len(results) >= limit:
                 break
         return results
+
+    @classmethod
+    async def get_by_entity(cls, entity_type: str, entity_id: str, limit: int = 100) -> List[AuditLog]:
+        return await cls.query(entity_type=entity_type, entity_id=entity_id, limit=limit)
+
+    @classmethod
+    async def get_by_user(cls, user_id: str, limit: int = 100) -> List[AuditLog]:
+        return await cls.query(user_id=user_id, limit=limit)
+
+    @classmethod
+    async def get_by_organization(cls, org_id: str, limit: int = 100) -> List[AuditLog]:
+        return await cls.query(organization_id=org_id, limit=limit)
+
+    @classmethod
+    async def get_security_logs(cls, limit: int = 100) -> List[AuditLog]:
+        return await cls.query(is_security_only=True, limit=limit)
+
+    @classmethod
+    async def get_all(cls, limit: int = 100) -> List[AuditLog]:
+        return await cls.query(limit=limit)

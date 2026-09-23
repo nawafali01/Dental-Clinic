@@ -6,7 +6,7 @@
  */
 
 import apiClient from '@/lib/api';
-import { storageService } from './storage.service';
+import { storageService, isLegacyMockAuditLog } from './storage.service';
 
 const AUDIT_LOGS_KEY = 'dental_audit_logs';
 
@@ -70,7 +70,7 @@ class AuditLogsService {
     if (!logs || !Array.isArray(logs)) {
       return [];
     }
-    return logs;
+    return logs.filter((l) => !isLegacyMockAuditLog(l));
   }
 
   /**
@@ -189,7 +189,7 @@ class AuditLogsService {
    */
   async getEntityLogs(entityType, entityId, limit = 100) {
     try {
-      const response = await apiClient.get(`/v1/audit/entity/${entityType}/${entityId}`, {
+      const response = await apiClient.get(`/api/v1/audit/entity/${entityType}/${entityId}`, {
         params: { limit },
       });
       const data = response.data?.data || response.data || [];
@@ -210,7 +210,7 @@ class AuditLogsService {
    */
   async getUserLogs(userId, limit = 100) {
     try {
-      const response = await apiClient.get(`/v1/audit/user/${userId}`, {
+      const response = await apiClient.get(`/api/v1/audit/user/${userId}`, {
         params: { limit },
       });
       const data = response.data?.data || response.data || [];
@@ -231,7 +231,8 @@ class AuditLogsService {
    */
   async getOrganizationLogs(orgId, limit = 100) {
     try {
-      const response = await apiClient.get(`/v1/audit/organization/${orgId}`, {
+      const targetOrg = orgId || 'all';
+      const response = await apiClient.get(`/api/v1/audit/organization/${targetOrg}`, {
         params: { limit },
       });
       const data = response.data?.data || response.data || [];
@@ -252,7 +253,7 @@ class AuditLogsService {
    */
   async getSecurityLogs(limit = 100) {
     try {
-      const response = await apiClient.get('/v1/audit/security', {
+      const response = await apiClient.get('/api/v1/audit/security', {
         params: { limit },
       });
       const data = response.data?.data || response.data || [];
@@ -269,6 +270,50 @@ class AuditLogsService {
         .slice(0, limit)
         .map(normalizeAuditLog);
     }
+  }
+
+  /**
+   * API Method: Fetch all system audit logs from real-time database API
+   * GET /api/v1/audit/organization/all or GET /api/v1/audit/logs or GET /api/v1/audit/
+   */
+  async getAllLogs(limit = 100) {
+    try {
+      const response = await apiClient.get('/api/v1/audit/organization/all', {
+        params: { limit },
+      });
+      const data = response.data?.data || response.data;
+      if (Array.isArray(data)) {
+        return data.map(normalizeAuditLog);
+      }
+    } catch (err1) {
+      // Fallback
+    }
+
+    try {
+      const response = await apiClient.get('/api/v1/audit/logs', {
+        params: { limit },
+      });
+      const data = response.data?.data || response.data;
+      if (Array.isArray(data)) {
+        return data.map(normalizeAuditLog);
+      }
+    } catch (err2) {
+      // Fallback
+    }
+
+    try {
+      const response = await apiClient.get('/api/v1/audit/', {
+        params: { limit },
+      });
+      const data = response.data?.data || response.data;
+      if (Array.isArray(data)) {
+        return data.map(normalizeAuditLog);
+      }
+    } catch (err3) {
+      console.warn('[AuditLogsService] API getAllLogs failed:', err3);
+    }
+
+    return null;
   }
 
   /**
@@ -292,12 +337,15 @@ class AuditLogsService {
         remoteLogs = await this.getSecurityLogs(limit);
       } else if (orgId && orgId !== 'all') {
         remoteLogs = await this.getOrganizationLogs(orgId, limit);
+      } else {
+        remoteLogs = await this.getAllLogs(limit);
       }
 
-      if (remoteLogs && Array.isArray(remoteLogs) && remoteLogs.length > 0) {
+      if (remoteLogs && Array.isArray(remoteLogs)) {
         // Apply client filters over remote results
         return remoteLogs.filter((log) => {
-          if (clinicId && clinicId !== 'all' && log.clinicId && log.clinicId !== clinicId) return false;
+          const targetClinic = log.clinicId || log.clinic_id;
+          if (clinicId && clinicId !== 'all' && targetClinic && targetClinic !== clinicId) return false;
           if (category && category !== 'all' && log.category !== category) return false;
           if (severity && severity !== 'all' && log.severity !== severity) return false;
           if (searchQuery && searchQuery.trim()) {

@@ -142,6 +142,24 @@ router.get("/organization/:org_id", async (req, res) => {
   }
 });
 
+// GET /api/v1/audit or GET /api/v1/audit/logs
+const getAllAuditLogs = async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 1000);
+    const logs = await AuditLog.find({})
+      .sort({ created_at: -1 })
+      .limit(limit);
+
+    return res.json(logs.map(formatLog));
+  } catch (err) {
+    console.error("[GET /api/v1/audit]", err.message);
+    return res.json([]);
+  }
+};
+
+router.get("/", getAllAuditLogs);
+router.get("/logs", getAllAuditLogs);
+
 // GET /api/v1/audit/security
 router.get("/security", async (req, res) => {
   try {

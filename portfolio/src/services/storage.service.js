@@ -17,7 +17,7 @@ import { ORG_001_ID, ORG_001_NAME } from '../constants/orgAdminSeedData';
 // so that existing localStorage sessions are cleared and re-seeded
 // with the updated data structure.
 // ─────────────────────────────────────────────────────────────
-const DB_VERSION = '6.0'; // v6.0: Purged all legacy seed mock datasets across storage
+const DB_VERSION = '7.0'; // v7.0: Purged all legacy seed mock datasets across storage including audit logs
 
 export const LEGACY_MOCK_LEAD_IDS = new Set([
   'lead-001', 'lead-002', 'lead-003', 'lead-004', 'lead-005', 'lead-006',
@@ -63,6 +63,34 @@ export function isLegacyMockAppointment(appt) {
   return false;
 }
 
+const LEGACY_MOCK_AUDIT_ACTORS = new Set([
+  'admin@dental.com',
+  'finance@test.com',
+  'manager@test.com',
+  'receptionist@test.com',
+  'system@platform.security',
+  'agent@test.com',
+  'auditor@test.com',
+  'dr. john doe',
+  'emma vance',
+  'marcus reynolds',
+  'chloe bennett',
+  'security sentinel',
+  'alex morgan',
+  'robert vance',
+  'platform root',
+]);
+
+export function isLegacyMockAuditLog(log) {
+  if (!log) return true;
+  const id = String(log.id || log._id || '');
+  if (/^aud-0*\d+$/.test(id)) return true;
+  const actor = String(log.actor || log.user_email || log.email || '').toLowerCase();
+  const actorName = String(log.actorName || log.user_name || '').toLowerCase();
+  if (LEGACY_MOCK_AUDIT_ACTORS.has(actor) || LEGACY_MOCK_AUDIT_ACTORS.has(actorName)) return true;
+  return false;
+}
+
 const STORAGE_KEYS = {
   USERS:           'dental_crm_users',
   ORGS:            'dental_crm_orgs',
@@ -76,6 +104,7 @@ const STORAGE_KEYS = {
   CALLS:           'dental_crm_calls',
   REVENUE:         'dental_crm_revenue',
   REPORTS:         'dental_crm_reports',
+  AUDIT_LOGS:      'dental_audit_logs',
   TREATMENTS_CONFIG: 'dental_crm_treatments_config',
   LEAD_SOURCES:     'dental_crm_lead_sources',
   LEAD_STATUSES:    'dental_crm_lead_statuses',
@@ -94,6 +123,14 @@ class StorageService {
     try {
       const item = window.localStorage.getItem(key);
       const parsed = item ? JSON.parse(item) : null;
+
+      // AUDIT LOGS: Must only contain real backend data or user-generated logs, never legacy mock logs
+      if (key === STORAGE_KEYS.AUDIT_LOGS || key === 'dental_audit_logs') {
+        if (Array.isArray(parsed)) {
+          return parsed.filter((l) => !isLegacyMockAuditLog(l));
+        }
+        return [];
+      }
 
       // LEADS: Must only contain real backend data, never fallback to mock seed
       if (key === STORAGE_KEYS.LEADS) {
@@ -178,9 +215,24 @@ class StorageService {
         STORAGE_KEYS.PATIENTS, STORAGE_KEYS.APPOINTMENTS,
         STORAGE_KEYS.LEADS, STORAGE_KEYS.TASKS, STORAGE_KEYS.CALLS,
         STORAGE_KEYS.REVENUE, STORAGE_KEYS.CURRENT_USER, STORAGE_KEYS.REPORTS,
+        STORAGE_KEYS.AUDIT_LOGS,
       ];
       keysToWipe.forEach((k) => this.remove(k));
       this.set(STORAGE_KEYS.DB_VERSION, DB_VERSION);
+    }
+
+    // Purge mock audit logs
+    const rawAuditLogs = window.localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS);
+    if (rawAuditLogs) {
+      try {
+        const parsed = JSON.parse(rawAuditLogs);
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter((l) => !isLegacyMockAuditLog(l));
+          this.set(STORAGE_KEYS.AUDIT_LOGS, cleaned);
+        }
+      } catch {
+        this.set(STORAGE_KEYS.AUDIT_LOGS, []);
+      }
     }
 
     // Purge mock leads so only real backend leads exist

@@ -75,10 +75,10 @@ export const AppointmentsView = () => {
       return [];
     }
   });
+  const { organizations: orgsFromCtx } = useOrg();
   const organizations = useMemo(() => {
-    const orgs = organizationsService.getOrganizationsSync();
-    return orgs && orgs.length > 0 ? orgs : INITIAL_ORGANIZATIONS;
-  }, []);
+    return orgsFromCtx && orgsFromCtx.length > 0 ? orgsFromCtx : [];
+  }, [orgsFromCtx]);
 
   useEffect(() => {
     if (typeof organizationsService.getOrganizations === 'function') {

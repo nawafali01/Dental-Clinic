@@ -3,6 +3,8 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { RoleGuard } from "@/components/guards/RoleGuard";
 import { PERMISSIONS } from "@/dashboard/shared/config/permissions";
+import AgentReportsView from "@/dashboard/agent/AgentReportsView";
+import { normalizeRole } from "@/utils/normalizeUser";
 
 // ─── Lazy-Loaded View Components ──────────────────────────────
 const UnifiedDashboard     = lazy(() => import("@/dashboard/UnifiedDashboard"));
@@ -16,7 +18,6 @@ const RevenueView          = lazy(() => import("@/dashboard/views/revenue/Revenu
 const FinanceRevenueView   = lazy(() => import("@/dashboard/finance/FinanceRevenueView"));
 const PaymentsView         = lazy(() => import("@/dashboard/views/config/PaymentsView"));
 const ReportsView          = lazy(() => import("@/dashboard/views/reports/ReportsView"));
-import AgentReportsView from "@/dashboard/agent/AgentReportsView";
 const ReceptionistReportsView = lazy(() => import("@/dashboard/receptionist/ReceptionistReportsView"));
 const FinanceReportsView   = lazy(() => import("@/dashboard/finance/FinanceReportsView"));
 const ClinicsView          = lazy(() => import("@/dashboard/views/clinics/ClinicsView"));
@@ -28,8 +29,6 @@ const UserDetailView       = lazy(() => import("@/dashboard/super-admin/views/us
 const AuditLogsView        = lazy(() => import("@/dashboard/views/audit/AuditLogsView"));
 const ProfileView          = lazy(() => import("@/features/profile/ProfileView"));
 const SettingsWorkspace    = lazy(() => import("@/features/settings/SettingsWorkspace"));
-
-import { normalizeRole } from "@/utils/normalizeUser";
 
 const UsersDispatcher = () => {
   const { currentUser } = useAuth();

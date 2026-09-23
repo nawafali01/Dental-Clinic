@@ -12,6 +12,7 @@ const RevenueView = lazy(() => import('../views/RevenueView'));
 const AuditLogsView = lazy(() => import('../views/AuditLogsView'));
 const SettingsView = lazy(() => import('../views/SettingsView'));
 
+
 const fallback = (label = "Loading...") => (
   <div className="h-screen w-screen flex items-center justify-center text-primary font-display font-semibold">
     {label}

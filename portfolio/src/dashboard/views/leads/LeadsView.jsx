@@ -157,14 +157,10 @@ export const LeadsView = () => {
     }).catch(() => {});
   }, []);
 
+  const { organizations: orgsFromCtx } = useOrg();
   const organizations = useMemo(() => {
-    if (backendOrgs && Array.isArray(backendOrgs) && backendOrgs.length > 0) {
-      return backendOrgs;
-    }
-    const orgs = organizationsService.getOrganizationsSync();
-    if (orgs && Array.isArray(orgs) && orgs.length > 0) return orgs;
-    return INITIAL_ORGANIZATIONS;
-  }, [backendOrgs]);
+    return orgsFromCtx && orgsFromCtx.length > 0 ? orgsFromCtx : [];
+  }, [orgsFromCtx]);
 
   // Clinics available to the current user and filter
   const availableClinics = useMemo(() => {

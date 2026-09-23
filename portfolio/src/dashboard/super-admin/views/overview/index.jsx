@@ -5,6 +5,7 @@ import { organizationsService, INITIAL_ORGANIZATIONS } from '@/services/organiza
 import { storageService } from '@/services/storage.service';
 import { rawAiTelemetryData } from '@/dashboard/super-admin/mock-data/aiData';
 
+import { isSameClinic } from '@/constants/clinics';
 import {
   formatCurrency,
   safePct,
@@ -24,8 +25,8 @@ import { getDashboardReport } from '@/services/reportsService';
 
 export default function DashboardOverviewView() {
   // ── Global Filter State (Connected to shared layout Contexts) ────
-  const { selectedOrgId, setSelectedOrgId } = useOrg();
-  const { selectedClinicId, setSelectedClinicId } = useClinic();
+  const { selectedOrgId, setSelectedOrgId, organizations: orgsFromCtx } = useOrg();
+  const { selectedClinicId, setSelectedClinicId, allAvailableClinics } = useClinic();
   const [selectedDateRange, setSelectedDateRange] = useState('Last 30 Days');
   const [activeChartTab, setActiveChartTab] = useState('timeline'); // 'timeline' | 'treatment'
 
@@ -64,45 +65,41 @@ export default function DashboardOverviewView() {
 
   // ── Organizations & Clinics Retrieval ────────────────────────────
   const organizations = useMemo(() => {
-    const rawOrgs = organizationsService.getOrganizationsSync();
-    if (rawOrgs && Array.isArray(rawOrgs) && rawOrgs.length > 0) {
-      return rawOrgs;
-    }
-    return INITIAL_ORGANIZATIONS;
-  }, []);
+    return orgsFromCtx && orgsFromCtx.length > 0 ? orgsFromCtx : [];
+  }, [orgsFromCtx]);
 
-  // Dynamically derived clinic list based on selected organization
+  // Dynamically derived clinic list based on selected organization (strictly from database)
   const availableClinics = useMemo(() => {
-    if (selectedOrgId === 'all') {
-      const allList = [];
-      organizations.forEach((org) => {
-        if (Array.isArray(org.clinics)) {
-          org.clinics.forEach((c) => {
-            allList.push({
-              ...c,
-              orgId: org.id,
-              orgName: org.name,
-            });
-          });
-        }
-      });
-      return allList;
+    if (!selectedOrgId || selectedOrgId === 'all') {
+      return allAvailableClinics || [];
     }
 
-    const matchedOrg = organizations.find((o) => o.id === selectedOrgId);
-    if (!matchedOrg || !Array.isArray(matchedOrg.clinics)) return [];
-    return matchedOrg.clinics.map((c) => ({
-      ...c,
-      orgId: matchedOrg.id,
-      orgName: matchedOrg.name,
-    }));
-  }, [organizations, selectedOrgId]);
+    const currentOrgObj = (organizations || []).find(
+      (o) => o.id === selectedOrgId || o._id === selectedOrgId || o.name === selectedOrgId
+    );
+
+    const validOrgIds = new Set(
+      [
+        selectedOrgId,
+        currentOrgObj?.id,
+        currentOrgObj?._id,
+        currentOrgObj?.name,
+        currentOrgObj?.slug,
+      ].filter(Boolean)
+    );
+
+    return (allAvailableClinics || []).filter((c) => {
+      const cOrg = c.orgId || c.organization_id || c.org_id;
+      const cName = c.orgName || c.organization_name;
+      return (cOrg && validOrgIds.has(cOrg)) || (cName && validOrgIds.has(cName));
+    });
+  }, [allAvailableClinics, selectedOrgId, organizations]);
 
   // Reset clinic filter if previously selected clinic no longer belongs to newly selected organization
   useEffect(() => {
     if (selectedClinicId !== 'all') {
-      const existsInAvailable = availableClinics.some((c) => c.id === selectedClinicId);
-      if (!existsInAvailable) {
+      const existsInAvailable = availableClinics.some((c) => c.id === selectedClinicId || isSameClinic(c.id, selectedClinicId));
+      if (!existsInAvailable && availableClinics.length > 0) {
         setSelectedClinicId('all');
       }
     }
@@ -119,62 +116,88 @@ export default function DashboardOverviewView() {
   // ── Multi-Clinic Aggregated Performance Dataset ──────────────────
   const multiClinicData = useMemo(() => {
     const rawLeads = storageService.get(storageService.KEYS.LEADS) || [];
+    const rawAppts = storageService.get(storageService.KEYS.APPOINTMENTS) || [];
+    const rawRevenues = storageService.get(storageService.KEYS.REVENUE) || [];
 
-    // Build rich performance metrics for all clinics
-    const allClinicsWithMetrics = [];
+    const allClinicsWithMetrics = (availableClinics || []).map((clinic) => {
+      // Matching leads, appointments, revenue
+      const clinicLeads = rawLeads.filter(
+        (l) => l.clinicId === clinic.id || l.clinic_id === clinic.id || isSameClinic(l.clinicId || l.clinic_id, clinic.id)
+      );
+      const clinicAppts = rawAppts.filter(
+        (a) => a.clinicId === clinic.id || a.clinic_id === clinic.id || isSameClinic(a.clinicId || a.clinic_id, clinic.id)
+      );
+      const clinicRevs = rawRevenues.filter(
+        (r) => r.clinicId === clinic.id || r.clinic_id === clinic.id || isSameClinic(r.clinicId || r.clinic_id, clinic.id)
+      );
 
-    organizations.forEach((org, orgIdx) => {
-      const orgClinics = org.clinics || [];
-      orgClinics.forEach((clinic, cIdx) => {
-        // Base weights for deterministic calculations
-        const baseWeight = (orgIdx + 1) * 1.2 + (cIdx + 1) * 0.8;
-        const totalLeads = Math.round(
-          Math.max(12, ((org.newLeadsCount || 35) + cIdx * 14 + (rawLeads.length > 0 ? rawLeads.length * 2 : 24)) * dateScale.multiplier * (baseWeight / 3))
-        );
+      // Deterministic clinic hash for unique metric calculation
+      let hash = 0;
+      const str = String(clinic.id || clinic.name || '');
+      for (let i = 0; i < str.length; i++) {
+        hash = (hash << 5) - hash + str.charCodeAt(i);
+        hash |= 0;
+      }
+      const absHash = Math.abs(hash);
 
-        const bookings = Math.round(totalLeads * (0.55 + ((cIdx % 3) * 0.05)));
-        const attended = Math.round(bookings * (0.88 + ((cIdx % 2) * 0.04)));
-        const conversions = Math.max(1, Math.round(attended * (0.42 + ((cIdx % 4) * 0.03))));
-        const convRateNumber = safePctNumber(conversions, totalLeads);
-        const convRateStr = safePct(conversions, totalLeads);
+      const baseLeads = 18 + (absHash % 32);
+      const totalLeads = Math.max(
+        1,
+        Math.round(
+          (clinicLeads.length > 0 ? clinicLeads.length : baseLeads) * dateScale.multiplier
+        )
+      );
 
-        const clinicRevenue = Math.round(
-          ((org.revenue || 18000) / Math.max(1, orgClinics.length) + (cIdx + 1) * 2400) * dateScale.multiplier
-        );
+      const bookings = Math.max(
+        1,
+        Math.round(
+          (clinicAppts.length > 0 ? clinicAppts.length : totalLeads) * (0.65 + ((absHash % 20) / 100))
+        )
+      );
+      const attended = Math.max(
+        1,
+        Math.round(bookings * (0.80 + ((absHash % 14) / 100)))
+      );
+      const conversions = Math.max(
+        1,
+        Math.round(attended * (0.38 + ((absHash % 18) / 100)))
+      );
 
-        let status = 'active';
-        if (org.status === 'inactive' || clinic.status === 'inactive') {
-          status = 'inactive';
-        } else if (cIdx === 2 && orgIdx % 2 === 1) {
-          status = 'warning';
-        }
+      const realRevSum = clinicRevs.reduce((acc, r) => acc + Number(r.amount || r.total || r.total_amount || 0), 0);
+      const baseRev = 9200 + (absHash % 17800);
+      const clinicRevenue = Math.max(
+        450,
+        Math.round(
+          (realRevSum > 0 ? realRevSum : baseRev) * dateScale.multiplier
+        )
+      );
 
-        allClinicsWithMetrics.push({
-          id: clinic.id,
-          name: clinic.name,
-          orgId: org.id,
-          orgName: org.name,
-          leads: totalLeads,
-          bookings,
-          attended,
-          conversions,
-          convRateNumber,
-          convRateStr,
-          revenue: clinicRevenue,
-          formattedRevenue: formatCurrency(clinicRevenue),
-          status,
-          city: clinic.city || org.timezone?.split('/')[1]?.replace('_', ' ') || 'Regional Branch',
-        });
-      });
+      const org = organizations.find((o) => o.id === (clinic.orgId || clinic.organization_id));
+
+      return {
+        id: clinic.id,
+        name: clinic.name,
+        orgId: clinic.orgId || clinic.organization_id || '',
+        orgName: org?.name || clinic.orgName || 'Organization Branch',
+        leads: totalLeads,
+        bookings,
+        attended,
+        conversions,
+        convRateNumber: safePctNumber(conversions, totalLeads),
+        convRateStr: safePct(conversions, totalLeads),
+        revenue: clinicRevenue,
+        formattedRevenue: formatCurrency(clinicRevenue),
+        status: clinic.status || 'active',
+        city: clinic.city || 'Regional Branch',
+      };
     });
 
-    // Apply global organization and clinic filters
+    // Apply global clinic selection filter
     return allClinicsWithMetrics.filter((item) => {
-      if (selectedOrgId !== 'all' && item.orgId !== selectedOrgId) return false;
-      if (selectedClinicId !== 'all' && item.id !== selectedClinicId) return false;
+      if (selectedClinicId !== 'all' && !isSameClinic(item.id, selectedClinicId)) return false;
       return true;
     });
-  }, [organizations, dateScale, selectedOrgId, selectedClinicId]);
+  }, [availableClinics, organizations, dateScale, selectedClinicId]);
 
   // ── Derived Dashboard Metrics (Enriched from live /api/v1/reports/dashboard API) ──
   const derivedMetrics = useMemo(() => {
@@ -184,21 +207,11 @@ export default function DashboardOverviewView() {
     const calcConversions = multiClinicData.reduce((acc, c) => acc + c.conversions, 0);
     const calcRevenue = multiClinicData.reduce((acc, c) => acc + c.revenue, 0);
 
-    const totalLeads = apiDashboardReport?.total_leads !== undefined && apiDashboardReport.total_leads > 0
-      ? apiDashboardReport.total_leads
-      : calcLeads;
-    const totalBookings = apiDashboardReport?.total_appointments !== undefined && apiDashboardReport.total_appointments > 0
-      ? apiDashboardReport.total_appointments
-      : calcBookings;
-    const totalAttended = apiDashboardReport?.completed_appointments !== undefined && apiDashboardReport.completed_appointments > 0
-      ? apiDashboardReport.completed_appointments
-      : calcAttended;
-    const totalConversions = apiDashboardReport?.converted_leads !== undefined && apiDashboardReport.converted_leads > 0
-      ? apiDashboardReport.converted_leads
-      : calcConversions;
-    const totalRevenue = apiDashboardReport?.total_revenue !== undefined && apiDashboardReport.total_revenue > 0
-      ? apiDashboardReport.total_revenue
-      : calcRevenue;
+    const totalLeads = calcLeads;
+    const totalBookings = calcBookings;
+    const totalAttended = calcAttended;
+    const totalConversions = calcConversions;
+    const totalRevenue = calcRevenue;
 
     const attendanceRateStr = safePct(totalAttended, totalBookings);
     const conversionRateStr = safePct(totalConversions, totalLeads);

@@ -13,17 +13,12 @@ import {
   AlertCircle,
   CheckCircle2,
   Building2,
-  Calendar,
   FileText,
 } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
 import { storageService } from '@/services/storage.service';
-import {
-  getOrgRevenueStats,
-  isRevenueRecognized,
-  getRecognizedAmount,
-} from '@/services/revenueService';
+import { getOrgRevenueStats } from '@/services/revenueService';
 import {
   auditLogsService,
   AUDIT_SEVERITIES,
@@ -90,7 +85,7 @@ export default function AuditorDashboardView() {
     }
   }, [orgId]);
 
-  // 4. Audit Log Statistics & Recent Activity
+  // 4. Audit Log Statistics & Recent Activity (from localStorage / API)
   const { recentLogs, stats } = useMemo(() => {
     try {
       const logs = auditLogsService.getLogs({ currentUser });
@@ -188,7 +183,7 @@ export default function AuditorDashboardView() {
         />
       </div>
 
-      {/* ── Recent Audit Activity Feed (Core Role Feature) ── */}
+      {/* ── Recent Audit Activity Feed ── */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>

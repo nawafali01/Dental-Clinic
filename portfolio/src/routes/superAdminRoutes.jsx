@@ -7,7 +7,6 @@ import {
   analyticsFunnelData,
   analyticsLeadSourcesData,
   aiOpsSystemHealthData,
-  auditLogsData,
 } from "@/data/routesData";
 
 // ─── Fallback spinner ───────────────────────────────────────────
@@ -450,30 +449,6 @@ const AiOpsView = () => (
   </div>
 );
 
-// ── Audit Logs ────────────────────────────────────────────────
-const AuditLogsView = () => (
-  <div className="space-y-6">
-    <PageHeader title="Audit Logs & Compliance" description="Complete system-wide activity trail for compliance and security" />
-    <div className="grid grid-cols-4 gap-4">
-      <StatCard label="Events Today" value="847"  sub="Across all users" />
-      <StatCard label="This Week"    value="5,291" sub="Logged actions" />
-      <StatCard label="Warnings"     value="12"   sub="Need review" />
-      <StatCard label="Users Active" value="28"   sub="In last 24 hours" />
-    </div>
-    <Table
-      headers={["User", "Action", "Resource", "IP Address", "Severity", "Timestamp"]}
-      rows={auditLogsData.map((log) => [
-        log.user,
-        log.action,
-        log.resource,
-        log.ip,
-        <Badge color={log.severity === "Info" ? "green" : log.severity === "Warning" ? "amber" : "red"}>{log.severity}</Badge>,
-        log.timestamp,
-      ])}
-    />
-    <DevBanner text="Full Audit Log system with filters and export is under development" />
-  </div>
-);
 
 export const superAdminRoutes = [
   {
@@ -483,10 +458,6 @@ export const superAdminRoutes = [
   {
     path: "ai-ops",
     element: <AiOpsView />,
-  },
-  {
-    path: "audit-logs",
-    element: <AuditLogsView />,
   },
   {
     path: "system-settings",

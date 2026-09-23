@@ -16,8 +16,8 @@ import { useClinic } from '@/context/ClinicContext';
 
 export default function LeadPipelineView() {
   // ── Global Filter State (Connected to shared layout Contexts) ────
-  const { selectedOrgId, setSelectedOrgId } = useOrg();
-  const { selectedClinicId, setSelectedClinicId } = useClinic();
+  const { selectedOrgId, setSelectedOrgId, organizations: orgsFromCtx } = useOrg();
+  const { selectedClinicId, setSelectedClinicId, allAvailableClinics } = useClinic();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedSource, setSelectedSource] = useState('all');
@@ -35,45 +35,27 @@ export default function LeadPipelineView() {
 
   // ── Organizations Retrieval ──────────────────────────────────────
   const organizations = useMemo(() => {
-    const orgs = organizationsService.getOrganizationsSync();
-    return orgs && orgs.length > 0 ? orgs : INITIAL_ORGANIZATIONS;
-  }, []);
+    return orgsFromCtx && orgsFromCtx.length > 0 ? orgsFromCtx : [];
+  }, [orgsFromCtx]);
 
   // ── Dynamic Available Clinics ────────────────────────────────────
   const availableClinics = useMemo(() => {
-    if (selectedOrgId === 'all') {
-      const allClinics = [];
-      organizations.forEach((org) => {
-        if (Array.isArray(org.clinics)) {
-          org.clinics.forEach((c) => {
-            allClinics.push({
-              ...c,
-              orgId: org.id,
-              orgName: org.name,
-            });
-          });
-        }
-      });
-      return allClinics;
+    if (!selectedOrgId || selectedOrgId === 'all') {
+      return allAvailableClinics || [];
     }
-
-    const matchedOrg = organizations.find((o) => o.id === selectedOrgId);
-    if (!matchedOrg || !Array.isArray(matchedOrg.clinics)) return [];
-    return matchedOrg.clinics.map((c) => ({
-      ...c,
-      orgId: matchedOrg.id,
-      orgName: matchedOrg.name,
-    }));
-  }, [organizations, selectedOrgId]);
-
+    return (allAvailableClinics || []).filter(
+      (c) => (c.orgId || c.organization_id) === selectedOrgId
+    );
+  }, [allAvailableClinics, selectedOrgId]);
   // Reset clinic if invalid when switching org
   useEffect(() => {
     if (selectedClinicId !== 'all') {
       const exists = availableClinics.some((c) => c.id === selectedClinicId);
-      if (!exists) {
+      if (!exists && availableClinics.length > 0) {
         setSelectedClinicId('all');
       }
     }
+  }, [selectedOrgId, availableClinics, selectedClinicId]);
   }, [selectedOrgId, availableClinics, selectedClinicId]);
 
   // ── Storage Leads Initialization & State ─────────────────────────

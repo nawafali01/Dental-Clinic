@@ -101,13 +101,19 @@ export function buildReportFilterParams(filter = {}) {
   if (filter.start_date) params.start_date = filter.start_date;
   if (filter.end_date) params.end_date = filter.end_date;
 
+  const targetClinic = filter.clinic_id || filter.clinicId || (Array.isArray(filter.clinic_ids) ? filter.clinic_ids[0] : null);
   if (Array.isArray(filter.clinic_ids) && filter.clinic_ids.length > 0) {
     params.clinic_ids = filter.clinic_ids.join(',');
-  } else if (filter.clinic_id && filter.clinic_id !== 'all') {
-    params.clinic_ids = filter.clinic_id;
+  } else if (targetClinic && targetClinic !== 'all') {
+    params.clinic_ids = targetClinic;
+    params.clinic_id = targetClinic;
   }
 
-  if (filter.organization_id) params.organization_id = filter.organization_id;
+  const targetOrg = filter.organization_id || filter.org_id || filter.orgId;
+  if (targetOrg && targetOrg !== 'all') {
+    params.organization_id = targetOrg;
+    params.org_id = targetOrg;
+  }
   if (filter.user_id) params.user_id = filter.user_id;
 
   if (Array.isArray(filter.lead_status) && filter.lead_status.length > 0) {
@@ -310,18 +316,53 @@ export async function getUserPerformanceReport(userId, filters = {}, currentUser
 
 // ─── Local Dynamic Calculation Engines (Mock-Free) ─────────────
 
-function computeLocalDashboardData(user, role, filters, customData = {}) {
-  const leads = (Array.isArray(customData.leads) && customData.leads.length > 0)
+function applyReportFilters(items, filters = {}, clinicKey = 'clinic_id', orgKey = 'organization_id') {
+  if (!Array.isArray(items)) return [];
+  let result = items;
+
+  const targetClinic = filters.clinic_id || (Array.isArray(filters.clinic_ids) ? filters.clinic_ids[0] : null);
+  if (targetClinic && targetClinic !== 'all') {
+    const targetStr = String(targetClinic).toLowerCase().trim();
+    result = result.filter((item) => {
+      const c = item[clinicKey] || item.clinicId || item.clinic_id || item.clinic;
+      if (!c) return true;
+      const cStr = String(c).toLowerCase().trim();
+      return cStr === targetStr || cStr.includes(targetStr) || targetStr.includes(cStr);
+    });
+  }
+
+  const targetOrg = filters.organization_id || filters.org_id || filters.orgId;
+  if (targetOrg && targetOrg !== 'all') {
+    const targetOrgStr = String(targetOrg).toLowerCase().trim();
+    result = result.filter((item) => {
+      const o = item[orgKey] || item.orgId || item.organization_id || item.org_id || item.org;
+      if (!o) return true;
+      const oStr = String(o).toLowerCase().trim();
+      return oStr === targetOrgStr || oStr.includes(targetOrgStr) || targetOrgStr.includes(oStr);
+    });
+  }
+
+  return result;
+}
+
+function computeLocalDashboardData(user, role, filters = {}, customData = {}) {
+  let leads = (Array.isArray(customData.leads) && customData.leads.length > 0)
     ? customData.leads
     : (storageService.get(storageService.KEYS.LEADS) || []);
-  const appointments = (Array.isArray(customData.appointments) && customData.appointments.length > 0)
+  let appointments = (Array.isArray(customData.appointments) && customData.appointments.length > 0)
     ? customData.appointments
     : (storageService.get(storageService.KEYS.APPOINTMENTS) || []);
-  const revenue = (Array.isArray(customData.revenue) && customData.revenue.length > 0)
+  let revenue = (Array.isArray(customData.revenue) && customData.revenue.length > 0)
     ? customData.revenue
     : (storageService.get(storageService.KEYS.REVENUE) || []);
-  const calls = storageService.get(storageService.KEYS.CALLS) || [];
-  const tasks = storageService.get(storageService.KEYS.TASKS) || [];
+  let calls = storageService.get(storageService.KEYS.CALLS) || [];
+  let tasks = storageService.get(storageService.KEYS.TASKS) || [];
+
+  leads = applyReportFilters(leads, filters);
+  appointments = applyReportFilters(appointments, filters);
+  revenue = applyReportFilters(revenue, filters);
+  calls = applyReportFilters(calls, filters);
+  tasks = applyReportFilters(tasks, filters);
 
   // Lead metrics
   const totalLeads = leads.length;
@@ -406,10 +447,11 @@ function computeLocalDashboardData(user, role, filters, customData = {}) {
   };
 }
 
-function computeLocalLeadReport(filters, customLeads = null) {
-  const leads = (Array.isArray(customLeads) && customLeads.length > 0)
+function computeLocalLeadReport(filters = {}, customLeads = null) {
+  let leads = (Array.isArray(customLeads) && customLeads.length > 0)
     ? customLeads
     : (storageService.get(storageService.KEYS.LEADS) || []);
+  leads = applyReportFilters(leads, filters);
   const totalLeads = leads.length;
 
   const byStatus = {};
@@ -448,10 +490,11 @@ function computeLocalLeadReport(filters, customLeads = null) {
   };
 }
 
-function computeLocalRevenueReport(filters, customRevenue = null) {
-  const revenue = (Array.isArray(customRevenue) && customRevenue.length > 0)
+function computeLocalRevenueReport(filters = {}, customRevenue = null) {
+  let revenue = (Array.isArray(customRevenue) && customRevenue.length > 0)
     ? customRevenue
     : (storageService.get(storageService.KEYS.REVENUE) || []);
+  revenue = applyReportFilters(revenue, filters);
 
   let totalRevenue = 0;
   let collected = 0;
@@ -495,10 +538,11 @@ function computeLocalRevenueReport(filters, customRevenue = null) {
   };
 }
 
-function computeLocalAppointmentReport(filters, customAppts = null) {
-  const appointments = (Array.isArray(customAppts) && customAppts.length > 0)
+function computeLocalAppointmentReport(filters = {}, customAppts = null) {
+  let appointments = (Array.isArray(customAppts) && customAppts.length > 0)
     ? customAppts
     : (storageService.get(storageService.KEYS.APPOINTMENTS) || []);
+  appointments = applyReportFilters(appointments, filters);
   const totalAppointments = appointments.length;
 
   const byStatus = {};

@@ -55,23 +55,10 @@ export const Header = () => {
         </span>
 
         {/* Organization and Clinic Scope Switchers */}
-        {isMultiAdmin ? (
-          <>
-            {userRole === 'super_admin' && <OrgSwitcher />}
-            <ClinicSwitcher />
-          </>
-        ) : (
-          /* Read-Only Clinic Badge for non-admin roles (clinic_manager, agent, receptionist, finance, auditor) */
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold">
-            <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span className="text-slate-500 font-medium">Clinic:</span>
-            <span className="text-slate-900 font-bold truncate max-w-[170px]">
-              {(!selectedClinic || selectedClinic.isAll || selectedClinic.id === 'all')
-                ? (currentUser?.clinicName || 'doctor_hospital')
-                : (selectedClinic.name || 'doctor_hospital')}
-            </span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {userRole === 'super_admin' && <OrgSwitcher />}
+          <ClinicSwitcher />
+        </div>
 
         {/* Global Search Command Trigger */}
         <button

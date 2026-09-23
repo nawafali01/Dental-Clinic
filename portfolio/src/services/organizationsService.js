@@ -86,10 +86,10 @@ class OrganizationsService {
           }
         }
 
-        if (list.length > 0) {
+        if (Array.isArray(list)) {
           storageService.set(this.getStorageKey(), list);
+          return createSuccess(list, 'Organizations retrieved successfully.');
         }
-        return createSuccess(list, 'Organizations retrieved successfully.');
       } catch (apiErr) {
         console.warn('[Organizations] API unreachable, using storage fallback:', apiErr.message);
         const LEGACY_MOCKS = ['org-001', 'org-002', 'org-003', 'org-004', 'org-005', 'org-006'];

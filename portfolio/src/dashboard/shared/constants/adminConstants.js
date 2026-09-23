@@ -138,8 +138,9 @@ export const ORG_ADMIN_NAVIGATION = [
   {
     title: 'Management',
     items: [
-      { name: 'Clinics', path: '/admin/clinics', icon: Building2 },
-      { name: 'Users',   path: '/admin/users',   icon: UserCheck },
+      { name: 'Clinics',    path: '/admin/clinics',    icon: Building2 },
+      { name: 'Users',      path: '/admin/users',      icon: UserCheck },
+      { name: 'Audit Logs', path: '/admin/audit-logs', icon: ShieldCheck },
     ],
   },
   {
@@ -191,6 +192,7 @@ export const CLINIC_MANAGER_NAVIGATION = [
     title: 'Clinic & Team',
     items: [
       { name: 'Users',      path: '/admin/users',             icon: UserCheck },
+      { name: 'Audit Logs', path: '/admin/audit-logs',        icon: ShieldCheck },
       { name: 'Treatments', path: '/admin/treatments-config', icon: Activity },
     ],
   },

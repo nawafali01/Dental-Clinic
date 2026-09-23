@@ -42,10 +42,7 @@ export const ClinicProvider = ({ children }) => {
       return backendClinics;
     }
     const stored = storageService.get(storageService.KEYS.CLINICS) || [];
-    if (stored && stored.length > 0) {
-      return stored;
-    }
-    return CLINICS.filter((c) => !c.isAlias);
+    return stored || [];
   }, [backendClinics]);
 
   /**
@@ -69,29 +66,12 @@ export const ClinicProvider = ({ children }) => {
   }, [currentUser]);
 
   /** True if the current user's role allows multi-clinic switching. */
-  const canSwitch = useMemo(
-    () => Boolean(normalizedUser && MULTI_CLINIC_ROLES.includes(normalizedUser.role)),
-    [normalizedUser],
-  );
+  const canSwitch = useMemo(() => true, []);
 
   /**
    * The subset of clinics available to this user in current scope.
    */
   const availableClinics = useMemo(() => {
-    if (!normalizedUser) return allAvailableClinics;
-
-    // Single-clinic roles locked to assigned clinicIds
-    if (!canSwitch) {
-      if (normalizedUser.clinicIds && normalizedUser.clinicIds.length > 0) {
-        const filtered = allAvailableClinics.filter((c) =>
-          normalizedUser.clinicIds.some((assignedId) => assignedId === c.id || isSameClinic(assignedId, c.id))
-        );
-        return filtered.length > 0 ? filtered : allAvailableClinics;
-      }
-      return allAvailableClinics;
-    }
-
-    // Multi-clinic roles (super_admin, org_admin)
     if (!selectedOrgId || selectedOrgId === 'all') {
       return allAvailableClinics;
     }
@@ -100,33 +80,11 @@ export const ClinicProvider = ({ children }) => {
       (c) => c.orgId === selectedOrgId || c.organization_id === selectedOrgId
     );
     return orgClinics.length > 0 ? orgClinics : allAvailableClinics;
-  }, [normalizedUser, canSwitch, selectedOrgId, allAvailableClinics]);
+  }, [selectedOrgId, allAvailableClinics]);
 
   const getInitialClinicId = () => {
-    const user = normalizedUser || (() => {
-      try {
-        const raw = typeof window !== 'undefined'
-          ? (localStorage.getItem('dental_crm_current_user') || localStorage.getItem('auth_current_user'))
-          : null;
-        return raw ? JSON.parse(raw) : null;
-      } catch { return null; }
-    })();
-
-    if (!user) return 'all';
-    const isMultiClinic = MULTI_CLINIC_ROLES.includes(user.role);
-    if (isMultiClinic) {
-      const saved = typeof window !== 'undefined' ? localStorage.getItem(SELECTED_BRANCH_KEY) : null;
-      return saved || 'all';
-    }
-    const assignedClinics = [
-      ...(Array.isArray(user.assigned_clinics) ? user.assigned_clinics : []),
-      ...(Array.isArray(user.assignedClinics) ? user.assignedClinics : []),
-      ...(Array.isArray(user.clinicIds) ? user.clinicIds : []),
-      ...(user.clinicId ? [user.clinicId] : []),
-      ...(user.clinic_id ? [user.clinic_id] : []),
-    ].filter(Boolean);
-
-    return assignedClinics[0] || 'f0c74f65-f068-47ad-b82c-27f3413976e2';
+    const saved = typeof window !== 'undefined' ? localStorage.getItem(SELECTED_BRANCH_KEY) : null;
+    return saved || 'all';
   };
 
   const [selectedClinicId, setSelectedClinicIdState] = useState(getInitialClinicId);
@@ -137,33 +95,22 @@ export const ClinicProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 
-  // Lock single-clinic roles to their assigned clinic; for multi-clinic roles validate against available clinics
   useEffect(() => {
-    if (!canSwitch) {
-      const userClinic = (normalizedUser?.clinicIds && normalizedUser.clinicIds[0]) || 'f0c74f65-f068-47ad-b82c-27f3413976e2';
-      setSelectedClinicIdState(userClinic);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(SELECTED_BRANCH_KEY, userClinic);
-      }
-      return;
-    }
-
     if (selectedClinicId !== 'all') {
       const exists = availableClinics.some((c) => c.id === selectedClinicId || isSameClinic(c.id, selectedClinicId));
-      if (!exists) {
+      if (!exists && availableClinics.length > 0) {
         setSelectedClinicIdState('all');
         if (typeof window !== 'undefined') {
           localStorage.setItem(SELECTED_BRANCH_KEY, 'all');
         }
       }
     }
-  }, [selectedOrgId, availableClinics, selectedClinicId, canSwitch, normalizedUser]);
+  }, [selectedOrgId, availableClinics, selectedClinicId]);
 
   /**
-   * Public setter — only multi-clinic roles can actually change the selection.
+   * Public setter
    */
   const setSelectedClinicId = (clinicId) => {
-    if (!canSwitch) return;
     setSelectedClinicIdState(clinicId);
     if (typeof window !== 'undefined') {
       localStorage.setItem(SELECTED_BRANCH_KEY, clinicId);
@@ -171,16 +118,7 @@ export const ClinicProvider = ({ children }) => {
   };
 
   const selectedClinic = useMemo(() => {
-    let effectiveClinicId = selectedClinicId;
-    if (!canSwitch) {
-      const assigned =
-        (normalizedUser?.clinicIds && normalizedUser.clinicIds[0]) ||
-        currentUser?.clinicId ||
-        (Array.isArray(currentUser?.assigned_clinics) ? currentUser.assigned_clinics[0] : null);
-      if (assigned) {
-        effectiveClinicId = assigned;
-      }
-    }
+    const effectiveClinicId = selectedClinicId;
 
     if (effectiveClinicId === 'all') {
       return {
@@ -194,12 +132,8 @@ export const ClinicProvider = ({ children }) => {
     const found = allAvailableClinics.find((c) => c.id === effectiveClinicId || isSameClinic(c.id, effectiveClinicId));
     if (found) return found;
 
-    if (effectiveClinicId === 'f0c74f65-f068-47ad-b82c-27f3413976e2') {
-      return { id: effectiveClinicId, name: 'doctor_hospital', city: '' };
-    }
-
-    return getClinicById(effectiveClinicId) || availableClinics[0] || { id: effectiveClinicId, name: effectiveClinicId, city: '' };
-  }, [selectedClinicId, canSwitch, normalizedUser, currentUser, selectedOrgId, currentOrg, availableClinics, allAvailableClinics]);
+    return getClinicById(effectiveClinicId) || availableClinics[0] || { id: effectiveClinicId, name: 'Selected Clinic', city: '' };
+  }, [selectedClinicId, selectedOrgId, currentOrg, availableClinics, allAvailableClinics]);
 
   return (
     <ClinicContext.Provider
