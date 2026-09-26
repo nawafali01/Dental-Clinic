@@ -10,6 +10,7 @@ import { EditLeadModal } from './components/EditLeadModal';
 import { AssignLeadModal } from './components/AssignLeadModal';
 import { UpdateBillingModal } from './components/UpdateBillingModal';
 import { usersService, getAgentDisplayName } from '@/services/usersService';
+import { AiLeadSummarizer } from '@/features/ai-tools/AiLeadSummarizer';
 
 export const LeadDetailView = () => {
   const { id } = useParams();
@@ -341,6 +342,12 @@ export const LeadDetailView = () => {
                 <p className="text-sm text-amber-900 mt-1">{lead.notes}</p>
               </div>
             )}
+
+            {/* AI Lead Summarization Feature */}
+            <AiLeadSummarizer
+              leadNotes={lead.notes || `${lead.patientName} submitted inquiry for ${lead.treatment_interest || lead.treatment || 'dental care'}. Priority: ${lead.priority || 'medium'}, Source: ${lead.source || 'website'}.`}
+              leadId={lead.id}
+            />
 
             {/* Billing & Financial Auditing Panel */}
             <div className="border-t border-slate-100 pt-6 space-y-4">

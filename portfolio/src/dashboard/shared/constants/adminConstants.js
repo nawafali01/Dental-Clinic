@@ -93,6 +93,7 @@ export const SUPER_ADMIN_NAVIGATION = [
     title: 'AI & Automation',
     items: [
       { name: 'AI Copilot', path: '/admin/ai-copilot', icon: Sparkles },
+      { name: 'AI Automations', path: '/admin/ai-automations', icon: Zap },
     ],
   },
   {
@@ -153,6 +154,7 @@ export const ORG_ADMIN_NAVIGATION = [
     title: 'AI & Automation',
     items: [
       { name: 'AI Copilot', path: '/admin/ai-copilot', icon: Sparkles },
+      { name: 'AI Automations', path: '/admin/ai-automations', icon: Zap },
     ],
   },
   {
@@ -194,6 +196,13 @@ export const CLINIC_MANAGER_NAVIGATION = [
       { name: 'Users',      path: '/admin/users',             icon: UserCheck },
       { name: 'Audit Logs', path: '/admin/audit-logs',        icon: ShieldCheck },
       { name: 'Treatments', path: '/admin/treatments-config', icon: Activity },
+    ],
+  },
+  {
+    title: 'AI & Automation',
+    items: [
+      { name: 'AI Copilot', path: '/admin/ai-copilot', icon: Sparkles },
+      { name: 'AI Automations', path: '/admin/ai-automations', icon: Zap },
     ],
   },
   {
